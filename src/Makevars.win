@@ -1,0 +1,21 @@
+## Use the R_HOME indirection to support installations of multiple R version
+
+EXEC_FILENAME=rcurl.exe
+
+.PHONY: $(SHLIB) rcurl
+
+all: $(SHLIB)
+$(SHLIB): rcurl	
+
+rcurl: rcurl/main.cpp
+	cd rcurl && \
+	$(CXX) $(ALL_CPPFLAGS) $(CPPFLAGS) $(CFLAGS) $(PKG_CPPFLAGS) $(PKG_CFLAGS) -o $(EXEC_FILENAME) main.cpp $(ALL_LIBS) $(PKG_LIBS)
+
+clean:
+	rm *.o; \
+	rm rcurl/*.o;
+
+clean-all: clean
+	rm *.so; \
+	rm rcurl/$(EXEC_FILENAME);
+

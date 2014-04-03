@@ -1,0 +1,23 @@
+Package: repotools
+Type: Package
+Title: Tools for R Package Repositories
+Version: 1.0.0
+Date: 2014-31-03
+Authors@R: person('Renaud', 'Gaujoux', email = 'renaud@tx.technion.ac.il', role
+    = c('aut', 'cre'))
+Description: Provides utilities to facilitate the creation and usage of
+    CRAN-like repositories.
+License: GPL (>=2)
+Depends:
+    R (>= 3.0),
+    pkgmaker
+Imports:
+    tools,
+    devtools,
+    RCurl
+Suggests:
+    BiocInstaller
+Collate:
+    'utils.R'
+    'download.R'
+    'api.R'
