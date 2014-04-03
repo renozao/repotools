@@ -1,5 +1,6 @@
 export(repos.getOption)
 export(repos.options)
+export(sourceURL)
 export(install.pkgs)
 export(available.pkgs)
 export(exists.pkgs)

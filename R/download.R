@@ -68,3 +68,22 @@ url.copy <- function(x, dest){
     
 }
 
+#' Sourcing Remote Files 
+#' 
+#' This function plays well with CNTLM proxies, because it download the complete file,
+#' before sourcing it locally.
+#' 
+#' @param url URL
+#' 
+#' @export
+sourceURL <- function(url){
+    
+    file <- url
+    if( grepl("^http", url) ){
+        dest <- tempfile(basename(url), fileext='.R')
+        download_file(url, dest)
+        file <- dest
+        on.exit( file.remove(file) )
+    }
+    source(file)
+}
