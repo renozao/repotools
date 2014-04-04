@@ -1,6 +1,6 @@
 ## Use the R_HOME indirection to support installations of multiple R version
 
-EXEC_FILENAME=rcurl.exe
+EXEC_FILENAME=curl.exe
 
 .PHONY: $(SHLIB) rcurl
 

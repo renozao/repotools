@@ -5,17 +5,23 @@
 ###############################################################################
 
 
-.setup_rcurl_exec <- function(){
+.setup_rcurl_exec <- function(verbose = FALSE){
     
     # script directory
     tmpdir <- tempfile("curl_")
-    cmd_file <- file.path(tmpdir, 'curl')
-    if( .Platform$OS.type == 'windows' ) cmd_file <- paste0(cmd_file, ".exe")
     dir.create(tmpdir)
-    if( isDevNamespace() ) file.copy(file.path(tempdir(), 'repotools/bin/rcurl'), cmd_file)
-    else file.copy(system.file('bin/rcurl', package = 'repotools'), cmd_file)
+    file0 <- "curl"
+    if( .Platform$OS.type == 'windows' ){
+        file0 <- file.path(.Platform$r_arch, paste0(file0, ".exe"))
+    }
+    file0 <- file.path('bin', file0)
+    ok <- if( isDevNamespace() ) file.copy(file.path(tempdir(), 'repotools', file0), tmpdir)
+    else file.copy(system.file(file0, package = 'repotools'), tmpdir)
+    if( !ok )
+        warning("repotools - Could not copy rcurl executable '", file0, "' into '", tmpdir, "'")
+    cmd_file <- file.path(tmpdir, basename(file0))
     Sys.chmod(cmd_file, mode = "0777", use_umask = TRUE)
-    
+    if( verbose ) message("Temporary curl [", tmpdir, "]: ", str_out(list.files(tmpdir), Inf))
     # return temporary directory
     tmpdir
 }
@@ -26,7 +32,7 @@
         if( !reset ){ # setup
             .old$options <<- options(download.file.method = 'curl')
             # define custom curl executable to handle protected repo
-            .old$tmpdir <<- .setup_rcurl_exec()
+            .old$tmpdir <<- .setup_rcurl_exec(FALSE)
             rscript <- file.path(R.home('bin'), "Rscript")
             if( .Platform$OS.type == 'windows' ) rscript <- paste0(rscript, ".exe")
             Sys.setenv(`_CURL_PASSTHROUGH_RSCRIPT` = rscript )
@@ -49,9 +55,18 @@ download_file <- function(x, dest, ...){
     on.exit( .setup_rcurl(TRUE) )
     
     dest <- gsub("^file://", "", dest)
-    download.file(x, dest, ..., cacheOK = FALSE)
-    if( !file.exists(dest) ) stop("Failed to download file '", x, "'")
-    TRUE
+    tmpdest <- tempfile(basename(x))
+    on.exit( unlink(tmpdest) )
+    download.file(x, tmpdest, ..., cacheOK = FALSE)
+    if( !file.exists(tmpdest) ) 
+        stop("Failed to download file '", x, "'")
+    res <- file.copy(tmpdest, dest, overwrite = TRUE)
+    if( !res ){
+        on.exit()
+        stop("Failed copy downloaded file to target '", dest, "' [download: ", tmpdest, "]")
+    }
+    
+    invisible(res)
 }
 
 url.copy <- function(x, dest){
