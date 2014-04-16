@@ -23,7 +23,7 @@ int main(int argc, const char* argv[] ){
 	// arguments
 	stringstream args_s;
 	string src, dest, httpheader("NULL"), userpwd("NULL"), silent_s("FALSE");
-	int silent = 0;
+	int silent_flags = 0;
 	// go through arguments
 	//++args;
 	for(int i=0; i<argc; ++i, args++){
@@ -35,7 +35,7 @@ int main(int argc, const char* argv[] ){
 			if( i < argc-1 )
 				dest = args[1];
 		}else if( !strcmp(*args, "-s") || !strcmp(*args, "-S") ){
-			++silent;
+			++silent_flags;
 		}else if( !strcmp(*args, "-H") ){
 			if( i < argc-1 ){
 				httpheader = args[1];
@@ -54,12 +54,16 @@ int main(int argc, const char* argv[] ){
 		src = string("http://") + src.substr(at+1);
 	}
 
-	silent = 0;
-	if( silent > 1 )
-		silent_s = "TRUE";
+	// determine silent download
+	bool silent = silent_flags > 1;
+	silent = false;
 
-	cout << "Downloading '" << src << "' ";
-	cout.flush();
+	silent_s = silent ? "TRUE" : "FALSE";
+	if( !silent ){
+		cout << "Downloading '" << src << "' ";
+		cout.flush();
+	}
+
 	DEBUG( cout << "Arguments: " << args_s.str() << endl; )
 	// enquote some of the variables
 #ifndef WIN32
@@ -101,7 +105,7 @@ int main(int argc, const char* argv[] ){
 
 	stringstream cmd_r;
 	// define R progress bar
-	const char* prog = "rcurl_progress_func <- function(total, now){"
+	const char* progress_bar_code = silent ? "rcurl_progress_func <- NULL;" : "rcurl_progress_func <- function(total, now){"
 	"if( isTRUE(now) ) total <- c(100, 100);"
 	"TotalToDownload <- total[1L]; NowDownloaded <- total[2];"
 	"if( !TotalToDownload ) return();"
@@ -114,9 +118,15 @@ int main(int argc, const char* argv[] ){
 	"cat(sprintf(\"] %3.0f%%\",fractiondownloaded*100));"
 	"flush.console();"
 	"if( !isTRUE(now) ) replicate(totaldotz + 7, cat(\"\\b\"));"
-	"}";
-	cmd_r << prog << "; suppressMessages(library(RCurl)); raw <- getBinaryURL(\"" << src << "\", .opts = list(progressfunction = rcurl_progress_func, userpwd = " << userpwd << ", noprogress = " << silent_s << "), httpheader = " << httpheader << "); " <<
-			"if(!" << silent_s << "){ rcurl_progress_func(NULL, TRUE); cat(\" [OK]\\n\"); }; writeBin(raw, \"" << dest << "\");";
+	"};";
+	cmd_r << progress_bar_code << " suppressMessages(library(RCurl)); "
+			<< "raw <- getBinaryURL(\"" << src << "\""
+									<< ", .opts = list(progressfunction = rcurl_progress_func"
+									<< ", userpwd = " << userpwd
+									<< ", noprogress = " << silent_s << ")"
+									<< ", httpheader = " << httpheader << "); "
+									<< "if(!" << silent_s << "){ rcurl_progress_func(NULL, TRUE); cat(\" [OK]\\n\"); }; "
+									<< "writeBin(raw, \"" << dest << "\");";
 
 	stringstream cmd;
 #ifdef WIN32
