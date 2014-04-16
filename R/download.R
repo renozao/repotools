@@ -29,7 +29,7 @@
 .setup_rcurl <- local({
     .old <- list()
     function(reset = FALSE){
-        if( !reset ){ # setup
+        if( isFALSE(reset) ){ # setup
             .old$options <<- options(download.file.method = 'curl')
             # define custom curl executable to handle protected repo
             .old$tmpdir <<- .setup_rcurl_exec(FALSE)
@@ -38,11 +38,12 @@
             Sys.setenv(`_CURL_PASSTHROUGH_RSCRIPT` = rscript )
             .old$PATH <<- Sys.getenv('PATH')
             Sys.setenv(PATH = paste(.old$tmpdir, .old$PATH, sep = .Platform$path.sep))
-                
+            .old    
         }else{ # cleanup
-            options(.old$options)
-            if( !is.null(.old$PATH) ) Sys.setenv(PATH = .old$PATH)
-            if( !is.null(.old$tmpdir) ) unlink(.old$tmpdir, recursive = TRUE)
+            old <- if( is.list(reset) ) reset else .old
+            options(old$options)
+            if( !is.null(old$PATH) ) Sys.setenv(PATH = old$PATH)
+            if( !is.null(old$tmpdir) ) unlink(old$tmpdir, recursive = TRUE)
             .old <<- list()
         }
     }
