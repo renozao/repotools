@@ -6,7 +6,6 @@
 
 #' @include utils.R 
 #' @include download.R
-#' @importFrom RCurl getBinaryURL
 NULL
 
 repo_auth <- function(...){
@@ -114,9 +113,6 @@ create_repo <- function(dir = '.', pkgs = NULL, ..., clean = FALSE, verbose = FA
 #' @export
 install.pkgs <- function(pkgs, lib = NULL, siteRepos = NULL, type = getOption('pkgType'), dependencies = NA, ...){
     
-    # setup
-    .setup_rcurl()
-    on.exit( .setup_rcurl(TRUE) )
     x <- pkgs
     
     # handle source/binary packages
@@ -136,8 +132,8 @@ install.pkgs <- function(pkgs, lib = NULL, siteRepos = NULL, type = getOption('p
     # build complete repos list
     repos <- c(getOption('repos'), siteRepos)
     
-    # check availability using plain repos list
-    p <- utils::available.packages(contrib.url(repos, type = type))
+    # check availability using plain repos list    
+    p <- available.pkgs(contrib.url(repos, type = type))
     # update repos list (to get chosen CRAN mirror)
     repos <- c(getOption('repos'), siteRepos)
     
@@ -149,27 +145,38 @@ install.pkgs <- function(pkgs, lib = NULL, siteRepos = NULL, type = getOption('p
     
     if( length(i_na <- which(!x_deps %in% p[, 'Package'])) ){ # try against Bioc repos
         message("Looking for dependencies in Bioconductor repos [", str_out(x_deps[i_na], total = TRUE), "]")
-        p <- utils::available.packages(contrib.url(.biocinstallRepos(repos), type = type))
+        p <- available.pkgs(contrib.url(.biocinstallRepos(repos), type = type))
         # use bioc repos list if more packages where found 
         if( any(x_deps[i_na] %in% p[, 'Package']) )
             repos <- .biocinstallRepos(repos)
     }
     
+    # setup if needed
+    .setup_rcurl()
+    on.exit( .setup_rcurl(TRUE) )
+    
     utils::install.packages(x, lib = lib, ..., dependencies = dependencies, repos = repos, type = type)
 }
 
 #' \code{available.pkgs} returns a matrix of the available packages.
-#' The only difference with \code{\link{available.packages}} is that it can access password protected 
-#' repositories. 
+#' The only difference with \code{\link{available.packages}} is that, if necessary, it uses a custom download 
+#' method based on \pkg{RCurl} that can access password protected repositories. 
 #' 
 #' @rdname api
 #' @export
 #' 
 available.pkgs <- function(...){
     
-    # setup
-    .setup_rcurl()
-    on.exit( .setup_rcurl(TRUE) )
+    # internal function that detects the presence of userpwd specification in contrib urls 
+    .need_rcurl <- function(contriburl = contrib.url(getOption("repos"), type), type = getOption("pkgType")){
+        has_userpwd(contriburl)
+    }
+    # setup custom rcurl only if necessary
+    if( .need_rcurl(...) ){
+        .setup_rcurl()
+        on.exit( .setup_rcurl(TRUE) )
+    }
+    
     available.packages(...)
 }
 

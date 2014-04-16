@@ -115,8 +115,9 @@
 
   \code{available.pkgs} returns a matrix of the available
   packages. The only difference with
-  \code{\link{available.packages}} is that it can access
-  password protected repositories.
+  \code{\link{available.packages}} is that, if necessary,
+  it uses a custom download method based on \pkg{RCurl}
+  that can access password protected repositories.
 
   \code{exists.pkgs} tells if packages are available from
   repositories.

@@ -4,6 +4,20 @@
 # Created: Apr 3, 2014
 ###############################################################################
 
+#' @importFrom RCurl getBinaryURL
+NULL
+
+path.pkg <- function(x){
+    f <- attr(packageDescription(x), 'file')
+    
+    # different handling for source and installed packages
+    f <- if( basename(f) != 'DESCRIPTION' ) dirname(f)
+    dirname(dirname(f))
+} 
+
+has_userpwd <- function(x){
+    any(grepl("://[^@/]+@", x))
+}
 
 .setup_rcurl_exec <- function(verbose = FALSE){
     
@@ -27,24 +41,32 @@
 }
 
 .setup_rcurl <- local({
-    .old <- list()
+    .settings <- list()
     function(reset = FALSE){
         if( isFALSE(reset) ){ # setup
-            .old$options <<- options(download.file.method = 'curl')
+            .settings$options <<- options(download.file.method = 'curl')
             # define custom curl executable to handle protected repo
-            .old$tmpdir <<- .setup_rcurl_exec(FALSE)
+            .settings$tmpdir <<- .setup_rcurl_exec(FALSE)
             rscript <- file.path(R.home('bin'), "Rscript")
             if( .Platform$OS.type == 'windows' ) rscript <- paste0(rscript, ".exe")
-            Sys.setenv(`_CURL_PASSTHROUGH_RSCRIPT` = rscript )
-            .old$PATH <<- Sys.getenv('PATH')
-            Sys.setenv(PATH = paste(.old$tmpdir, .old$PATH, sep = .Platform$path.sep))
-            .old    
+            # set environment variable read by custom rcurl binary
+            Sys.setenv(`R_REPOTOOLS_RSCRIPT` = rscript)
+            Sys.setenv(`R_REPOTOOLS_RCURL` = path.pkg('RCurl'))
+            # prepend binary path to system PATH
+            .settings$PATH <<- Sys.getenv('PATH')
+            Sys.setenv(PATH = paste(.settings$tmpdir, .settings$PATH, sep = .Platform$path.sep))
+            # return backup list of previous settings
+            .settings    
         }else{ # cleanup
-            old <- if( is.list(reset) ) reset else .old
+            old <- if( is.list(reset) ) reset else .settings
             options(old$options)
             if( !is.null(old$PATH) ) Sys.setenv(PATH = old$PATH)
             if( !is.null(old$tmpdir) ) unlink(old$tmpdir, recursive = TRUE)
-            .old <<- list()
+            # clean up repotools environment variables
+            Sys.unsetenv('R_REPOTOOLS_RSCRIPT')
+            Sys.unsetenv('R_REPOTOOLS_RCURL')
+            # reset settings backup list
+            .settings <<- list()
         }
     }
 })
@@ -52,22 +74,33 @@
 download_file <- function(x, dest, ...){
     
     # setup
-    .setup_rcurl()
-    on.exit( .setup_rcurl(TRUE) )
+    if( has_userpwd(x) ){
+        .setup_rcurl()
+        on.exit( .setup_rcurl(TRUE) )
+    }
     
     dest <- gsub("^file://", "", dest)
     tmpdest <- tempfile(basename(x))
-    on.exit( unlink(tmpdest) )
+    on.exit( if( !is.null(tmpdest) ) unlink(tmpdest) )
     download.file(x, tmpdest, ..., cacheOK = FALSE)
     if( !file.exists(tmpdest) ) 
         stop("Failed to download file '", x, "'")
     res <- file.copy(tmpdest, dest, overwrite = TRUE)
     if( !res ){
-        on.exit()
-        stop("Failed copy downloaded file to target '", dest, "' [download: ", tmpdest, "]")
+        tmp <- tmpdest
+        tmpdest <- NULL
+        stop("Failed copy downloaded file to target '", dest, "' [download: ", tmp, "]")
     }
     
     invisible(res)
+}
+
+readURL <- function(x){
+    tmp <- tempfile()
+    on.exit( unlink(tmp) )
+    if( download_file(x, tmp) ){
+        paste0(readLines(tmp), collapse = "\n")
+    }
 }
 
 url.copy <- function(x, dest){

@@ -71,10 +71,18 @@ int main(int argc, const char* argv[] ){
 #endif
 	ENQUOTE(userpwd)
 
-	const char* rscript = getenv("_CURL_PASSTHROUGH_RSCRIPT");
+	// path to Rscript
+	const char* rscript = getenv("R_REPOTOOLS_RSCRIPT");
 	if( rscript == NULL ){
 		rscript = "Rscript";
 	}
+	// path to RCurl package
+	const char* RCurl_path = getenv("R_REPOTOOLS_RCURL");
+	if( RCurl_path == NULL ){
+		RCurl_path = "NULL";
+	}
+	string RCurl_path_s(RCurl_path);
+	ENQUOTE(RCurl_path_s);
 
 	string exec(argv[0]);
 	DEBUG( cout << "Exec: " << exec << endl; )
@@ -91,6 +99,7 @@ int main(int argc, const char* argv[] ){
 		const char* path_sep = "/";
 #endif
 	DEBUG( cout << "Rscript: " << rscript << endl;
+			cout << "RCurl: " << RCurl_path_s << endl;
 		   cout << "Destination: " << dest << endl;
 		   cout << "HTTP header: " << httpheader << endl;
 		   cout << "userpwd: " << userpwd << endl; )
@@ -103,10 +112,10 @@ int main(int argc, const char* argv[] ){
 	rfile += "download.R";
 	DEBUG( cout << "R file: " << rfile << endl; )
 
-	stringstream cmd_r;
 	// define R progress bar
 	const char* progress_bar_code = silent ? "rcurl_progress_func <- NULL;" : "rcurl_progress_func <- function(total, now){"
 	"if( isTRUE(now) ) total <- c(100, 100);"
+	"if( is.null(now) ) total <- c(0, 100);"
 	"TotalToDownload <- total[1L]; NowDownloaded <- total[2];"
 	"if( !TotalToDownload ) return();"
     "totaldotz=20;"
@@ -119,15 +128,22 @@ int main(int argc, const char* argv[] ){
 	"flush.console();"
 	"if( !isTRUE(now) ) replicate(totaldotz + 7, cat(\"\\b\"));"
 	"};";
-	cmd_r << progress_bar_code << " suppressMessages(library(RCurl)); "
-			<< "raw <- getBinaryURL(\"" << src << "\""
-									<< ", .opts = list(progressfunction = rcurl_progress_func"
+	stringstream cmd_r;
+	cmd_r << "rcurl <- function(){" << progress_bar_code << " suppressMessages(library(RCurl, lib=" << RCurl_path_s << ")); "
+			<< " curl_opts <- list(progressfunction = rcurl_progress_func"
 									<< ", userpwd = " << userpwd
-									<< ", noprogress = " << silent_s << ")"
+									<< ", noprogress = " << silent_s << "); "
+			<< "if( !url.exists(\"" << src << "\", .opts = curl_opts) ){"
+			<< "if(!" << silent_s << "){ rcurl_progress_func(NULL, NULL); cat(\" [ERROR: URL not found]\\n\"); }; "
+			<< "return(invisible());"
+			<< "};"
+			<< "raw <- getBinaryURL(\"" << src << "\""
+									<< ", .opts = curl_opts"
 									<< ", httpheader = " << httpheader << "); "
-									<< "if(!" << silent_s << "){ rcurl_progress_func(NULL, TRUE); cat(\" [OK]\\n\"); }; "
-									<< "writeBin(raw, \"" << dest << "\");";
-
+			<< "if(!" << silent_s << "){ rcurl_progress_func(NULL, TRUE); cat(\" [OK]\\n\"); }; "
+			<< "writeBin(raw, \"" << dest << "\");"
+		<< " invisible() };"
+		<< "rcurl();";
 	stringstream cmd;
 #ifdef WIN32
 	ofstream rfile_o;
