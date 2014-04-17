@@ -151,9 +151,9 @@ install.pkgs <- function(pkgs, lib = NULL, siteRepos = NULL, type = getOption('p
             repos <- .biocinstallRepos(repos)
     }
     
+    
     # setup if needed
-    .setup_rcurl()
-    on.exit( .setup_rcurl(TRUE) )
+    if( .setup_rcurl(contrib.url(repos, type = type)) ) on.exit( .setup_rcurl(TRUE) )
     
     utils::install.packages(x, lib = lib, ..., dependencies = dependencies, repos = repos, type = type)
 }
@@ -168,14 +168,11 @@ install.pkgs <- function(pkgs, lib = NULL, siteRepos = NULL, type = getOption('p
 available.pkgs <- function(...){
     
     # internal function that detects the presence of userpwd specification in contrib urls 
-    .need_rcurl <- function(contriburl = contrib.url(getOption("repos"), type), type = getOption("pkgType")){
-        has_userpwd(contriburl)
+    .urls <- function(contriburl = contrib.url(getOption("repos"), type), type = getOption("pkgType")){
+        contriburl
     }
     # setup custom rcurl only if necessary
-    if( .need_rcurl(...) ){
-        .setup_rcurl()
-        on.exit( .setup_rcurl(TRUE) )
-    }
+    if( .setup_rcurl(.urls(...)) ) on.exit( .setup_rcurl(TRUE) )
     
     available.packages(...)
 }

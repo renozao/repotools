@@ -43,6 +43,13 @@ has_userpwd <- function(x){
 .setup_rcurl <- local({
     .settings <- list()
     function(reset = FALSE){
+        
+        # only setup if necessary
+        if( is.character(reset) ){
+            if( !has_userpwd(reset) ) return(FALSE); 
+            reset <- FALSE
+        }
+        
         if( isFALSE(reset) ){ # setup
             .settings$options <<- options(download.file.method = 'curl')
             # define custom curl executable to handle protected repo
@@ -56,7 +63,8 @@ has_userpwd <- function(x){
             .settings$PATH <<- Sys.getenv('PATH')
             Sys.setenv(PATH = paste(.settings$tmpdir, .settings$PATH, sep = .Platform$path.sep))
             # return backup list of previous settings
-            .settings    
+            .settings
+            TRUE    
         }else{ # cleanup
             old <- if( is.list(reset) ) reset else .settings
             options(old$options)
@@ -74,10 +82,7 @@ has_userpwd <- function(x){
 download_file <- function(x, dest, ...){
     
     # setup
-    if( has_userpwd(x) ){
-        .setup_rcurl()
-        on.exit( .setup_rcurl(TRUE) )
-    }
+    if( .setup_rcurl(x) ) on.exit( .setup_rcurl(TRUE) )
     
     dest <- gsub("^file://", "", dest)
     tmpdest <- tempfile(basename(x))
