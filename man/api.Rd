@@ -1,5 +1,6 @@
 \name{install.pkgs}
 \alias{available.pkgs}
+\alias{download.pkgs}
 \alias{exists.pkgs}
 \alias{install.pkgs}
 \alias{Library}
@@ -9,6 +10,8 @@
     type = getOption("pkgType"), dependencies = NA, ...)
 
   available.pkgs(...)
+
+  download.pkgs(pkgs, destdir, available = NULL, ...)
 
   exists.pkgs(pkgs, repos = getOption("repos"), ...,
     value = FALSE, fixed = TRUE)
@@ -95,6 +98,18 @@
   In all of these, \code{"LinkingTo"} is omitted for binary
   packages.  }
 
+  \item{destdir}{ directory where downloaded packages are
+  stored.  If it is \code{NULL} (the default) a
+  subdirectory \code{downloaded_packages} of the session
+  temporary directory will be used (and the files will be
+  deleted at the end of the session).  }
+
+  \item{available}{ an object as returned by
+  \code{\link{available.packages}} listing packages
+  available at the repositories, or \code{NULL} when the
+  function makes an internal call to
+  \code{available.packages}.  }
+
   \item{repos}{ character vector, the base URL(s) of the
   repositories to use, e.g., the URL of a CRAN mirror such
   as \code{"http://cran.us.r-project.org"}.  For more
@@ -110,14 +125,14 @@
 }
 \description{
   These functions are enhanced versions of the base
-  functions \code{\link{install.packages} and
-  \link{available.packages}}.
+  functions \code{\link{install.packages}},
+  \code{\link{available.packages}} and
+  \code{link{download.packages}} (see \emph{Details}).
 
-  \code{available.pkgs} returns a matrix of the available
-  packages. The only difference with
-  \code{\link{available.packages}} is that, if necessary,
-  it uses a custom download method based on \pkg{RCurl}
-  that can access password protected repositories.
+  \code{available.pkgs} returns a matrix of the packages
+  available in given repositories.
+
+  \code{download.pkgs} downloads packages.
 
   \code{exists.pkgs} tells if packages are available from
   repositories.
@@ -126,6 +141,13 @@
   needed.
 }
 \details{
+  The main differences with the base functions are that:
+  \itemize{ \item if necessary, it uses a custom download
+  method based on \pkg{RCurl} that can access password
+  protected repositories. \item Bioconductor dependencies
+  are automatically resolved, without the need to enable
+  the BioC repositories (soft, data/annotation, etc..). }
+
   \code{install.pkgs} installs packages, which can be
   local, remote or in a CRAN-like repository, possibly
   password protected. Packages and their dependencies are

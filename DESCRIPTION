@@ -1,16 +1,17 @@
 Package: repotools
 Type: Package
 Title: Tools for R Package Repositories
-Version: 1.2
+Version: 1.2.2
 Date: 2014-31-03
 Authors@R: person('Renaud', 'Gaujoux', email = 'renaud@tx.technion.ac.il', role
     = c('aut', 'cre'))
 Description: Provides utilities to facilitate the creation and usage of
     CRAN-like repositories.
 License: GPL (>=2)
+SCM: github:renozao
 Depends:
     R (>= 3.0),
-    pkgmaker (>= 0.21)
+    pkgmaker (>= 0.22)
 Imports:
     tools,
     devtools,

@@ -32,8 +32,11 @@ repo_auth <- function(...){
     invisible(old[[1L]])
 }
 
-.biocinstallRepos <- function(siteRepos = NULL){
-    if( !require(BiocInstaller) ) sourceURL('http://www.bioconductor.org/biocLite.R')
+.biocinstallRepos <- function(siteRepos = NULL, lib = lib){
+    if( !require.quiet('BiocInstaller', character.only = TRUE, lib.loc = lib) ){
+        sourceURL('http://www.bioconductor.org/biocLite.R')
+    }
+    library(BiocInstaller, lib.loc = lib)
     biocinstallRepos(siteRepos)
 }
 
@@ -66,10 +69,9 @@ create_repo <- function(dir = '.', pkgs = NULL, ..., clean = FALSE, verbose = FA
     sapply(contribs, dir.create, recursive = TRUE, showWarnings = FALSE)
     
     # fill repo with files
-    x <- pkgs
-    if( !is.null(x) ){
+    if( !is.null(pkgs) && is.character(pkgs) ){
         if( verbose ) message('Copying package files into repository')
-        mapply(url.copy, x, contribs[package_type(x)])
+        mapply(url.copy, pkgs, contribs[package_type(pkgs)])
     }
     
     # change to repo base directory
@@ -88,7 +90,9 @@ create_repo <- function(dir = '.', pkgs = NULL, ..., clean = FALSE, verbose = FA
         n
     }
     
-    n <- makePACKAGES(contrib.url('.'), ...)
+    n <- sapply(.contrib_types, function(t){
+                makePACKAGES(contrib.url('.', type = t), type = t, ...)
+    })
     if( verbose ) message()
     
     # return repo URL
@@ -97,8 +101,16 @@ create_repo <- function(dir = '.', pkgs = NULL, ..., clean = FALSE, verbose = FA
 
 #' Enhanced Package Installation
 #' 
-#' These functions are enhanced versions of the base functions \code{\link{install.packages} and  
-#' \link{available.packages}}.
+#' These functions are enhanced versions of the base functions \code{\link{install.packages}},   
+#' \code{\link{available.packages}} and \code{link{download.packages}} (see \emph{Details}).
+#' 
+#' The main differences with the base functions are that:
+#' \itemize{ 
+#' \item if necessary, it uses a custom download method based on \pkg{RCurl} that 
+#' can access password protected repositories.
+#' \item Bioconductor dependencies are automatically resolved, without the need to 
+#' enable the BioC repositories (soft, data/annotation, etc..).
+#' } 
 #' 
 #' \code{install.pkgs} installs packages, which can be local, remote or in a CRAN-like repository, 
 #' possibly password protected.
@@ -137,20 +149,42 @@ install.pkgs <- function(pkgs, lib = NULL, siteRepos = NULL, type = getOption('p
     # update repos list (to get chosen CRAN mirror)
     repos <- c(getOption('repos'), siteRepos)
     
+    repo_type <- if( is.null(siteRepos) ) 'base' else 'extended'
+    message('Using ', repo_type, ' repository list')
     # check missing dependencies
     deps <- NULL
-    if( is_NA(dependencies) ) deps <- packageDependencies(x, all = FALSE, available = p)
-    else if( isTRUE(dependencies) ) deps <- packageDependencies(x, all = TRUE, available = p)
-    x_deps <- unique(c(x, deps[!is.na(deps)]))
-    
-    if( length(i_na <- which(!x_deps %in% p[, 'Package'])) ){ # try against Bioc repos
-        message("Looking for dependencies in Bioconductor repos [", str_out(x_deps[i_na], total = TRUE), "]")
-        p <- available.pkgs(contrib.url(.biocinstallRepos(repos), type = type))
-        # use bioc repos list if more packages where found 
-        if( any(x_deps[i_na] %in% p[, 'Package']) )
-            repos <- .biocinstallRepos(repos)
+    ndeps <- 0L
+    if( !isFALSE(dependencies) ){
+        if( is_NA(dependencies) ){
+            message("Listing required dependencies ... ", appendLF = FALSE)
+            deps <- packageDependencies(x, all = FALSE, available = p)
+        }else if( isTRUE(dependencies) ){
+            message("Listing all dependencies ... ", appendLF = FALSE)
+            deps <- packageDependencies(x, all = TRUE, available = p)
+        }
+        deps <- unique(deps[!is.na(deps)])
+        message('OK [', str_out(deps, total = TRUE), ']')
     }
+    x_deps <- unique(c(x, deps))
     
+    i_notbase <- which(!x_deps %in% p[, 'Package'])
+    deps_found <- x_deps[-i_notbase]
+    message("* Packages found in ", repo_type, " repositories: ", str_out(deps_found, total = TRUE))
+    if( length(i_notbase) ){ # try against Bioc repos
+        deps_notbase <- x_deps[i_notbase]
+        message("* Checking Bioconductor repositories for unresolved dependencies [", length(deps_notbase), "/", length(x_deps), "]")
+        p_bioc <- available.pkgs(contrib.url(.biocinstallRepos(repos, lib = lib), type = type))
+        # use bioc repos list if more packages where found 
+        if( length(i_bioc <- which(deps_notbase %in% p_bioc[, 'Package'])) ){
+            deps_found <- c(deps_found, deps_notbase[i_bioc])
+            repos <- .biocinstallRepos(repos, lib = lib)
+            message("* Packages found in Bioconductor repositories: ", str_out(deps_notbase[i_bioc], total = TRUE))
+        }
+    }
+    deps_notfound <- setdiff(x_deps, deps_found)
+    if( length(deps_notfound) ){
+        message("* Packages not found in any repositories: ", str_out(deps_notfound, total = TRUE))
+    }
     
     # setup if needed
     if( .setup_rcurl(contrib.url(repos, type = type)) ) on.exit( .setup_rcurl(TRUE) )
@@ -158,10 +192,7 @@ install.pkgs <- function(pkgs, lib = NULL, siteRepos = NULL, type = getOption('p
     utils::install.packages(x, lib = lib, ..., dependencies = dependencies, repos = repos, type = type)
 }
 
-#' \code{available.pkgs} returns a matrix of the available packages.
-#' The only difference with \code{\link{available.packages}} is that, if necessary, it uses a custom download 
-#' method based on \pkg{RCurl} that can access password protected repositories. 
-#' 
+#' \code{available.pkgs} returns a matrix of the packages available in given repositories.
 #' @rdname api
 #' @export
 #' 
@@ -174,7 +205,29 @@ available.pkgs <- function(...){
     # setup custom rcurl only if necessary
     if( .setup_rcurl(.urls(...)) ) on.exit( .setup_rcurl(TRUE) )
     
-    available.packages(...)
+    available.packages(...) 
+}
+
+#' \code{download.pkgs} downloads packages.
+#' 
+#' @inheritParams base::download.packages
+#' @rdname api
+#' @export
+#' 
+download.pkgs <- function(pkgs, destdir, available = NULL, ...){
+    
+    if( is.null(available) ){
+        available <- available.pkgs(...)
+    }
+    
+    # internal function that detects the presence of userpwd specification in contrib urls 
+    .urls <- function(contriburl = contrib.url(getOption("repos"), type), type = getOption("pkgType")){
+        contriburl
+    }
+    # setup custom rcurl only if necessary
+    if( .setup_rcurl(.urls(...)) ) on.exit( .setup_rcurl(TRUE) )
+    
+    download.packages(pkgs, destdir, available = available, ...)    
 }
 
 #' \code{exists.pkgs} tells if packages are available from repositories.
@@ -212,12 +265,12 @@ Library <- function(package, lib = NULL, ...){
       ol <- .libPaths()
       on.exit( .libPaths(ol) )
       .libPaths( c(lib, ol) )
-      if( length(miss <- which(!sapply(x, require, lib = lib, character.only = TRUE))) ){
+      if( length(miss <- which(!sapply(x, require.quiet, lib = lib, character.only = TRUE))) ){
         pkgs <- x[miss]
         if( !is.null(lib) && !file.exists(lib) ) dir.create(lib, recursive = TRUE)
         install.pkgs(pkgs, lib = lib, ...)
         sapply(pkgs, library, character.only = TRUE, lib = lib)
-        invisible(pkgs)
       }
+      invisible(x)
 }
 
