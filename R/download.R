@@ -79,14 +79,25 @@ has_userpwd <- function(x){
     }
 })
 
-download_file <- function(x, dest, ...){
+#' Downloading Files From Password Protected Directories
+#' 
+#' Downloads files using a custom \code{curl} binary that uses  
+#' \pkg{RCurl} and is able to download files from password protected 
+#' directories.
+#' 
+#' @inheritParams utils::download.file
+#' @param ... arguments passed to \code{\link{download.file}}.
+#' 
+download_file <- function(url, destfile, ...){
     
+    x <- url
+    dest <- destfile
     # setup
     if( .setup_rcurl(x) ) on.exit( .setup_rcurl(TRUE) )
     
     dest <- gsub("^file://", "", dest)
     tmpdest <- tempfile(basename(x))
-    on.exit( if( !is.null(tmpdest) ) unlink(tmpdest) )
+    on.exit( if( !is.null(tmpdest) ) unlink(tmpdest), add = TRUE)
     download.file(x, tmpdest, ..., cacheOK = FALSE)
     if( !file.exists(tmpdest) ) 
         stop("Failed to download file '", x, "'")
@@ -94,7 +105,7 @@ download_file <- function(x, dest, ...){
     if( !res ){
         tmp <- tmpdest
         tmpdest <- NULL
-        stop("Failed copy downloaded file to target '", dest, "' [download: ", tmp, "]")
+        stop("Failed to copy downloaded file to target '", dest, "' [download: ", tmp, "]")
     }
     
     invisible(res)
