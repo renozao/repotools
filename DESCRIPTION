@@ -15,10 +15,12 @@ Depends:
 Imports:
     tools,
     devtools,
-    RCurl
+    RCurl,
+    stringr
 Suggests:
     BiocInstaller
 Collate:
     'utils.R'
     'download.R'
     'api.R'
+    'GRAN.R'
