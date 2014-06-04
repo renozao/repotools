@@ -205,9 +205,13 @@ install.pkgs <- function(pkgs, lib = NULL, siteRepos = NULL, type = getOption('p
                 }    
             }
             
+            # remove total duplicates
+            h <- apply(.pkgs[, - which(colnames(.pkgs) %in% c('Source', 'idx'))], 1L, digest)
+            .pkgs <<- .pkgs[!duplicated(h), ]
+            
             # MATCH MISSING
             i_avail <- match_available(.pkgs, .all_available)
-            .pkgs$idx <<- i_avail 
+            .pkgs$idx <<- i_avail
 #            message()
 #            print(.pkgs)
 #            print(i_avail)
@@ -278,7 +282,7 @@ install.pkgs <- function(pkgs, lib = NULL, siteRepos = NULL, type = getOption('p
         message("* Looking up available packages in GRAN-dev ... ", appendLF = FALSE)
         granD_repo <- GRAN.repo('devel')
         p_granD <- available.pkgs(contrib.url(granD_repo, type = 'source'), fields = .fields)
-        check_res <- check_repo(p_granD, 'GRAN')
+        check_res <- check_repo(p_granD, 'GRAN-dev')
         # add GRAN to repos list
         if( length(granD_pkg <- check_res$found) ){
             ##repos <- c(repos, gran_repo)
@@ -298,7 +302,7 @@ install.pkgs <- function(pkgs, lib = NULL, siteRepos = NULL, type = getOption('p
         to_install <- to_install[-iR, ]
     }
     
-    print(to_install[, 1:7])
+#    print(to_install[, 1:7])
     
     if( length(not_found <- which(is.na(to_install$Source))) ){
         warn <- paste0("Some packages could not be found in any repository: ", str_deps(to_install[not_found, ]))
@@ -315,7 +319,7 @@ install.pkgs <- function(pkgs, lib = NULL, siteRepos = NULL, type = getOption('p
     pkg_hash <- package.hash(to_install$name) 
     
     # install GRAN packages first
-    if( length(i_gran <- which(to_install$Source == 'GRAN')) ){
+    if( length(i_gran <- grep("GRAN", to_install$Source)) ){
         i_gran <- i_gran[order(to_install$depth[i_gran], decreasing = TRUE)]
         message("* Installing from GitHub: ", str_out(to_install$name[i_gran], Inf))
         sapply(i_gran, function(i){
