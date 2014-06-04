@@ -254,7 +254,7 @@ install.pkgs <- function(pkgs, lib = NULL, siteRepos = NULL, type = getOption('p
     }
 
     if( check_res$missing ){ # try against Omega 
-        message("* Checking available packages in Omegahat ... ", appendLF = FALSE)
+        message("* Looking up available packages in Omegahat ... ", appendLF = FALSE)
         p_omega <- available.pkgs(contrib.url(omega_repo <- "http://www.omegahat.org/R"), fields = .fields)
         # use Bioc repos if anything found (this includes CRAN)
         check_res <- check_repo(p_omega, 'Omega', disjoint = TRUE)
@@ -263,11 +263,24 @@ install.pkgs <- function(pkgs, lib = NULL, siteRepos = NULL, type = getOption('p
     
     # check GRAN repo
     if( check_res$missing ){
-        message("* Checking available packages in GRAN ... ", appendLF = FALSE)
+        message("* Looking up available packages in GRAN ... ", appendLF = FALSE)
         gran_repo <- GRAN.repo()
         p_gran <- available.pkgs(contrib.url(gran_repo, type = 'source'), fields = .fields)
+        check_res <- check_repo(p_gran, 'GRAN')
         # add GRAN to repos list
-        if( length(gran_pkg <- check_repo(p_gran, 'GRAN')$found) ){
+        if( length(gran_pkg <- check_res$found) ){
+            ##repos <- c(repos, gran_repo)
+        }
+    }
+    
+    # check GRAN-dev repo
+    if( check_res$missing ){
+        message("* Looking up available packages in GRAN-dev ... ", appendLF = FALSE)
+        granD_repo <- GRAN.repo('devel')
+        p_granD <- available.pkgs(contrib.url(granD_repo, type = 'source'), fields = .fields)
+        check_res <- check_repo(p_granD, 'GRAN')
+        # add GRAN to repos list
+        if( length(granD_pkg <- check_res$found) ){
             ##repos <- c(repos, gran_repo)
         }
     }
@@ -304,6 +317,7 @@ install.pkgs <- function(pkgs, lib = NULL, siteRepos = NULL, type = getOption('p
     # install GRAN packages first
     if( length(i_gran <- which(to_install$Source == 'GRAN')) ){
         i_gran <- i_gran[order(to_install$depth[i_gran], decreasing = TRUE)]
+        message("* Installing from GitHub: ", str_out(to_install$name[i_gran], Inf))
         sapply(i_gran, function(i){
             # temporary set repos
             op <- options(repos = repos)

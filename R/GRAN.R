@@ -11,8 +11,8 @@ api.path <- function(..., type = c('raw', 'api')){
     url
 }
 
-GRAN.repo <- function(){
-    'http://tx.technion.ac.il/~renaud/GRAN'
+GRAN.repo <- function(...){
+    file.path('http://tx.technion.ac.il/~renaud/GRAN', ...)
 }
 
 #' @importFrom RCurl getURL
