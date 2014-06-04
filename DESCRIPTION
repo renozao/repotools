@@ -6,7 +6,7 @@ Date: 2014-31-03
 Authors@R: person('Renaud', 'Gaujoux', email = 'renaud@tx.technion.ac.il', role
     = c('aut', 'cre'))
 Description: Provides utilities to facilitate the creation and usage of
-    CRAN-like repositories.
+    CRAN-like repositories, including providing access to a GitHub-driven repository.
 License: GPL (>=2)
 SCM: github:renozao
 Depends:
