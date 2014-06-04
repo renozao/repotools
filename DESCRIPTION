@@ -13,6 +13,7 @@ Depends:
     R (>= 3.0),
     pkgmaker (>= 0.23)
 Imports:
+    digest,
     tools,
     devtools,
     RCurl,
@@ -24,3 +25,4 @@ Collate:
     'download.R'
     'api.R'
     'GRAN.R'
+    'packages.R'
