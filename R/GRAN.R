@@ -14,9 +14,25 @@ api.path <- function(..., type = c('raw', 'api')){
 GRAN.repo <- function(...){
     file.path('http://tx.technion.ac.il/~renaud/GRAN', ...)
 }
+GRAN.fields <- function(){
+    c("GHuser", "GHref", 'GHfork')
+}
+
+GRAN.available <- function(type = getOption('pkgType'), fields = GRAN.fields(), ..., version = NULL){
+    if( is.null(version) ){
+        available.pkgs(contrib.url(GRAN.repo(), type = type), fields = fields, ...)
+    }else{
+        p <- available.pkgs(contrib.url(GRAN.repo(), type = type), fields = fields, ..., filters = c("R_version", "OS_type", "subarch"))
+        
+        invert <- match.fun(ifelse(grepl("^!", version), "!", 'identity'))
+        version <- gsub("^!", "", version)   
+        sel <- invert(p[, 'GHref'] %in% version)
+        p[sel, , drop = FALSE] 
+    }
+}
 
 #' @importFrom RCurl getURL
-update.GRAN <- function(path = 'GRAN', repos = NULL, cleanup = FALSE, fields = c('GHuser', 'GHref')){
+update.GRAN <- function(path = 'GRAN', repos = NULL, cleanup = FALSE, fields = GRAN.fields()){
     
     # create repo src/contrib directory
     repo_dir <- contrib.url(path, type = 'source')
@@ -57,7 +73,7 @@ update.GRAN <- function(path = 'GRAN', repos = NULL, cleanup = FALSE, fields = c
     
     # write PACKAGES files
     create_repo(path, verbose = TRUE)
-    write_PACKAGES(repo_dir, unpacked = TRUE, fields = fields)
+    write_PACKAGES(repo_dir, unpacked = TRUE, fields = fields, latestOnly = FALSE)
     # return path to file 
     invisible(file.path(repo_dir, 'PACKAGES'))
 }
