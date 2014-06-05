@@ -7,7 +7,8 @@
 \title{Enhanced Package Installation}
 \usage{
   install.pkgs(pkgs, lib = NULL, siteRepos = NULL,
-    type = getOption("pkgType"), dependencies = NA, ...)
+    type = getOption("pkgType"), dependencies = NA, ...,
+    dry.run = FALSE)
 
   available.pkgs(...)
 
@@ -24,6 +25,10 @@
 
   \item{...}{extra parameters eventually passed to the
   corresponding base function.}
+
+  \item{dry.run}{logical that indicates if one should only
+  return the computed set of packages and dependencies to
+  install.}
 
   \item{fixed}{logical that indicates if the elements of
   \code{x} should match exactly (\code{TRUE}) or

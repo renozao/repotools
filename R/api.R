@@ -121,14 +121,17 @@ create_repo <- function(dir = '.', type = NULL, pkgs = NULL, ..., clean = FALSE,
 #' @inheritParams utils::install.packages
 #' @param siteRepos extra user-defined CRAN-like package repository
 #' @param ... extra parameters eventually passed to the corresponding base function.
+#' @param dry.run logical that indicates if one should only return the computed set of 
+#' packages and dependencies to install.
 #' 
 #' @import devtools
 #' @rdname api
 #' @export
-install.pkgs <- function(pkgs, lib = NULL, siteRepos = NULL, type = getOption('pkgType'), dependencies = NA, ...){
+install.pkgs <- function(pkgs, lib = NULL, siteRepos = NULL, type = getOption('pkgType'), dependencies = NA, ..., dry.run = FALSE){
     
     x <- pkgs
     
+    # work with modified lib paths if requested
     if( !is.null(lib) ){
         ol <- .libPaths()
         .libPaths(c(lib, .libPaths()))
@@ -143,7 +146,7 @@ install.pkgs <- function(pkgs, lib = NULL, siteRepos = NULL, type = getOption('p
         lrepo <- create_repo(lrepo_path, pkgs = sx)
         on.exit( unlink(lrepo_path, recursive = TRUE), add = TRUE)
         # install including local repo in repos list
-        install.pkgs(package_name(sx), siteRepos = c(lrepo, siteRepos), type = type, dependencies = dependencies, ...)
+        install.pkgs(package_name(sx), siteRepos = c(lrepo, siteRepos), type = type, dependencies = dependencies, ..., dry.run = dry.run)
         x <- x[-i_src]    
     }
     
@@ -235,15 +238,15 @@ install.pkgs <- function(pkgs, lib = NULL, siteRepos = NULL, type = getOption('p
     # build complete repos list
     repos <- c(getOption('repos'), siteRepos)
     
-    .fields <- c("GHuser", "GHref")
+    .fields <- GRAN.fields()
     
     # check availability using plain repos list    
     p <- available.pkgs(contrib.url(repos, type = type), fields = .fields)
     # update repos list (to get chosen CRAN mirror)
     repos <- c(getOption('repos'), siteRepos)
     
-    repo_type <- if( is.null(siteRepos) ) 'base' else 'extended'
-    message('* Using ', repo_type, ' default repository list: ', str_out(repos, Inf))
+    repo_type <- if( is.null(siteRepos) ) 'default' else 'extended'
+    message('* Using ', repo_type, ' repository list: ', str_out(repos, Inf))
     
     message("* Looking up available packages in ", repo_type, " default repositories ... ", appendLF = FALSE)
     check_res <- check_repo(p, 'REPOS')
@@ -259,7 +262,7 @@ install.pkgs <- function(pkgs, lib = NULL, siteRepos = NULL, type = getOption('p
 
     if( check_res$missing ){ # try against Omega 
         message("* Looking up available packages in Omegahat ... ", appendLF = FALSE)
-        p_omega <- available.pkgs(contrib.url(omega_repo <- "http://www.omegahat.org/R"), fields = .fields)
+        p_omega <- available.pkgs(contrib.url(omega_repo <- "http://www.omegahat.org/R", type = type), fields = .fields)
         # use Bioc repos if anything found (this includes CRAN)
         check_res <- check_repo(p_omega, 'Omega', disjoint = TRUE)
         if( length(check_res$found) ) repos <- omega_repo
@@ -268,8 +271,8 @@ install.pkgs <- function(pkgs, lib = NULL, siteRepos = NULL, type = getOption('p
     # check GRAN repo
     if( check_res$missing ){
         message("* Looking up available packages in GRAN ... ", appendLF = FALSE)
-        gran_repo <- GRAN.repo()
-        p_gran <- available.pkgs(contrib.url(gran_repo, type = 'source'), fields = .fields)
+        # select only the master versions
+        p_gran <- GRAN.available(type = 'source', fields = .fields, version = 'master')
         check_res <- check_repo(p_gran, 'GRAN')
         # add GRAN to repos list
         if( length(gran_pkg <- check_res$found) ){
@@ -280,9 +283,9 @@ install.pkgs <- function(pkgs, lib = NULL, siteRepos = NULL, type = getOption('p
     # check GRAN-dev repo
     if( check_res$missing ){
         message("* Looking up available packages in GRAN-dev ... ", appendLF = FALSE)
-        granD_repo <- GRAN.repo('devel')
-        p_granD <- available.pkgs(contrib.url(granD_repo, type = 'source'), fields = .fields)
-        check_res <- check_repo(p_granD, 'GRAN-dev')
+        # select only the non-master versions
+        p_granD <- GRAN.available(type = 'source', fields = .fields, version = '!master')
+        check_res <- check_repo(p_granD, 'GRAN-devel')
         # add GRAN to repos list
         if( length(granD_pkg <- check_res$found) ){
             ##repos <- c(repos, gran_repo)
@@ -291,6 +294,8 @@ install.pkgs <- function(pkgs, lib = NULL, siteRepos = NULL, type = getOption('p
     
     # retrieve pacakge list
     to_install <- check_repo()
+    
+    if( dry.run ) return(to_install)
     
     # check R version
     if( iR <- match('R', to_install$name, nomatch = 0L) ){
@@ -301,9 +306,7 @@ install.pkgs <- function(pkgs, lib = NULL, siteRepos = NULL, type = getOption('p
         }
         to_install <- to_install[-iR, ]
     }
-    
-#    print(to_install[, 1:7])
-    
+        
     if( length(not_found <- which(is.na(to_install$Source))) ){
         warn <- paste0("Some packages could not be found in any repository: ", str_deps(to_install[not_found, ]))
         message("* ", warn)
@@ -337,8 +340,6 @@ install.pkgs <- function(pkgs, lib = NULL, siteRepos = NULL, type = getOption('p
     # re-evaluate which package still needs to be installed
     new_pkg_hash <- package.hash(to_install$name)
     to_install <- to_install[mapply(identical, pkg_hash, new_pkg_hash), ]
-    
-    return(to_install)
     
     # setup if needed
     if( .setup_rcurl(contrib.url(repos, type = type)) ) on.exit( .setup_rcurl(TRUE), add = TRUE)
