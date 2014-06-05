@@ -63,7 +63,7 @@ list.dependencies <- function(pkg, available, all = NA, missing.only = FALSE, re
         
         # empty result
         c0 <- character(0)
-        empty <- data.frame(package = c0, name = c0, compare = c0, version = c0, depLevel = c0, depth = numeric(0), stringsAsFactors = FALSE)
+        empty <- data.frame(parent = c0, name = c0, compare = c0, version = c0, depLevel = c0, depth = numeric(0), stringsAsFactors = FALSE)
         
         # early exit if no package passed
         if( !nargs() ) return(empty)
@@ -83,7 +83,7 @@ list.dependencies <- function(pkg, available, all = NA, missing.only = FALSE, re
                     if( is_NA(d) ) return()
                     colnames(d) <- c('name', 'compare', 'version')
                     d[, 'name'] <- str_trim(d[, 'name'])
-                    cbind(package = p, d, depLevel = x)
+                    cbind(parent = p, d, depLevel = x)
                 }, simplify = FALSE)
             d <- do.call(rbind, d)
         }
@@ -135,7 +135,7 @@ list.dependencies <- function(pkg, available, all = NA, missing.only = FALSE, re
         # resolve indirect dependencies
         if( !recursive ) break;
         
-        pkg_list <- setdiff(deps$name, deps$package)
+        pkg_list <- setdiff(deps$name, deps$parent)
         if( !length(pkg_list) ) break;
     }
     
@@ -198,7 +198,7 @@ packageDependencies <- function(x, all = FALSE, available = NULL, missing.only =
         x <- t(as.matrix(unlist(x)))
         rownames(x) <- x[, 'Package']
     }else{
-        if( is.null(available) ) available <- available.packages()
+        if( is.null(available) ) available <- available.pkgs()
         p <- available[, 'Package']
         inp <- p %in% x
         if( !any(inp) ) return()

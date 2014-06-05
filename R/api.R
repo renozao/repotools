@@ -123,11 +123,24 @@ create_repo <- function(dir = '.', type = NULL, pkgs = NULL, ..., clean = FALSE,
 #' @param ... extra parameters eventually passed to the corresponding base function.
 #' @param dry.run logical that indicates if one should only return the computed set of 
 #' packages and dependencies to install.
+#' @param devel indicates if development packages hosted on GRAN (GitHub) should be preferred to 
+#' versions available in regular repositories.
+#' The following values are allowed:
+#' \itemize{
+#' \item \code{FALSE}: package versions on regular repositories have priority over all other versions.
+#' \item \code{TRUE}: 'release' GRAN versions (i.e. from master branches) 
+#' are preferred to versions on regular repositories (if their version is number is larger) and 
+#' 'devel' development versions (i.e. on branches that start with 'devel').
+#' \item \code{2}: 'devel' GRAN versions are preferred over all other versions. 
+#' }
+#' 
+#' In any case, packages not found in regular repositories are looked up on GRAN release, then GRAN devel 
+#' if still not found.
 #' 
 #' @import devtools
 #' @rdname api
 #' @export
-install.pkgs <- function(pkgs, lib = NULL, siteRepos = NULL, type = getOption('pkgType'), dependencies = NA, ..., dry.run = FALSE){
+install.pkgs <- function(pkgs, lib = NULL, siteRepos = NULL, type = getOption('pkgType'), dependencies = NA, ..., dry.run = FALSE, devel = FALSE){
     
     x <- pkgs
     
@@ -173,17 +186,26 @@ install.pkgs <- function(pkgs, lib = NULL, siteRepos = NULL, type = getOption('p
         message(dtype, " [", ifelse(missing.only, "missing only", "re-install") , " - ", ifelse(shallow.deps, "shallow", "deep"), "]")
     }
     
+    .fields <- GRAN.fields()
+    
     # check that all dependencies are available in the current loaded repo
     check_repo <- local({
         .all_available <- NULL
-        f <- c('package', 'name', 'compare', 'version', 'depLevel', 'depth', 'Source', 'idx')
+        f <- c('parent', 'name', 'compare', 'version', 'depLevel', 'depth', 'Source', 'idx')
         cNA <- as.character(NA)
-        .pkgs <- data.frame(package = pkgs, name = pkgs, cNA, cNA, cNA, 0, cNA, as.integer(NA), stringsAsFactors = FALSE)
+        .pkgs <- data.frame(parent = pkgs, name = pkgs, cNA, cNA, cNA, 0, cNA, as.integer(NA), stringsAsFactors = FALSE)
         colnames(.pkgs) <- f
-        function(available, source, disjoint = FALSE){
+        function(available, source, disjoint = FALSE, latest = FALSE){
             if( !nargs() ){
                 
-                res <- cbind(.pkgs, as.data.frame(.all_available[.pkgs$idx, ], stringsAsFactors = FALSE))
+                if( all(is.na(.pkgs$idx)) ) res <- .pkgs
+                else{
+                    .all_available <- .all_available[.pkgs$idx, ]
+                    if( all(is.na(.all_available[, .fields])) ) .fields <- NULL
+                    df <- as.data.frame(.all_available[, c('Package', 'Version', 'NeedsCompilation', .fields)], stringsAsFactors = FALSE)
+                    res <- cbind(.pkgs, df) 	
+                }
+                rownames(res) <- res$name
                 return(res)
             }
             
@@ -213,7 +235,7 @@ install.pkgs <- function(pkgs, lib = NULL, siteRepos = NULL, type = getOption('p
             .pkgs <<- .pkgs[!duplicated(h), ]
             
             # MATCH MISSING
-            i_avail <- match_available(.pkgs, .all_available)
+            i_avail <- match_available(.pkgs, .all_available, latest = latest)
             .pkgs$idx <<- i_avail
 #            message()
 #            print(.pkgs)
@@ -238,8 +260,6 @@ install.pkgs <- function(pkgs, lib = NULL, siteRepos = NULL, type = getOption('p
     # build complete repos list
     repos <- c(getOption('repos'), siteRepos)
     
-    .fields <- GRAN.fields()
-    
     # check availability using plain repos list    
     p <- available.pkgs(contrib.url(repos, type = type), fields = .fields)
     # update repos list (to get chosen CRAN mirror)
@@ -249,7 +269,7 @@ install.pkgs <- function(pkgs, lib = NULL, siteRepos = NULL, type = getOption('p
     message('* Using ', repo_type, ' repository list: ', str_out(repos, Inf))
     
     message("* Looking up available packages in ", repo_type, " default repositories ... ", appendLF = FALSE)
-    check_res <- check_repo(p, 'REPOS')
+    check_res <- check_repo(p, paste0('REPOS', if( !is.null(siteRepos) ) '*'))
     
     if( check_res$missing ){ # try against Bioc repos
         message("* Checking available packages in Bioconductor ... ", appendLF = FALSE)
@@ -269,11 +289,11 @@ install.pkgs <- function(pkgs, lib = NULL, siteRepos = NULL, type = getOption('p
     }
     
     # check GRAN repo
-    if( check_res$missing ){
+    if( check_res$missing || devel > 0 ){
         message("* Looking up available packages in GRAN ... ", appendLF = FALSE)
         # select only the master versions
         p_gran <- GRAN.available(type = 'source', fields = .fields, version = 'master')
-        check_res <- check_repo(p_gran, 'GRAN')
+        check_res <- check_repo(p_gran, 'GRAN', latest = devel > 0)
         # add GRAN to repos list
         if( length(gran_pkg <- check_res$found) ){
             ##repos <- c(repos, gran_repo)
@@ -281,11 +301,11 @@ install.pkgs <- function(pkgs, lib = NULL, siteRepos = NULL, type = getOption('p
     }
     
     # check GRAN-dev repo
-    if( check_res$missing ){
+    if( check_res$missing || devel > 1 ){
         message("* Looking up available packages in GRAN-dev ... ", appendLF = FALSE)
         # select only the non-master versions
         p_granD <- GRAN.available(type = 'source', fields = .fields, version = '!master')
-        check_res <- check_repo(p_granD, 'GRAN-devel')
+        check_res <- check_repo(p_granD, 'GRAN*', latest = devel > 1)
         # add GRAN to repos list
         if( length(granD_pkg <- check_res$found) ){
             ##repos <- c(repos, gran_repo)
@@ -308,10 +328,16 @@ install.pkgs <- function(pkgs, lib = NULL, siteRepos = NULL, type = getOption('p
     }
         
     if( length(not_found <- which(is.na(to_install$Source))) ){
-        warn <- paste0("Some packages could not be found in any repository: ", str_deps(to_install[not_found, ]))
+        
+        miss <- to_install[not_found, ]
+        # missing packages
+        warn <- paste0("Some packages could not be found in any repository: ")
         message("* ", warn)
-        if( length(req_missing <- which(to_install$depLevel[not_found] != 'Suggests' & to_install$depth[not_found] == 1)) ){
-            stop("The following required packages could not be found: ", str_deps(to_install[not_found[req_missing], ], Inf))
+        message("  - Missing packages: ", str_deps(miss[miss$parent == miss$name, ], Inf))
+        # missing dependencies
+        message("  - Missing dependencies: ", str_deps(miss[miss$parent != miss$name, ], Inf))
+        if( length(req_missing <- which(miss$depth <= 1 & !miss$depLevel %in% 'Suggests')) ){
+            stop("The following required packages could not be found: ", str_deps(miss[req_missing, ], Inf))
         }else{
             message("* ", warn)
             warning(warn)

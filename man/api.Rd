@@ -8,7 +8,7 @@
 \usage{
   install.pkgs(pkgs, lib = NULL, siteRepos = NULL,
     type = getOption("pkgType"), dependencies = NA, ...,
-    dry.run = FALSE)
+    dry.run = FALSE, devel = FALSE)
 
   available.pkgs(...)
 
@@ -29,6 +29,23 @@
   \item{dry.run}{logical that indicates if one should only
   return the computed set of packages and dependencies to
   install.}
+
+  \item{devel}{indicates if development packages hosted on
+  GRAN (GitHub) should be preferred to versions available
+  in regular repositories. The following values are
+  allowed: \itemize{ \item \code{FALSE}: package versions
+  on regular repositories have priority over all other
+  versions. \item \code{TRUE}: 'release' GRAN versions
+  (i.e. from master branches) are preferred to versions on
+  regular repositories (if their version is number is
+  larger) and 'devel' development versions (i.e. on
+  branches that start with 'devel'). \item \code{2}:
+  'devel' GRAN versions are preferred over all other
+  versions. }
+
+  In any case, packages not found in regular repositories
+  are looked up on GRAN release, then GRAN devel if still
+  not found.}
 
   \item{fixed}{logical that indicates if the elements of
   \code{x} should match exactly (\code{TRUE}) or
