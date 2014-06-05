@@ -56,8 +56,6 @@ match_available <- function(deps, available, latest = FALSE){
 list.dependencies <- function(pkg, available, all = NA, missing.only = FALSE, recursive = FALSE, reduce = TRUE, rm.base = TRUE) 
 {
     
-    library(tools)
-    
     # internal workhorse function that list direct dependencies
     .list_dep <- function(pkg, all, depth = 1L){
         
@@ -182,11 +180,17 @@ list.dependencies <- function(pkg, available, all = NA, missing.only = FALSE, re
 #' @param x path to package source directory or file.
 #' @param all logical that indicates if all dependencies should be returned,
 #' or only the required ones.
-#' @param as.list logical that indicates if the result should be a list with one element
-#' per type of dependency.
 #' @param available a matrix of available packages (as returned by \code{\link{available.packages}}), 
 #' from which the dependencies are retrieved.
 #' This means that there must be a row for the package \code{x}.
+#' @param missing.only logical that indicates if only non-installed dependencies should be included in the 
+#' result
+#' @param recursive logical that indicates if indirect dependencies should also be included. 
+#' @param as.list logical that indicates if the result should be a list with one element
+#' per type of dependency.
+#' @param names.only logical that indicates if the result should only include the dependencies package names
+#' @param rm.base logical that indicates if base packages -- that come installed with any R installation -- 
+#' should be exlcuded from the result.
 #'  
 #' @export
 #' 

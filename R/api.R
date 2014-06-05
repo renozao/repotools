@@ -93,8 +93,8 @@ create_repo <- function(dir = '.', type = NULL, pkgs = NULL, ..., clean = FALSE,
     }
     
     n <- sapply(.contrib_types, function(t, ...){
-                makePACKAGES(contrib.url('.', type = t), type = t, fields = fields, ...)
-    })
+                makePACKAGES(contrib.url('.', type = t), type = t, ...)
+    }, ...)
     if( verbose ) message()
     
     # return repo URL
