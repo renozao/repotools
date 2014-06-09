@@ -138,6 +138,7 @@ create_repo <- function(dir = '.', type = NULL, pkgs = NULL, ..., clean = FALSE,
 #' if still not found.
 #' 
 #' @import devtools
+#' @importFrom tools md5sum
 #' @rdname api
 #' @export
 install.pkgs <- function(pkgs, lib = NULL, siteRepos = NULL, type = getOption('pkgType'), dependencies = NA, ..., dry.run = FALSE, devel = FALSE){
@@ -200,9 +201,9 @@ install.pkgs <- function(pkgs, lib = NULL, siteRepos = NULL, type = getOption('p
                 
                 if( all(is.na(.pkgs$idx)) ) res <- .pkgs
                 else{
-                    .all_available <- .all_available[.pkgs$idx, ]
+                    .all_available <- .all_available[.pkgs$idx, , drop = FALSE]
                     if( all(is.na(.all_available[, .fields])) ) .fields <- NULL
-                    df <- as.data.frame(.all_available[, c('Package', 'Version', 'NeedsCompilation', .fields)], stringsAsFactors = FALSE)
+                    df <- as.data.frame(.all_available[, c('Package', 'Version', 'NeedsCompilation', .fields), drop = FALSE], stringsAsFactors = FALSE)
                     res <- cbind(.pkgs, df) 	
                 }
                 rownames(res) <- res$name
