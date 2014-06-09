@@ -144,6 +144,12 @@ create_repo <- function(dir = '.', type = NULL, pkgs = NULL, ..., clean = FALSE,
 install.pkgs <- function(pkgs, lib = NULL, siteRepos = NULL, type = getOption('pkgType'), dependencies = NA, ..., dry.run = FALSE, devel = FALSE){
     
     x <- pkgs
+    # fix type
+    is.mac <- (length(grep("darwin", R.version$platform)) > 0)
+    if( .Platform$OS.type == 'unix' && !is.mac && type == 'both' ){
+        warning("WARNING: Switching to only package type allowed on nix machines ['source']", immediate. = TRUE)
+        type <- 'source'
+    } 
     
     # work with modified lib paths if requested
     if( !is.null(lib) ){
