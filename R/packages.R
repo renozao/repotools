@@ -13,7 +13,7 @@ package.hash <- function(x){
 }
 package.hash <- Vectorize(package.hash)
 
-# match lowest compatible version
+# match lowest/latest compatible version
 match_available <- function(deps, available, latest = FALSE){
     
     dep_name <- if( is.character(deps) ) deps else deps$name
