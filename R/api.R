@@ -222,7 +222,9 @@ install.pkgs <- function(pkgs, lib = NULL, siteRepos = NULL, type = getOption('p
                 res <- res[!duplicated(h), , drop = FALSE]
                 # re-order by depth 
                 res <- res[order(res[, 'depth']), , drop = FALSE]
-                rownames(res) <- res$name
+                if( !anyDuplicated(res$name) ){
+                    rownames(res) <- res$name
+                }else if( !dry.run ) warning("Computed duplicated dependencies: installation will fail.")
                 return(res)
             }
             
