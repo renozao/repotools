@@ -232,24 +232,19 @@ install.pkgs <- function(pkgs, lib = NULL, siteRepos = NULL, type = getOption('p
     # build complete repos list
     repos <- c(getOption('repos'), siteRepos)
     
-    if( is.data.frame(x) ){
-        to_install <- x
-        
-    }else{
+    .fields <- GRAN.fields()
     
-        .fields <- GRAN.fields()
-        
-        # check that all dependencies are available in the current loaded repo
-        check_repo <- local({
-            .all_available <- NULL
-            f <- c('parent', 'name', 'compare', 'version', 'depLevel', 'depth', 'Source', 'idx')
-            cNA <- as.character(NA)
-            .pkgs <- data.frame(parent = pkgs, name = pkgs, cNA, cNA, cNA, 0, cNA, as.integer(NA), stringsAsFactors = FALSE)
-            colnames(.pkgs) <- f
-            .pkgs_init <- .pkgs 
-            function(available, source, disjoint = FALSE, latest = FALSE){
+    # check that all dependencies are available in the current loaded repo
+    check_repo <- local({
+        .all_available <- NULL
+        f <- c('parent', 'name', 'compare', 'version', 'depLevel', 'depth', 'Source', 'idx')
+        cNA <- as.character(NA)
+        .pkgs <- data.frame(parent = pkgs, name = pkgs, cNA, cNA, cNA, 0, cNA, as.integer(NA), stringsAsFactors = FALSE)
+        colnames(.pkgs) <- f
+        .pkgs_init <- .pkgs 
+        function(available, source, disjoint = FALSE, latest = FALSE){
                 if( !nargs() ){
-                    
+                        
                     if( all(is.na(.pkgs$idx)) ) res <- .pkgs
                     else{
                         .all_available <- .all_available[.pkgs$idx, , drop = FALSE]
@@ -267,7 +262,7 @@ install.pkgs <- function(pkgs, lib = NULL, siteRepos = NULL, type = getOption('p
                     # re-order by depth 
                     res <- res[order(res[, 'depth']), , drop = FALSE]
                     if( !anyDuplicated(res$name) ){
-                        rownames(res) <- res$name
+                            rownames(res) <- res$name
                     }else if( !dry.run ) warning("Computed duplicated dependencies: installation will fail.")
                     return(res)
                 }
@@ -282,18 +277,18 @@ install.pkgs <- function(pkgs, lib = NULL, siteRepos = NULL, type = getOption('p
                     if( disjoint ) available <- available[!available[, 'Package'] %in% .all_available[, 'Package'], ]
                     .all_available <<- rbind(.all_available, cbind(available, Source = source))   
                 }
-                    
+
                 if( !isFALSE(dependencies) ){
                     if( is_NA(dependencies) ){
-                        deps <- packageDependencies(pkgs, all = NA, recursive = TRUE, missing.only = missing.only, available = .all_available, names.only = FALSE)
+                            deps <- packageDependencies(pkgs, all = NA, recursive = TRUE, missing.only = missing.only, available = .all_available, names.only = FALSE)
                     }else if( isTRUE(dependencies) ){
-                        deps <- packageDependencies(pkgs, all = ifelse(shallow.deps, TRUE, '*'), recursive = TRUE, missing.only = missing.only, available = .all_available, names.only = FALSE)
+                            deps <- packageDependencies(pkgs, all = ifelse(shallow.deps, TRUE, '*'), recursive = TRUE, missing.only = missing.only, available = .all_available, names.only = FALSE)
                     }
                     
                     if( !is.null(deps) && nrow(deps) ){
-                        deps$Source <- NA
-                        deps$idx <- as.integer(NA)
-                        .pkgs <<- rbind(.pkgs_init, deps)
+                            deps$Source <- NA
+                            deps$idx <- as.integer(NA)
+                            .pkgs <<- rbind(.pkgs_init, deps)
                     }    
                 }
                 
@@ -311,21 +306,31 @@ install.pkgs <- function(pkgs, lib = NULL, siteRepos = NULL, type = getOption('p
                 i_found <- which(!is.na(i_avail))
                 # save source name
                 if( length(i_found) )
-                    .pkgs[i_found, 'Source'] <<- .all_available[i_avail[!is.na(i_avail)], 'Source']
+                        .pkgs[i_found, 'Source'] <<- .all_available[i_avail[!is.na(i_avail)], 'Source']
                 .pkgs[.pkgs$name == 'R', 'Source'] <<- ''
 
                 found <- .pkgs[i_found, ]$name
                 nR <- sum(.pkgs$name == 'R')
                 i_changed <- which(!mapply(identical, unname(prev_hit[found]), unname(.pkgs$Source[i_found])))
                 message("OK [Found ", length(i_found), "/", nrow(.pkgs) - nR, " package(s)"
-                        , if( length(i_changed) ) paste0(": ", str_deps(.pkgs[i_found[i_changed], ]))
-                        , "]")
+                                , if( length(i_changed) ) paste0(": ", str_deps(.pkgs[i_found[i_changed], ]))
+                                , "]")
                 
                 
                 
                 list(found = found, missing = sum(is.na(.pkgs$Source)))
-            }
-        })
+        }
+    })
+    
+    if( is.data.frame(x) ){
+        to_install <- x
+        
+    }else if( !is.null(available) ){
+        check_repo(available, 'AVAIL')
+        to_install <- check_repo()
+        
+    }else{
+    
         
         # check availability using plain repos list    
         p <- available.pkgs(contrib.url2(repos, type = type), fields = .fields)
@@ -467,7 +472,11 @@ install.pkgs <- function(pkgs, lib = NULL, siteRepos = NULL, type = getOption('p
         
         message("* Installing packages: ", str_deps(to_install, Inf))
         
-        if( grepl('both', type, fixed = TRUE) ) type <- 'both'
+        # force installing source packages on non unix platforms
+        if( OS_type() != 'unix' && grepl('both', type) ){
+            if( length(i_src <- which( is.na(to_install[i_src, 'File']) & grepl('src/contrib', to_install[, 'Repository']))) )
+                to_install[i_src, 'File'] <- sprintf("%s_%s.tar.gz", to_install[i_src, 'Package'], to_install[i_src, 'Version'])
+        }
         utils::install.packages(to_install$name, ..., dependencies = dependencies, available = available)
     }
     invisible(to_install0)
