@@ -110,8 +110,17 @@ contrib.url2 <- function(repos = getOption('repos'), type = getOption('pkgType')
         type <- c(btype, 'source')
     }else if( type == 'win.both' ) type <- c('win.binary', 'source')
     else if( type == 'mac.both' ) type <- c('mac.binary', 'source')
-     
-    unname(sapply(type, contrib.url, repos = repos))
+    
+    unname(sapply(type, function(t){
+        res <- contrib.url(repos = repos, type = t)
+        # update CRAN mirror if it was chosen in first round
+        if( identical(unname(repos['CRAN']), '@CRAN@') ){
+            cran_default <- getOption('repos')['CRAN']
+            if( !is.na(cran_default) && !identical(unname(cran_default), '@CRAN@') )
+                repos['CRAN'] <<- cran_default
+        }
+        res
+    }))
 }
 
 contrib_bintype <- function(type = NULL){
@@ -459,7 +468,7 @@ install.pkgs <- function(pkgs, lib = NULL, siteRepos = NULL, type = getOption('p
         message("* Installing packages: ", str_deps(to_install, Inf))
         
         if( grepl('both', type, fixed = TRUE) ) type <- 'both'
-        utils::install.packages(to_install$name, ..., dependencies = dependencies, available = available, type = type)
+        utils::install.packages(to_install$name, ..., dependencies = dependencies, available = available)
     }
     invisible(to_install0)
 }
