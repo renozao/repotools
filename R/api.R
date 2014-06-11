@@ -474,7 +474,7 @@ install.pkgs <- function(pkgs, lib = NULL, siteRepos = NULL, type = getOption('p
         
         # force installing source packages on non unix platforms
         if( OS_type() != 'unix' && grepl('both', type) ){
-            if( length(i_src <- which( is.na(to_install[i_src, 'File']) & grepl('src/contrib', to_install[, 'Repository']))) )
+            if( length(i_src <- which( is.na(to_install[, 'File']) & grepl('src/contrib', to_install[, 'Repository']))) )
                 to_install[i_src, 'File'] <- sprintf("%s_%s.tar.gz", to_install[i_src, 'Package'], to_install[i_src, 'Version'])
         }
         utils::install.packages(to_install$name, ..., dependencies = dependencies, available = available)
