@@ -413,13 +413,14 @@ install.pkgs <- function(pkgs, lib = NULL, siteRepos = NULL, type = getOption('p
     # install remaining packages from repositories
     if( nrow(to_install) ){
         
+        # use the computed set of dependencies as available data  
+        if( is.null(available) ) available <- to_install0
+        
         # setup RCurl if needed
         if( .setup_rcurl(contrib.url(unique(available[, 'Repository']), type = type)) ) on.exit( .setup_rcurl(TRUE), add = TRUE)
         # setup repos
         op <- options(repos = repos)
         on.exit( options(op), add = TRUE)
-        
-        if( is.null(available) ) available <- to_install0
         
         message("* Installing packages: ", str_deps(to_install, Inf))
         utils::install.packages(to_install$name, ..., dependencies = dependencies, available = available, type = type)
