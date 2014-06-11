@@ -119,7 +119,7 @@ int main(int argc, const char* argv[] ){
 
 	stringstream sys_call;
 #ifdef WIN32
-	sys_call << "cmd.exe /S /C \"\"" << cmd.str().c_str() << "\"";
+	sys_call << "cmd.exe /S /C \"" << cmd.str().c_str() << "\"";
 #else
 	sys_call << cmd.str().c_str();
 #endif
