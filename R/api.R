@@ -116,7 +116,7 @@ contrib.url2 <- function(repos = getOption('repos'), type = getOption('pkgType')
 
 contrib_bintype <- function(type = NULL){
     
-    if( is.null(type) ) .OS_contrib_types[OS_type()]
+    if( is.null(type) || type == 'both' ) .OS_contrib_types[OS_type()]
     else if( grepl('.both', type, fixed = TRUE) ){
         sprintf("%s.binary", substr(type, 1, 3))    
     }else if( type %in% .OS_contrib_types ) type
