@@ -20,10 +20,13 @@ Imports:
     RCurl,
     stringr
 Suggests:
-    BiocInstaller
+	BiocInstaller,
+    hwriter,
+    ReportingTools
 Collate:
     'utils.R'
     'download.R'
     'api.R'
     'GRAN.R'
     'packages.R'
+    'repositories.R'

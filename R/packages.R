@@ -225,3 +225,60 @@ packageDependencies <- function(x, all = FALSE, available = NULL, missing.only =
     
     
 }
+
+# adapted from devtools::parse_deps
+parse_deps <- function (string) 
+{
+	if (is.null(string)) 
+		return()
+	string <- gsub("\\s*\\(.*?\\)", "", string)
+	pieces <- strsplit(string, ",")[[1]]
+	pieces <- gsub("^\\s+|\\s+$", "", pieces)
+	pieces[pieces != "R"]
+}
+
+pkg.dependencies <- function(pkg, dependencies = NA, ..., verbose = TRUE){
+    install.pkgs(pkg, dependencies = dependencies, ..., dry.run = TRUE, verbose = verbose)
+}
+
+# utils to list dependencies
+str_deps <- function(x, n = 5L){    
+    v <- ifelse(is.na(x$compare), '', sprintf(" (%s %s)", x$compare, x$version))
+    str_out(paste0(x$name, v), n, total = TRUE)
+}
+
+
+#' Installing All Package Dependencies
+#' 
+#' Install all dependencies from a package source directory or 
+#' package source file. 
+#' 
+#' @param pkg package name, path or source file
+#' @inheritParams install.pkgs
+#' @param ... extra arguments passed to \code{\link{install.pkgs}}.
+#' 
+#' @export
+#' @examples 
+#' 
+#' try( install.dependencies('Matrix', dry.run=TRUE) )
+#' \dontrun{
+#' install.dependencies("mypackage_1.0.tar.gz", dry.run=TRUE)
+#' }
+#' 
+install.dependencies <- function(pkg, dependencies = NA, ..., verbose = TRUE, dry.run = FALSE) 
+{
+    # dump messages if requested
+    if( !verbose ) message <- function(...) NULL
+    
+    # list dependencies
+    deps <- pkg.dependencies(pkg, dependencies = dependencies, ..., verbose = FALSE)
+    pkg_names <- deps$name[deps$depth == 0]
+    deps <- deps[deps$depth > 0, , drop = FALSE]
+    message("Package dependencies to install ", pkg_names, ": ", str_deps(deps, Inf))
+	if( !dry.run ){
+        message("Installing ", nrow(deps), " dependencies")
+		install.pkgs(deps, ...)
+	}
+	invisible(deps)
+}
+
