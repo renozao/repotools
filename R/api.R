@@ -136,12 +136,16 @@ create_repo <- function(dir = '.', type = NULL, pkgs = NULL, ..., clean = FALSE,
 #' 
 #' In any case, packages not found in regular repositories are looked up on GRAN release, then GRAN devel 
 #' if still not found.
+#' @param verbose verbosity level
 #' 
 #' @import devtools
 #' @importFrom tools md5sum
 #' @rdname api
 #' @export
-install.pkgs <- function(pkgs, lib = NULL, siteRepos = NULL, type = getOption('pkgType'), dependencies = NA, ..., dry.run = FALSE, devel = FALSE){
+install.pkgs <- function(pkgs, lib = NULL, siteRepos = NULL, type = getOption('pkgType'), dependencies = NA, available = NULL, ..., dry.run = FALSE, devel = FALSE, verbose = TRUE){
+    
+    # dump messages if requested
+    if( !verbose ) message <- function(...) NULL
     
     x <- pkgs
     # fix type
@@ -159,24 +163,18 @@ install.pkgs <- function(pkgs, lib = NULL, siteRepos = NULL, type = getOption('p
     }
     
     # handle source/binary packages
-    if( length(i_src <- grep("_", x)) ){
+    if( is.character(x) && length(i_src <- grep("_", x)) ){
         # create temporary local repo to install from
         sx <- x[i_src]
         lrepo_path <- tempfile("tmprepo_")
         lrepo <- create_repo(lrepo_path, pkgs = sx)
         on.exit( unlink(lrepo_path, recursive = TRUE), add = TRUE)
         # install including local repo in repos list
-        install.pkgs(package_name(sx), siteRepos = c(lrepo, siteRepos), type = type, dependencies = dependencies, ..., dry.run = dry.run)
+        install.pkgs(package_name(sx), siteRepos = c(lrepo, siteRepos), type = type, dependencies = dependencies, available = available, ..., dry.run = dry.run)
         x <- x[-i_src]    
     }
     
     if( !length(x) ) return()
-    
-    # utils to list dependencies
-    str_deps <- function(x, n = 5){    
-        v <- ifelse(is.na(x$compare), '', sprintf(" (%s %s)", x$compare, x$version))
-        str_out(paste0(x$name, v), n, total = TRUE)
-    }
     
     message("* Dependencies installation: ", appendLF = FALSE)
     if( isFALSE(dependencies) ) message("none")
@@ -193,162 +191,171 @@ install.pkgs <- function(pkgs, lib = NULL, siteRepos = NULL, type = getOption('p
         message(dtype, " [", ifelse(missing.only, "missing only", "re-install") , " - ", ifelse(shallow.deps, "shallow", "deep"), "]")
     }
     
-    .fields <- GRAN.fields()
-    
-    # check that all dependencies are available in the current loaded repo
-    check_repo <- local({
-        .all_available <- NULL
-        f <- c('parent', 'name', 'compare', 'version', 'depLevel', 'depth', 'Source', 'idx')
-        cNA <- as.character(NA)
-        .pkgs <- data.frame(parent = pkgs, name = pkgs, cNA, cNA, cNA, 0, cNA, as.integer(NA), stringsAsFactors = FALSE)
-        colnames(.pkgs) <- f
-        .pkgs_init <- .pkgs 
-        function(available, source, disjoint = FALSE, latest = FALSE){
-            if( !nargs() ){
-                
-                if( all(is.na(.pkgs$idx)) ) res <- .pkgs
-                else{
-                    .all_available <- .all_available[.pkgs$idx, , drop = FALSE]
-                    if( all(is.na(.all_available[, .fields])) ) .fields <- NULL
-                    #df <- as.data.frame(.all_available[, c('Package', 'Version', 'NeedsCompilation', .fields), drop = FALSE], stringsAsFactors = FALSE)
-                    df <- as.data.frame(.all_available[, setdiff(unique(c(colnames(.all_available), .fields)), 'Source'), drop = FALSE], stringsAsFactors = FALSE)
-                    res <- cbind(.pkgs, df) 	
-                }
-                
-                # order by depth 
-                res <- res[order(res[, 'depth'], decreasing = TRUE), , drop = FALSE]
-                # remove duplicates
-                h <- apply(res[, c('name', 'Source', 'idx')], 1L, digest)
-                res <- res[!duplicated(h), , drop = FALSE]
-                # re-order by depth 
-                res <- res[order(res[, 'depth']), , drop = FALSE]
-                if( !anyDuplicated(res$name) ){
-                    rownames(res) <- res$name
-                }else if( !dry.run ) warning("Computed duplicated dependencies: installation will fail.")
-                return(res)
-            }
-            
-            if( !nrow(available) ) return( list(found = character(), missing = sum(is.na(.pkgs$Source))) )
-            
-            if( is.null(.all_available) ) .all_available <<- cbind(available, Source = source)
-            else{
-                # only add non-overlapping packages
-                if( disjoint ) available <- available[!available[, 'Package'] %in% .all_available[, 'Package'], ]
-                .all_available <<- rbind(.all_available, cbind(available, Source = source))   
-            }
-                
-            if( !isFALSE(dependencies) ){
-                if( is_NA(dependencies) ){
-                    deps <- packageDependencies(pkgs, all = NA, recursive = TRUE, missing.only = missing.only, available = .all_available, names.only = FALSE)
-                }else if( isTRUE(dependencies) ){
-                    deps <- packageDependencies(pkgs, all = ifelse(shallow.deps, TRUE, '*'), recursive = TRUE, missing.only = missing.only, available = .all_available, names.only = FALSE)
-                }
-                
-                if( !is.null(deps) && nrow(deps) ){
-                    deps$Source <- NA
-                    deps$idx <- as.integer(NA)
-                    .pkgs <<- rbind(.pkgs_init, deps)
-                }    
-            }
-            
-            # remove duplicates
-            h <- apply(.pkgs[, c('name', 'compare', 'version')], 1L, digest)
-            .pkgs <<- .pkgs[!duplicated(h), ]
-            
-            # MATCH MISSING
-            i_avail <- match_available(.pkgs, .all_available, latest = latest)
-            .pkgs$idx <<- i_avail
-#            message()
-#            print(.pkgs)
-#            print(i_avail)
-#            print(.all_available[i_avail[!is.na(i_avail)], 1:3])
-            i_missing <- which(is.na(i_avail))
-            i_found <- which(!is.na(i_avail))
-            nR <- sum(.pkgs$name == 'R')
-            message("OK [Found ", length(i_found), "/", nrow(.pkgs) - nR, " package(s)"
-                    , if( length(i_found) ) paste0(": ", str_deps(.pkgs[i_found, ]))
-                    , "]")
-            # save source name
-            if( length(i_found) )
-                .pkgs[i_found, 'Source'] <<- .all_available[i_avail[!is.na(i_avail)], 'Source']
-            .pkgs[.pkgs$name == 'R', 'Source'] <<- ''
-            
-            found <- .pkgs[i_found, ]$name
-            list(found = found, missing = sum(is.na(.pkgs$Source)))
-        }
-    })
-    
     # build complete repos list
     repos <- c(getOption('repos'), siteRepos)
     
-    # check availability using plain repos list    
-    p <- available.pkgs(contrib.url(repos, type = type), fields = .fields)
-    # update repos list (to get chosen CRAN mirror)
-    repos <- c(getOption('repos'), siteRepos)
+    if( is.data.frame(x) ){
+        to_install <- x
+        
+    }else{
     
-    repo_type <- if( is.null(siteRepos) ) 'default' else 'extended'
-    message('* Using ', repo_type, ' repository list: ', str_out(repos, Inf))
-    
-    message("* Looking up available packages in ", repo_type, " repositories ... ", appendLF = FALSE)
-    check_res <- check_repo(p, paste0('REPOS', if( !is.null(siteRepos) ) '*'))
-    
-    if( check_res$missing ){ # try against Bioc repos
-        message("* Checking including Bioconductor repository ... ", appendLF = FALSE)
-        bioc_repo <- .biocinstallRepos(repos)
-        p_bioc <- available.pkgs(contrib.url(setdiff(bioc_repo, repos), type = type), fields = .fields)
-        # use Bioc repos if anything found (this includes CRAN)
-        check_res <- check_repo(p_bioc, 'BioC', disjoint = TRUE)
-        if( length(check_res$found) ) repos <- bioc_repo
-    }
-
-    if( check_res$missing ){ # try against Omega 
-        message("* Checking including Omegahat repository ... ", appendLF = FALSE)
-        p_omega <- available.pkgs(contrib.url(omega_repo <- "http://www.omegahat.org/R", type = type), fields = .fields)
-        # use Bioc repos if anything found (this includes CRAN)
-        check_res <- check_repo(p_omega, 'Omega', disjoint = TRUE)
-        if( length(check_res$found) ) repos <- c(repos, omega_repo)
-    }
-    
-    # check GRAN repo (binary)
-    if( type != 'source' && (check_res$missing || devel > 0) ){
-        message("* Checking including binary packages in GRAN ... ", appendLF = FALSE)
-        # select only the master versions
-        p_gran <- GRAN.available(type = type, fields = .fields)
-        check_res <- check_repo(p_gran, 'GRAN!', latest = TRUE)
-        # add GRAN to repos list
-        if( length(gran_pkg <- check_res$found) ){
-           repos <- c(repos, GRAN.repos())
+        .fields <- GRAN.fields()
+        
+        # check that all dependencies are available in the current loaded repo
+        check_repo <- local({
+            .all_available <- NULL
+            f <- c('parent', 'name', 'compare', 'version', 'depLevel', 'depth', 'Source', 'idx')
+            cNA <- as.character(NA)
+            .pkgs <- data.frame(parent = pkgs, name = pkgs, cNA, cNA, cNA, 0, cNA, as.integer(NA), stringsAsFactors = FALSE)
+            colnames(.pkgs) <- f
+            .pkgs_init <- .pkgs 
+            function(available, source, disjoint = FALSE, latest = FALSE){
+                if( !nargs() ){
+                    
+                    if( all(is.na(.pkgs$idx)) ) res <- .pkgs
+                    else{
+                        .all_available <- .all_available[.pkgs$idx, , drop = FALSE]
+                        if( all(is.na(.all_available[, .fields])) ) .fields <- NULL
+                        #df <- as.data.frame(.all_available[, c('Package', 'Version', 'NeedsCompilation', .fields), drop = FALSE], stringsAsFactors = FALSE)
+                        df <- as.data.frame(.all_available[, setdiff(unique(c(colnames(.all_available), .fields)), 'Source'), drop = FALSE], stringsAsFactors = FALSE)
+                        res <- cbind(.pkgs, df) 	
+                    }
+                    
+                    # order by depth 
+                    res <- res[order(res[, 'depth'], decreasing = TRUE), , drop = FALSE]
+                    # remove duplicates
+                    h <- apply(res[, c('name', 'Source', 'idx')], 1L, digest)
+                    res <- res[!duplicated(h), , drop = FALSE]
+                    # re-order by depth 
+                    res <- res[order(res[, 'depth']), , drop = FALSE]
+                    if( !anyDuplicated(res$name) ){
+                        rownames(res) <- res$name
+                    }else if( !dry.run ) warning("Computed duplicated dependencies: installation will fail.")
+                    return(res)
+                }
+                
+                if( !nrow(available) ) return( list(found = character(), missing = sum(is.na(.pkgs$Source))) )
+                
+                if( is.null(.all_available) ) .all_available <<- cbind(available, Source = source)
+                else{
+                    # only add non-overlapping packages
+                    if( disjoint ) available <- available[!available[, 'Package'] %in% .all_available[, 'Package'], ]
+                    .all_available <<- rbind(.all_available, cbind(available, Source = source))   
+                }
+                    
+                if( !isFALSE(dependencies) ){
+                    if( is_NA(dependencies) ){
+                        deps <- packageDependencies(pkgs, all = NA, recursive = TRUE, missing.only = missing.only, available = .all_available, names.only = FALSE)
+                    }else if( isTRUE(dependencies) ){
+                        deps <- packageDependencies(pkgs, all = ifelse(shallow.deps, TRUE, '*'), recursive = TRUE, missing.only = missing.only, available = .all_available, names.only = FALSE)
+                    }
+                    
+                    if( !is.null(deps) && nrow(deps) ){
+                        deps$Source <- NA
+                        deps$idx <- as.integer(NA)
+                        .pkgs <<- rbind(.pkgs_init, deps)
+                    }    
+                }
+                
+                # remove duplicates
+                h <- apply(.pkgs[, c('name', 'compare', 'version')], 1L, digest)
+                .pkgs <<- .pkgs[!duplicated(h), ]
+                
+                # MATCH MISSING
+                i_avail <- match_available(.pkgs, .all_available, latest = latest)
+                .pkgs$idx <<- i_avail
+    #            message()
+    #            print(.pkgs)
+    #            print(i_avail)
+    #            print(.all_available[i_avail[!is.na(i_avail)], 1:3])
+                i_missing <- which(is.na(i_avail))
+                i_found <- which(!is.na(i_avail))
+                nR <- sum(.pkgs$name == 'R')
+                message("OK [Found ", length(i_found), "/", nrow(.pkgs) - nR, " package(s)"
+                        , if( length(i_found) ) paste0(": ", str_deps(.pkgs[i_found, ]))
+                        , "]")
+                # save source name
+                if( length(i_found) )
+                    .pkgs[i_found, 'Source'] <<- .all_available[i_avail[!is.na(i_avail)], 'Source']
+                .pkgs[.pkgs$name == 'R', 'Source'] <<- ''
+                
+                found <- .pkgs[i_found, ]$name
+                list(found = found, missing = sum(is.na(.pkgs$Source)))
+            }
+        })
+        
+        # check availability using plain repos list    
+        p <- available.pkgs(contrib.url(repos, type = type), fields = .fields)
+        # update repos list (to get chosen CRAN mirror)
+        repos <- c(getOption('repos'), siteRepos)
+        
+        repo_type <- if( is.null(siteRepos) ) 'default' else 'extended'
+        message('* Using ', repo_type, ' repository list: ', str_out(repos, Inf))
+        
+        message("* Looking up available packages in ", repo_type, " repositories ... ", appendLF = FALSE)
+        check_res <- check_repo(p, paste0('REPOS', if( !is.null(siteRepos) ) '*'))
+        
+        if( check_res$missing ){ # try against Bioc repos
+            message("* Checking including Bioconductor repository ... ", appendLF = FALSE)
+            bioc_repo <- .biocinstallRepos(repos)
+            p_bioc <- available.pkgs(contrib.url(setdiff(bioc_repo, repos), type = type), fields = .fields)
+            # use Bioc repos if anything found (this includes CRAN)
+            check_res <- check_repo(p_bioc, 'BioC', disjoint = TRUE)
+            if( length(check_res$found) ) repos <- bioc_repo
         }
-    }
     
-    # check GRAN repo
-    if( check_res$missing || devel > 0 ){
-        message("* Checking including source packages in GRAN ... ", appendLF = FALSE)
-        # select only the master versions
-        p_gran <- GRAN.available(type = 'source', fields = .fields, version = 'master')
-        check_res <- check_repo(p_gran, 'GRAN', latest = devel > 0)
-        # add GRAN to repos list
-        if( length(gran_pkg <- check_res$found) ){
-            ##repos <- c(repos, gran_repo)
+        if( check_res$missing ){ # try against Omega 
+            message("* Checking including Omegahat repository ... ", appendLF = FALSE)
+            p_omega <- available.pkgs(contrib.url(omega_repo <- "http://www.omegahat.org/R", type = type), fields = .fields)
+            # use Bioc repos if anything found (this includes CRAN)
+            check_res <- check_repo(p_omega, 'Omega', disjoint = TRUE)
+            if( length(check_res$found) ) repos <- c(repos, omega_repo)
         }
-    }
-    
-    # check GRAN-dev repo
-    if( check_res$missing || devel > 1 ){
-        message("* Checking including source packages in GRAN (development version)... ", appendLF = FALSE)
-        # select only the non-master versions
-        p_granD <- GRAN.available(type = 'source', fields = .fields, version = '!master')
-        check_res <- check_repo(p_granD, 'GRAN*', latest = devel > 1)
-        # add GRAN to repos list
-        if( length(granD_pkg <- check_res$found) ){
-            ##repos <- c(repos, gran_repo)
+        
+        # check GRAN repo (binary)
+        if( type != 'source' && (check_res$missing || devel > 0) ){
+            message("* Checking including binary packages in GRAN ... ", appendLF = FALSE)
+            # select only the master versions
+            p_gran <- GRAN.available(type = type, fields = .fields)
+            check_res <- check_repo(p_gran, 'GRAN!', latest = TRUE)
+            # add GRAN to repos list
+            if( length(gran_pkg <- check_res$found) ){
+               repos <- c(repos, GRAN.repos())
+            }
         }
+        
+        # check GRAN repo
+        if( check_res$missing || devel > 0 ){
+            message("* Checking including source packages in GRAN ... ", appendLF = FALSE)
+            # select only the master versions
+            p_gran <- GRAN.available(type = 'source', fields = .fields, version = 'master')
+            check_res <- check_repo(p_gran, 'GRAN', latest = devel > 0)
+            # add GRAN to repos list
+            if( length(gran_pkg <- check_res$found) ){
+                ##repos <- c(repos, gran_repo)
+            }
+        }
+        
+        # check GRAN-dev repo
+        if( check_res$missing || devel > 1 ){
+            message("* Checking including source packages in GRAN (development version)... ", appendLF = FALSE)
+            # select only the non-master versions
+            p_granD <- GRAN.available(type = 'source', fields = .fields, version = '!master')
+            check_res <- check_repo(p_granD, 'GRAN*', latest = devel > 1)
+            # add GRAN to repos list
+            if( length(granD_pkg <- check_res$found) ){
+                ##repos <- c(repos, gran_repo)
+            }
+        }
+        
+        # retrieve pacakge list
+        to_install <- check_repo()
     }
     
-    # retrieve pacakge list
-    to_install0 <- to_install <- check_repo()
-    
+    # early exit if dry run
     if( dry.run ) return(to_install)
+    
+    to_install0 <- to_install
     
     # check R version
     if( iR <- match('R', to_install$name, nomatch = 0L) ){
@@ -407,13 +414,15 @@ install.pkgs <- function(pkgs, lib = NULL, siteRepos = NULL, type = getOption('p
     if( nrow(to_install) ){
         
         # setup RCurl if needed
-        if( .setup_rcurl(contrib.url(repos, type = type)) ) on.exit( .setup_rcurl(TRUE), add = TRUE)
+        if( .setup_rcurl(contrib.url(unique(available[, 'Repository']), type = type)) ) on.exit( .setup_rcurl(TRUE), add = TRUE)
         # setup repos
         op <- options(repos = repos)
         on.exit( options(op), add = TRUE)
         
+        if( is.null(available) ) available <- to_install0
+        
         message("* Installing packages: ", str_deps(to_install, Inf))
-        utils::install.packages(to_install$name, ..., dependencies = dependencies, available = to_install0, type = type)
+        utils::install.packages(to_install$name, ..., dependencies = dependencies, available = available, type = type)
     }
     invisible(to_install0)
 }
@@ -436,7 +445,7 @@ available.pkgs <- function(...){
 
 #' \code{download.pkgs} downloads packages.
 #' 
-#' @inheritParams base::download.packages
+#' @inheritParams utils::download.packages
 #' @rdname api
 #' @export
 #' 

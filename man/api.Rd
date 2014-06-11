@@ -7,8 +7,9 @@
 \title{Enhanced Package Installation}
 \usage{
   install.pkgs(pkgs, lib = NULL, siteRepos = NULL,
-    type = getOption("pkgType"), dependencies = NA, ...,
-    dry.run = FALSE, devel = FALSE)
+    type = getOption("pkgType"), dependencies = NA,
+    available = NULL, ..., dry.run = FALSE, devel = FALSE,
+    verbose = TRUE)
 
   available.pkgs(...)
 
@@ -46,6 +47,8 @@
   In any case, packages not found in regular repositories
   are looked up on GRAN release, then GRAN devel if still
   not found.}
+
+  \item{verbose}{verbosity level}
 
   \item{fixed}{logical that indicates if the elements of
   \code{x} should match exactly (\code{TRUE}) or
@@ -120,17 +123,17 @@
   In all of these, \code{"LinkingTo"} is omitted for binary
   packages.  }
 
-  \item{destdir}{ directory where downloaded packages are
-  stored.  If it is \code{NULL} (the default) a
-  subdirectory \code{downloaded_packages} of the session
-  temporary directory will be used (and the files will be
-  deleted at the end of the session).  }
-
   \item{available}{ an object as returned by
   \code{\link{available.packages}} listing packages
   available at the repositories, or \code{NULL} when the
   function makes an internal call to
   \code{available.packages}.  }
+
+  \item{destdir}{ directory where downloaded packages are
+  stored.  If it is \code{NULL} (the default) a
+  subdirectory \code{downloaded_packages} of the session
+  temporary directory will be used (and the files will be
+  deleted at the end of the session).  }
 
   \item{repos}{ character vector, the base URL(s) of the
   repositories to use, e.g., the URL of a CRAN mirror such
