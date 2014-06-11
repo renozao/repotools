@@ -76,6 +76,7 @@ int main(int argc, const char* argv[] ){
 	if( rscript == NULL ){
 		rscript = "Rscript";
 	}
+	const char* RCurl_script = getenv("R_REPOTOOLS_RCURL.r");
 	// path to RCurl package
 	const char* RCurl_path = getenv("R_REPOTOOLS_RCURL");
 	if( RCurl_path == NULL ){
@@ -144,6 +145,15 @@ int main(int argc, const char* argv[] ){
 			<< "writeBin(raw, \"" << dest << "\");"
 		<< " invisible() };"
 		<< "rcurl();";
+
+	// build command line arguments
+	stringstream cmd_args;
+	cmd_args << "\"" << src << "\" "
+			<< "\"" << dest << "\" "
+			<< (silent ? "--quiet" : "") << " "
+			<< "--httpheader " << httpheader << " "
+			<< "--userpwd " << userpwd << " "
+			<< "--lib " << RCurl_path_s << " ";
 	stringstream cmd;
 #ifdef WIN32
 	ofstream rfile_o;
@@ -155,10 +165,10 @@ int main(int argc, const char* argv[] ){
 			gsub(cmd_r_s, ';', '\n');
 			cout << "Script: " << cmd_r_s << endl;
 	)
-	cmd << "cmd.exe /S /C \"\"" << rscript << "\" \"" << rfile << "\"\"";
+	cmd << "cmd.exe /S /C \"\"" << rscript << "\" \"" << RCurl_script << "\" " << cmd_args.str().c_str() << "\"";
 #else
-	DEBUG( cout << "Command: " << cmd_r.str().c_str() << endl; )
-	cmd << rscript << " -e '" << cmd_r.str() << "'";
+	cmd << rscript << " \"" << RCurl_script << "\"  " << cmd_args.str().c_str();
+	DEBUG( cout << "Command: " << cmd.str().c_str() << endl; )
 #endif
 	// call
 	cout.flush();

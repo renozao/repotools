@@ -9,7 +9,8 @@ $(SHLIB): rcurl
 
 rcurl: rcurl/main.cpp
 	cd rcurl && \
-	$(CXX) $(ALL_CPPFLAGS) $(CPPFLAGS) $(CFLAGS) $(PKG_CPPFLAGS) $(PKG_CFLAGS) -o $(EXEC_FILENAME) main.cpp $(ALL_LIBS) $(PKG_LIBS)
+	$(CXX) $(ALL_CPPFLAGS) $(CPPFLAGS) $(CFLAGS) $(PKG_CPPFLAGS) $(PKG_CFLAGS) -o $(EXEC_FILENAME) main.cpp $(ALL_LIBS) $(PKG_LIBS) && \
+	touch ../repotools.dll
 
 clean:
 	rm *.o; \

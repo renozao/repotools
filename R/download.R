@@ -7,12 +7,19 @@
 #' @importFrom RCurl getBinaryURL
 NULL
 
-path.pkg <- function(x){
+path.pkg <- function(x, ...){
     f <- attr(packageDescription(x), 'file')
     
+    extra <- file.path(...)
     # different handling for source and installed packages
-    f <- if( basename(f) != 'DESCRIPTION' ) dirname(f)
-    dirname(dirname(f))
+    if( basename(f) != 'DESCRIPTION' ){
+        extra <- gsub("^inst/", "", extra)
+        f <- dirname(f)
+    }
+    path <- dirname(f)
+    if( length(extra) && nzchar(extra) ) path <- file.path(path, extra)
+    else path <- dirname(path)
+    path
 } 
 
 has_userpwd <- function(x){
@@ -59,6 +66,7 @@ has_userpwd <- function(x){
             # set environment variable read by custom rcurl binary
             Sys.setenv(`R_REPOTOOLS_RSCRIPT` = rscript)
             Sys.setenv(`R_REPOTOOLS_RCURL` = path.pkg('RCurl'))
+            Sys.setenv(`R_REPOTOOLS_RCURL.r` = path.pkg('repotools', 'inst/exec/rcurl.R'))
             # prepend binary path to system PATH
             .settings$PATH <<- Sys.getenv('PATH')
             Sys.setenv(PATH = paste(.settings$tmpdir, .settings$PATH, sep = .Platform$path.sep))
@@ -73,6 +81,7 @@ has_userpwd <- function(x){
             # clean up repotools environment variables
             Sys.unsetenv('R_REPOTOOLS_RSCRIPT')
             Sys.unsetenv('R_REPOTOOLS_RCURL')
+            Sys.unsetenv('R_REPOTOOLS_RCURL.r')
             # reset settings backup list
             .settings <<- list()
         }
