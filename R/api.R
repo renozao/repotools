@@ -52,6 +52,7 @@ package_type <- function(x){
 }
 
 .contrib_types <- c('source', 'win.binary', 'mac.binary')
+.OS_contrib_types <- setNames(.contrib_types, c('unix', 'windows', 'mac'))
 
 #' @importFrom tools write_PACKAGES
 create_repo <- function(dir = '.', type = NULL, pkgs = NULL, ..., clean = FALSE, verbose = FALSE){
@@ -99,6 +100,34 @@ create_repo <- function(dir = '.', type = NULL, pkgs = NULL, ..., clean = FALSE,
     
     # return repo URL
     invisible(paste0('file://', if( .Platform$OS.type == 'windows' ) "/" , repo_dir))
+}
+
+contrib.url2 <- function(repos = getOption('repos'), type = getOption('pkgType')){
+    
+    os <- OS_type()
+    if( type == 'both' && os != 'unix' ){
+        btype <- paste0(substr(os, 1, 3), '.binary')
+        type <- c(btype, 'source')
+    }else if( type == 'win.both' ) type <- c('win.binary', 'source')
+    else if( type == 'mac.both' ) type <- c('mac.binary', 'source')
+     
+    unname(sapply(type, contrib.url, repos = repos))
+}
+
+contrib_bintype <- function(type = NULL){
+    
+    if( is.null(type) ) .OS_contrib_types[OS_type()]
+    else if( grepl('.both', type, fixed = TRUE) ){
+        sprintf("%s.binary", substr(type, 1, 3))    
+    }else if( type %in% .OS_contrib_types ) type
+    else 'source'
+}
+    
+OS_type <- function(){
+    if( .Platform$OS.type == 'unix' ){
+        if( length(grep("darwin", R.version$platform)) > 0 ) 'mac'
+        else 'unix' 
+    }else 'windows'
 }
 
 #' Enhanced Package Installation
@@ -234,6 +263,8 @@ install.pkgs <- function(pkgs, lib = NULL, siteRepos = NULL, type = getOption('p
                     return(res)
                 }
                 
+                prev_hit <- setNames(.pkgs$Source, .pkgs$name)
+                
                 if( !nrow(available) ) return( list(found = character(), missing = sum(is.na(.pkgs$Source))) )
                 
                 if( is.null(.all_available) ) .all_available <<- cbind(available, Source = source)
@@ -268,24 +299,27 @@ install.pkgs <- function(pkgs, lib = NULL, siteRepos = NULL, type = getOption('p
     #            print(.pkgs)
     #            print(i_avail)
     #            print(.all_available[i_avail[!is.na(i_avail)], 1:3])
-                i_missing <- which(is.na(i_avail))
                 i_found <- which(!is.na(i_avail))
-                nR <- sum(.pkgs$name == 'R')
-                message("OK [Found ", length(i_found), "/", nrow(.pkgs) - nR, " package(s)"
-                        , if( length(i_found) ) paste0(": ", str_deps(.pkgs[i_found, ]))
-                        , "]")
                 # save source name
                 if( length(i_found) )
                     .pkgs[i_found, 'Source'] <<- .all_available[i_avail[!is.na(i_avail)], 'Source']
                 .pkgs[.pkgs$name == 'R', 'Source'] <<- ''
-                
+
                 found <- .pkgs[i_found, ]$name
+                nR <- sum(.pkgs$name == 'R')
+                i_changed <- which(!mapply(identical, unname(prev_hit[found]), unname(.pkgs$Source[i_found])))
+                message("OK [Found ", length(i_found), "/", nrow(.pkgs) - nR, " package(s)"
+                        , if( length(i_changed) ) paste0(": ", str_deps(.pkgs[i_found[i_changed], ]))
+                        , "]")
+                
+                
+                
                 list(found = found, missing = sum(is.na(.pkgs$Source)))
             }
         })
         
         # check availability using plain repos list    
-        p <- available.pkgs(contrib.url(repos, type = type), fields = .fields)
+        p <- available.pkgs(contrib.url2(repos, type = type), fields = .fields)
         # update repos list (to get chosen CRAN mirror)
         repos <- c(getOption('repos'), siteRepos)
         
@@ -298,7 +332,7 @@ install.pkgs <- function(pkgs, lib = NULL, siteRepos = NULL, type = getOption('p
         if( check_res$missing ){ # try against Bioc repos
             message("* Checking including Bioconductor repository ... ", appendLF = FALSE)
             bioc_repo <- .biocinstallRepos(repos)
-            p_bioc <- available.pkgs(contrib.url(setdiff(bioc_repo, repos), type = type), fields = .fields)
+            p_bioc <- available.pkgs(contrib.url2(setdiff(bioc_repo, repos), type = type), fields = .fields)
             # use Bioc repos if anything found (this includes CRAN)
             check_res <- check_repo(p_bioc, 'BioC', disjoint = TRUE)
             if( length(check_res$found) ) repos <- bioc_repo
@@ -306,7 +340,7 @@ install.pkgs <- function(pkgs, lib = NULL, siteRepos = NULL, type = getOption('p
     
         if( check_res$missing ){ # try against Omega 
             message("* Checking including Omegahat repository ... ", appendLF = FALSE)
-            p_omega <- available.pkgs(contrib.url(omega_repo <- "http://www.omegahat.org/R", type = type), fields = .fields)
+            p_omega <- available.pkgs(contrib.url2(omega_repo <- "http://www.omegahat.org/R", type = type), fields = .fields)
             # use Bioc repos if anything found (this includes CRAN)
             check_res <- check_repo(p_omega, 'Omega', disjoint = TRUE)
             if( length(check_res$found) ) repos <- c(repos, omega_repo)
@@ -316,7 +350,7 @@ install.pkgs <- function(pkgs, lib = NULL, siteRepos = NULL, type = getOption('p
         if( type != 'source' && (check_res$missing || devel > 0) ){
             message("* Checking including binary packages in GRAN ... ", appendLF = FALSE)
             # select only the master versions
-            p_gran <- GRAN.available(type = type, fields = .fields)
+            p_gran <- GRAN.available(type = contrib_bintype(type), fields = .fields)
             check_res <- check_repo(p_gran, 'GRAN!', latest = TRUE)
             # add GRAN to repos list
             if( length(gran_pkg <- check_res$found) ){
@@ -417,12 +451,14 @@ install.pkgs <- function(pkgs, lib = NULL, siteRepos = NULL, type = getOption('p
         if( is.null(available) ) available <- to_install0
         
         # setup RCurl if needed
-        if( .setup_rcurl(contrib.url(unique(available[, 'Repository']), type = type)) ) on.exit( .setup_rcurl(TRUE), add = TRUE)
+        if( .setup_rcurl(unique(as.character(available[, 'Repository']))) ) on.exit( .setup_rcurl(TRUE), add = TRUE)
         # setup repos
         op <- options(repos = repos)
         on.exit( options(op), add = TRUE)
         
         message("* Installing packages: ", str_deps(to_install, Inf))
+        
+        if( grepl('both', type, fixed = TRUE) ) type <- 'both'
         utils::install.packages(to_install$name, ..., dependencies = dependencies, available = available, type = type)
     }
     invisible(to_install0)
@@ -458,7 +494,7 @@ download.pkgs <- function(pkgs, destdir, available = NULL, ...){
     
     # internal function that detects the presence of userpwd specification in contrib urls 
     .urls <- function(contriburl = contrib.url(getOption("repos"), type), type = getOption("pkgType")){
-        contriburl
+        c(contriburl, unique(available[, 'Repository']))
     }
     # setup custom rcurl only if necessary
     if( .setup_rcurl(.urls(...)) ) on.exit( .setup_rcurl(TRUE) )

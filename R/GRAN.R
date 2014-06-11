@@ -20,7 +20,7 @@ GRAN.fields <- function(){
 
 GRAN.available <- function(type = getOption('pkgType'), fields = GRAN.fields(), ..., version = NULL){
     if( is.null(version) ){
-        available.pkgs(contrib.url(GRAN.repos(), type = type), fields = fields, ...)
+        available.pkgs(contrib.url2(GRAN.repos(), type = type), fields = fields, ...)
     }else{
         p <- available.pkgs(contrib.url(GRAN.repos(), type = type), fields = fields, ..., filters = c("R_version", "OS_type", "subarch"))
         
