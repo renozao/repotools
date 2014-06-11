@@ -18,7 +18,7 @@ void gsub(string& s, char x, char y) {
 #define DEBUG(x) if( debug ){ x }
 int main(int argc, const char* argv[] ){
 
-	bool debug = false;
+	bool debug = getenv("R_REPOTOOLS_DEBUG") != NULL;
 	const char** args = argv;
 	// arguments
 	stringstream args_s;
@@ -77,6 +77,9 @@ int main(int argc, const char* argv[] ){
 		rscript = "Rscript";
 	}
 	const char* RCurl_script = getenv("R_REPOTOOLS_RCURL.r");
+	if( RCurl_script == NULL ){
+		RCurl_script = "NOT_FOUND";
+	}
 	// path to RCurl package
 	const char* RCurl_path = getenv("R_REPOTOOLS_RCURL");
 	if( RCurl_path == NULL ){
@@ -94,59 +97,16 @@ int main(int argc, const char* argv[] ){
 			rscript_s += ".exe";
 			rscript = rscript_s.c_str();
 		}
-		const char* path_sep = "\\";
 		gsub(dest, '\\', '/');
-#else
-		const char* path_sep = "/";
 #endif
 	DEBUG( cout << "Rscript: " << rscript << endl;
-			cout << "RCurl: " << RCurl_path_s << endl;
+		   cout << "R file: " << RCurl_script << endl;
+		   cout << "RCurl lib: " << RCurl_path_s << endl;
 		   cout << "Destination: " << dest << endl;
 		   cout << "HTTP header: " << httpheader << endl;
 		   cout << "userpwd: " << userpwd << endl; )
-	// build R filename in executable directory
-	string rfile;
-	size_t sep = exec.rfind(path_sep);
-	if ( sep != string::npos ){
-		rfile = exec.substr(0, sep+1);
-	}
-	rfile += "download.R";
-	DEBUG( cout << "R file: " << rfile << endl; )
 
-	// define R progress bar
-	const char* progress_bar_code = silent ? "rcurl_progress_func <- NULL;" : "rcurl_progress_func <- function(total, now){"
-	"if( isTRUE(now) ) total <- c(100, 100);"
-	"if( is.null(now) ) total <- c(0, 100);"
-	"TotalToDownload <- total[1L]; NowDownloaded <- total[2];"
-	"if( !TotalToDownload ) return();"
-    "totaldotz=20;"
-    "fractiondownloaded = NowDownloaded / TotalToDownload;"
-    "dotz = round(fractiondownloaded * totaldotz);"
-	"cat(\"[\");"
-    "replicate(dotz, cat(\"=\"));"
-	"replicate(totaldotz - dotz, cat(\" \"));"
-	"cat(sprintf(\"] %3.0f%%\",fractiondownloaded*100));"
-	"flush.console();"
-	"if( !isTRUE(now) ) replicate(totaldotz + 7, cat(\"\\b\"));"
-	"};";
-	stringstream cmd_r;
-	cmd_r << "rcurl <- function(){" << progress_bar_code << " suppressMessages(library(RCurl, lib=" << RCurl_path_s << ")); "
-			<< " curl_opts <- list(progressfunction = rcurl_progress_func"
-									<< ", userpwd = " << userpwd
-									<< ", noprogress = " << silent_s << "); "
-			<< "if( !url.exists(\"" << src << "\", .opts = curl_opts) ){"
-			<< "if(!" << silent_s << "){ rcurl_progress_func(NULL, NULL); cat(\" [ERROR: URL not found]\\n\"); }; "
-			<< "return(invisible());"
-			<< "};"
-			<< "raw <- getBinaryURL(\"" << src << "\""
-									<< ", .opts = curl_opts"
-									<< ", httpheader = " << httpheader << "); "
-			<< "if(!" << silent_s << "){ rcurl_progress_func(NULL, TRUE); cat(\" [OK]\\n\"); }; "
-			<< "writeBin(raw, \"" << dest << "\");"
-		<< " invisible() };"
-		<< "rcurl();";
-
-	// build command line arguments
+	// build command
 	stringstream cmd_args;
 	cmd_args << "\"" << src << "\" "
 			<< "\"" << dest << "\" "
@@ -155,24 +115,18 @@ int main(int argc, const char* argv[] ){
 			<< "--userpwd " << userpwd << " "
 			<< "--lib " << RCurl_path_s << " ";
 	stringstream cmd;
+	cmd << "\"" << rscript << "\" \"" << RCurl_script << "\" " << cmd_args.str().c_str();
+
+	stringstream sys_call;
 #ifdef WIN32
-	ofstream rfile_o;
-	rfile_o.open(rfile.c_str());
-	rfile_o << cmd_r.str() << endl;
-	rfile_o.close();
-	DEBUG(
-			string cmd_r_s(cmd_r.str());
-			gsub(cmd_r_s, ';', '\n');
-			cout << "Script: " << cmd_r_s << endl;
-	)
-	cmd << "cmd.exe /S /C \"\"" << rscript << "\" \"" << RCurl_script << "\" " << cmd_args.str().c_str() << "\"";
+	sys_call << "cmd.exe /S /C \"\"" << cmd.str().c_str() << "\"";
 #else
-	cmd << rscript << " \"" << RCurl_script << "\"  " << cmd_args.str().c_str();
-	DEBUG( cout << "Command: " << cmd.str().c_str() << endl; )
+	sys_call << cmd.str().c_str();
 #endif
+	DEBUG( cout << "Command: " << sys_call.str().c_str() << endl; )
 	// call
 	cout.flush();
-	int res = system(cmd.str().c_str());
+	int res = system(sys_call.str().c_str());
 	if( res ){
 		cerr << "Error downloading file '" << src << "' [error code: " << res << "]" << endl;
 		return(res);
