@@ -8,10 +8,13 @@ function die_result($msg){
 	die();
 }
 
+// load local config
+// contains: $secret = 'YOUR_OWN_HOOK_SECRET';
+include("config.php");
+
 if( isset($_POST['payload']) ){
 
 	// compute/check signature (taken from http://isometriks.com/verify-github-webhooks-with-php)
-        $secret = 'YOUR_OWN_HOOK_SECRET';
 	$headers = getallheaders();
 	$hubSignature = $headers['X-Hub-Signature'];
 	list($algo, $hash) = explode('=', $hubSignature, 2);
