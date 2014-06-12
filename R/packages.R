@@ -38,7 +38,7 @@ match_available <- function(deps, available, latest = FALSE){
             if ( !length(i <- which(available[, 'Package'] == pkg)) ) NA
             else if (is.na(compare)){
                 # limit to binary packages if necessary and possible
-                if( length(i) > 1L ){
+                if( !latest && length(i) > 1L ){
                     compilation <- available[i, 'NeedsCompilation']
                     if( any(tolower(compilation) %in% 'yes') && length(i_bin <- which(is.na(compilation))) )
                         i <- i[i_bin]
@@ -50,7 +50,7 @@ match_available <- function(deps, available, latest = FALSE){
                 if( length(pass) ){
                     i <- i[pass]
                     # limit to binary packages if necessary and possible
-                    if( length(i) > 1L ){
+                    if( !latest && length(i) > 1L ){
                         compilation <- available[i, 'NeedsCompilation']
                         if( any(tolower(compilation) %in% 'yes') && length(i_bin <- which(is.na(compilation))) )
                                 i <- i[i_bin]
