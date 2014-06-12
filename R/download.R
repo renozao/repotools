@@ -66,7 +66,7 @@ has_userpwd <- function(x){
             # set environment variable read by custom rcurl binary
             Sys.setenv(`R_REPOTOOLS_RSCRIPT` = rscript)
             Sys.setenv(`R_REPOTOOLS_RCURL` = path.pkg('RCurl'))
-            Sys.setenv(`R_REPOTOOLS_RCURL.r` = path.pkg('repotools', 'inst/exec/rcurl.R'))
+            Sys.setenv(`R_REPOTOOLS_RCURL.r` = path.pkg('repotools', 'exec/rcurl.R'))
             # prepend binary path to system PATH
             .settings$PATH <<- Sys.getenv('PATH')
             Sys.setenv(PATH = paste(.settings$tmpdir, .settings$PATH, sep = .Platform$path.sep))
