@@ -48,7 +48,7 @@
   are looked up on GRAN release, then GRAN devel if still
   not found.}
 
-  \item{verbose}{verbosity level}
+  \item{verbose}{verbosity level (logical or numeric)}
 
   \item{fixed}{logical that indicates if the elements of
   \code{x} should match exactly (\code{TRUE}) or
@@ -167,15 +167,20 @@
 }
 \details{
   The main differences with the base functions are that:
-  \itemize{ \item if necessary, it uses a custom download
-  method based on \pkg{RCurl} that can access password
-  protected repositories. \item Bioconductor dependencies
-  are automatically resolved, without the need to enable
-  the BioC repositories (soft, data/annotation, etc..). }
+  \itemize{ \item Bioconductor (soft, data/annotation,
+  etc..) and Omegahat dependencies are automatically
+  resolved, without the need to enable these repositories;
+  \item if necessary, it uses a custom download method
+  based on \pkg{RCurl} that can access password protected
+  repositories; \item it supports the mixed-type
+  installation, of binary and source packages; \item it can
+  install packages hosted on GitHub, if those have been
+  hooked to the GRAN repository. }
 
   \code{install.pkgs} installs packages, which can be
   local, remote or in a CRAN-like repository, possibly
   password protected. Packages and their dependencies are
-  automatically search in Bioconductor if needed.
+  automatically search in Bioconductor, Omegahat and GRAN
+  repositories if needed.
 }
 

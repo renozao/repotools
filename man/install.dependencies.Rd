@@ -36,7 +36,7 @@
   In all of these, \code{"LinkingTo"} is omitted for binary
   packages.  }
 
-  \item{verbose}{verbosity level}
+  \item{verbose}{verbosity level (logical or numeric)}
 
   \item{dry.run}{logical that indicates if one should only
   return the computed set of packages and dependencies to
