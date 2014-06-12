@@ -7,17 +7,24 @@
 # 
 ###############################################################################
 
-require2 <- function(..., version = NULL, cmp = ">="){
-    if( suppressWarnings(require(..., quietly = TRUE)) ){
-        if( is.null(version) ) TRUE
-        else{
-            compare <- match.fun(cmp)
-            compare(packageVersion(...), version)
-        }
-    }else FALSE
+require2 <- function(x, lib.loc = NULL, version = NULL, cmp = ">="){
+    
+    # look for package
+    if( !length(find.package(x, quiet = TRUE, lib.loc = lib.loc)) ) return(FALSE)
+    
+    req <- function(){
+        suppressMessages(suppressWarnings(require(x, character.only = TRUE, lib.loc = lib.loc, quietly = TRUE)))
+    }
+    
+    if( is.null(version) ) req()
+    else{
+        compare <- match.fun(cmp)
+        if( compare(packageVersion(x, lib.loc = lib.loc), version) ) req()
+        else FALSE
+    }
 }
 
-if( !require2('repotools', version = '1.3.6') ){
+if( !require2('repotools', version = '1.3.8') ){
     
     # load devtools
     if( !require2('devtools') ){
