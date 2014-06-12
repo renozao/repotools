@@ -125,7 +125,7 @@ contrib.url2 <- function(repos = getOption('repos'), type = getOption('pkgType')
 
 contrib_bintype <- function(type = NULL){
     
-    if( is.null(type) || type == 'both' ) .OS_contrib_types[OS_type()]
+    if( is.null(type) || type == 'both' ) unname(.OS_contrib_types[OS_type()])
     else if( grepl('.both', type, fixed = TRUE) ){
         sprintf("%s.binary", substr(type, 1, 3))    
     }else if( type %in% .OS_contrib_types ) type
@@ -165,6 +165,8 @@ OS_type <- function(){
 #' @param ... extra parameters eventually passed to the corresponding base function.
 #' @param dry.run logical that indicates if one should only return the computed set of 
 #' packages and dependencies to install.
+#' If \code{NULL}, then it is internally set to \code{TRUE} only when there is a mismatch between
+#' the requested and the OS binary package types (e.g., if \code{type = 'win.both'} on a Unix/Mac host).
 #' @param devel indicates if development packages hosted on GRAN (GitHub) should be preferred to 
 #' versions available in regular repositories.
 #' The following values are allowed:
@@ -184,10 +186,16 @@ OS_type <- function(){
 #' @importFrom tools md5sum
 #' @rdname api
 #' @export
-install.pkgs <- function(pkgs, lib = NULL, siteRepos = NULL, type = getOption('pkgType'), dependencies = NA, available = NULL, ..., dry.run = FALSE, devel = FALSE, verbose = TRUE){
+install.pkgs <- function(pkgs, lib = NULL, siteRepos = NULL, type = getOption('pkgType'), dependencies = NA, available = NULL, ..., dry.run = NULL, devel = FALSE, verbose = TRUE){
     
     # dump messages if requested
     if( !verbose ) message <- function(...) NULL
+    # infer dry.run if necessary: when there is mismatch between the requested and the OS binary types
+    if( is.null(dry.run) ){
+        dry.run <- contrib_bintype(type) != contrib_bintype()
+        if( dry.run ) 
+            message("NOTE: forcing dry run due incompatible binary package type [", contrib_bintype(type) ," vs. ", contrib_bintype(), " (OS)]")
+    }
     
     x <- pkgs
     # fix type

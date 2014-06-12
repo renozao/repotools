@@ -8,7 +8,7 @@
 \usage{
   install.pkgs(pkgs, lib = NULL, siteRepos = NULL,
     type = getOption("pkgType"), dependencies = NA,
-    available = NULL, ..., dry.run = FALSE, devel = FALSE,
+    available = NULL, ..., dry.run = NULL, devel = FALSE,
     verbose = TRUE)
 
   available.pkgs(...)
@@ -29,7 +29,10 @@
 
   \item{dry.run}{logical that indicates if one should only
   return the computed set of packages and dependencies to
-  install.}
+  install. If \code{NULL}, then it is internally set to
+  \code{TRUE} only when there is a mismatch between the
+  requested and the OS binary package types (e.g., if
+  \code{type = 'win.both'} on a Unix/Mac host).}
 
   \item{devel}{indicates if development packages hosted on
   GRAN (GitHub) should be preferred to versions available

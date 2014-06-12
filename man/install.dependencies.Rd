@@ -40,7 +40,10 @@
 
   \item{dry.run}{logical that indicates if one should only
   return the computed set of packages and dependencies to
-  install.}
+  install. If \code{NULL}, then it is internally set to
+  \code{TRUE} only when there is a mismatch between the
+  requested and the OS binary package types (e.g., if
+  \code{type = 'win.both'} on a Unix/Mac host).}
 }
 \description{
   Install all dependencies from a package source directory
