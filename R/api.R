@@ -145,16 +145,20 @@ OS_type <- function(){
 #' \code{\link{available.packages}} and \code{link{download.packages}} (see \emph{Details}).
 #' 
 #' The main differences with the base functions are that:
-#' \itemize{ 
+#' \itemize{
+#' \item Bioconductor (soft, data/annotation, etc..) and Omegahat dependencies 
+#' are automatically resolved, without the need to enable these repositories; 
 #' \item if necessary, it uses a custom download method based on \pkg{RCurl} that 
-#' can access password protected repositories.
-#' \item Bioconductor dependencies are automatically resolved, without the need to 
-#' enable the BioC repositories (soft, data/annotation, etc..).
+#' can access password protected repositories;
+#' \item it supports the mixed-type installation, of binary and source packages;
+#' \item it can install packages hosted on GitHub, if those have been hooked to 
+#' the GRAN repository.
 #' } 
 #' 
 #' \code{install.pkgs} installs packages, which can be local, remote or in a CRAN-like repository, 
 #' possibly password protected.
-#' Packages and their dependencies are automatically search in Bioconductor if needed.
+#' Packages and their dependencies are automatically search in Bioconductor, Omegahat and GRAN 
+#' repositories if needed.
 #' 
 #' @inheritParams utils::install.packages
 #' @param siteRepos extra user-defined CRAN-like package repository
@@ -174,7 +178,7 @@ OS_type <- function(){
 #' 
 #' In any case, packages not found in regular repositories are looked up on GRAN release, then GRAN devel 
 #' if still not found.
-#' @param verbose verbosity level
+#' @param verbose verbosity level (logical or numeric)
 #' 
 #' @import devtools
 #' @importFrom tools md5sum
@@ -213,6 +217,8 @@ install.pkgs <- function(pkgs, lib = NULL, siteRepos = NULL, type = getOption('p
     }
     
     if( !length(x) ) return()
+    
+    if( dry.run ) message("*** DRY RUN ***")
     
     message("* Dependencies installation: ", appendLF = FALSE)
     if( isFALSE(dependencies) ) message("none")
@@ -269,7 +275,10 @@ install.pkgs <- function(pkgs, lib = NULL, siteRepos = NULL, type = getOption('p
                 
                 prev_hit <- setNames(.pkgs$Source, .pkgs$name)
                 
-                if( !nrow(available) ) return( list(found = character(), missing = sum(is.na(.pkgs$Source))) )
+                if( !nrow(available) ){
+                    message("NOTE [Empty]")
+                    return( list(found = character(), missing = sum(is.na(.pkgs$Source))) )
+                }
                 
                 if( is.null(.all_available) ) .all_available <<- cbind(available, Source = source)
                 else{
@@ -312,8 +321,13 @@ install.pkgs <- function(pkgs, lib = NULL, siteRepos = NULL, type = getOption('p
                 found <- .pkgs[i_found, ]$name
                 nR <- sum(.pkgs$name == 'R')
                 i_changed <- which(!mapply(identical, unname(prev_hit[found]), unname(.pkgs$Source[i_found])))
-                message("OK [Found ", length(i_found), "/", nrow(.pkgs) - nR, " package(s)"
-                                , if( length(i_changed) ) paste0(": ", str_deps(.pkgs[i_found[i_changed], ]))
+                if( verbose <= 1 ){
+                    message("OK [", if( !length(i_changed) ) "-" 
+                                    else paste0("Hits: ", length(i_found), "/", nrow(.pkgs) - nR, " +", length(i_changed)), "]")
+                }else message("OK ["
+                                , if( length(i_changed) ){
+                                    paste0("Hits: ", length(i_found), "/", nrow(.pkgs) - nR, " | ", str_deps(.pkgs[i_found[i_changed], ]))
+                                }else{ "-" } 
                                 , "]")
                 
                 
@@ -400,62 +414,43 @@ install.pkgs <- function(pkgs, lib = NULL, siteRepos = NULL, type = getOption('p
         to_install <- check_repo()
     }
     
-    # early exit if dry run
-    if( dry.run ) return(to_install)
-    
     to_install0 <- to_install
     
     # check R version
     if( iR <- match('R', to_install$name, nomatch = 0L) ){
         Rspec <- to_install[iR, ]
         Rspec <- paste0(Rspec$compare, Rspec$version)
+        warn <- paste0("Package or dependency requires R ", Rspec)
         if( !testRversion(Rspec) ){
-            stop("Package or dependency requires R ", Rspec)
+            if( !dry.run ) stop(warn)
+            else{
+                message("* WARNING: ", warn)
+                warning(warn)
+            }
         }
         to_install <- to_install[-iR, ]
     }
-        
+    
+#    to_install[c(1, sample(nrow(to_install), 5)), 'Source'] <- NA
     if( length(not_found <- which(is.na(to_install$Source))) ){
         
         miss <- to_install[not_found, ]
+        miss_pkg <- which(miss$parent == miss$name)
+        miss_req <- setdiff(which(miss$depth <= 1 & !miss$depLevel %in% 'Suggests'), miss_pkg)
+        miss_dep <- setdiff(which(miss$parent != miss$name), miss_req)
+        warn <- paste0("repository lookup failed to locate some packages or dependencies: ")
+        message("* WARNING: ", warn)
         # missing packages
-        warn <- paste0("Some packages could not be found in any repository: ")
-        message("* ", warn)
-        message("  - Missing packages: ", str_deps(miss[miss$parent == miss$name, ], Inf))
+        if( length(miss_pkg) ) message("  - Packages: ", str_deps(miss[miss_pkg, ], Inf))
+        # missing required dependencies
+        if( length(miss_req) ) message("  - Required dependencies: ", str_deps(miss[miss_req, ], Inf))
         # missing dependencies
-        message("  - Missing dependencies: ", str_deps(miss[miss$parent != miss$name, ], Inf))
-        if( length(req_missing <- which(miss$depth <= 1 & !miss$depLevel %in% 'Suggests')) ){
-            stop("The following required packages could not be found: ", str_deps(miss[req_missing, ], Inf))
-        }else{
-            message("* ", warn)
-            warning(warn)
+        if( length(miss_dep) ) message("  - Indirect/optional dependencies: ", str_deps(miss[miss_dep, ], Inf))
+        if( length(miss_req) ){
+            msg <- paste0("The following required packages could not be found: ", str_deps(miss[miss_req, ], Inf))
+            if( !dry.run ) stop(msg)
+            else warning(msg)
         }
-    }
-    
-    # install GRAN packages first
-    if( !is.null(to_install$GHref) && length(i_gran <- which(grepl("GRAN", to_install$Source) & !is.na(to_install$GHref))) ){
-        i_gran <- i_gran[order(to_install$depth[i_gran], decreasing = TRUE)]
-        message("* Installing from GitHub: ", str_deps(to_install[i_gran, ], Inf))
-        
-        # store package hash before installing anything
-        pkg_hash <- package.hash(to_install$name) 
-        sapply(i_gran, function(i){
-            # temporary set repos
-            op <- options(repos = repos)
-            on.exit( options(op) )
-            
-            # install from GitHub
-            pkg <- to_install[i, ]
-            install_github(pkg$name, pkg$GHuser, pkg$GHref)
-        })
-        to_install <- to_install[-i_gran, ]
-        
-        # re-evaluate which package still needs to be installed
-        if( nrow(to_install) ){
-            new_pkg_hash <- package.hash(to_install$name)
-            pkg_hash <- pkg_hash[intersect(names(new_pkg_hash), names(pkg_hash))]
-            to_install <- to_install[mapply(identical, pkg_hash, new_pkg_hash), ]
-        }    
     }
     
     # install remaining packages from repositories
@@ -470,15 +465,73 @@ install.pkgs <- function(pkgs, lib = NULL, siteRepos = NULL, type = getOption('p
         op <- options(repos = repos)
         on.exit( options(op), add = TRUE)
         
-        message("* Installing packages: ", str_deps(to_install, Inf))
+        # reorder with deepest dependencies first
+        to_install <- to_install[order(to_install$depth, decreasing = TRUE), , drop = FALSE]
         
-        # force installing source packages on non unix platforms
-        if( OS_type() != 'unix' && grepl('both', type) ){
-            if( length(i_src <- which( is.na(to_install[, 'File']) & grepl('src/contrib', to_install[, 'Repository']))) )
-                to_install[i_src, 'File'] <- sprintf("%s_%s.tar.gz", to_install[i_src, 'Package'], to_install[i_src, 'Version'])
+        # compute installation groups (source/binary)
+        # this is because on non-unix host, one needs to fiddle a bit in order to get mixed source/binary packages installed
+        if( (OS_type() != 'unix' ||  grepl('.both', type, fixed = TRUE)) && grepl('both', type, fixed = TRUE) && any(grepl('/src/contrib$', to_install[, 'Repository'])) ){
+            
+            install_groups <- list()
+            # split by depth level
+            dep_groups <- rev(split(seq(nrow(to_install)), to_install$depth))
+            sapply(dep_groups, function(i, ...){
+                to_install <- to_install[i, , drop = FALSE]
+                # split by repo type
+                repo_type <- ifelse(grepl('/src/contrib$', to_install[, 'Repository']), 'source', contrib_bintype(type))
+                # add GRAN-src fake type
+                if( !is.null(to_install$GHref) )
+                    repo_type[grepl("GRAN\\*?", to_install$Source) & !is.na(to_install$GHref)] <- 'zGRAN'
+                repo_type <- factor(repo_type)
+                # put last group type first to allow optimal merging  
+                if( length(install_groups) ){
+                    ltype <- tail(install_groups, 1L)[[1L]]$type
+                    if( ltype %in% levels(repo_type) )
+                        repo_type <- relevel(repo_type, ltype)
+                }
+                type_groups <- split(seq(nrow(to_install)), repo_type)
+                sapply(names(type_groups), function(t, ...){
+                    if( length(install_groups) && tail(install_groups, 1L)[[1L]]$type == t ){
+                        install_groups[[length(install_groups)]]$to_install <<- rbind(install_groups[[length(install_groups)]]$to_install, to_install[type_groups[[t]], , drop = FALSE])
+                    }else{
+                        install_groups[[length(install_groups) + 1L]] <<- list(to_install = to_install[type_groups[[t]], , drop = FALSE], type = t)
+                    }
+                }, ...)
+            }, ...)
+    
+        }else{
+            install_groups <- list(list(to_install = to_install, type = 'source'))
         }
-        utils::install.packages(to_install$name, ..., dependencies = dependencies, available = available)
+        
+        message("* Installing packages as follows:")
+        sapply(seq_along(install_groups), function(i){
+                to_install <- install_groups[[i]]$to_install
+                t <- install_groups[[i]]$type
+                if( t == 'zGRAN' ) t <- 'GitHub'
+                message("  * ", t, " package(s): ", str_deps(to_install, Inf))
+        })
+        
+        if( !dry.run ){
+            # install all groups
+            sapply(seq_along(install_groups), function(i, ...){
+                to_install <- install_groups[[i]]$to_install
+                t <- install_groups[[i]]$type
+                if( t == 'zGRAN' ){
+                    # store package hash before installing anything
+                    apply(to_install, 1L, function(pkg){
+                        # temporary set repos
+                        op <- options(repos = repos)
+                        on.exit( options(op) )
+                        # install from GitHub
+                        install_github(pkg$name, pkg$GHuser, pkg$GHref)
+                    })   
+                }else{
+                    utils::install.packages(to_install$name, ..., dependencies = dependencies, available = available, type = t)
+                }
+            }, ...)
+        }
     }
+    
     invisible(to_install0)
 }
 
