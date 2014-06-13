@@ -24,7 +24,7 @@ require2 <- function(x, lib.loc = NULL, version = NULL, cmp = ">="){
     }
 }
 
-if( !require2('repotools', version = '1.3.8') ){
+if( !require2('repotools', version = '1.3.9') ){
     
     # load devtools
     if( !require2('devtools') ){
@@ -50,5 +50,5 @@ if( !require2('repotools', version = '1.3.8') ){
     }
     library(repotools)
 }
-message("repotools version ", packageVersion('repotools'))
+message("Loaded repotools version ", packageVersion('repotools'))
 
