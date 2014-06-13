@@ -476,10 +476,9 @@ install.pkgs <- function(pkgs, lib = NULL, siteRepos = NULL, type = getOption('p
         # reorder with deepest dependencies first
         to_install <- to_install[order(to_install$depth, decreasing = TRUE), , drop = FALSE]
         
-        # compute installation groups (source/binary)
-        # this is because on non-unix host, one needs to fiddle a bit in order to get mixed source/binary packages installed
-        if( (OS_type() != 'unix' ||  grepl('.both', type, fixed = TRUE)) && grepl('both', type, fixed = TRUE) && any(grepl('/src/contrib$', to_install[, 'Repository'])) ){
-            
+        # compute installation groups (source/binary/GRAN)
+        # - on non-unix host, default install.packages does not handle mixed source/binary packages installed
+        # - source GRAN packages need to be treated in a special way 
         install_groups <- list()
         # split by depth level
         dep_groups <- rev(split(seq(nrow(to_install)), to_install$depth))
@@ -491,7 +490,7 @@ install.pkgs <- function(pkgs, lib = NULL, siteRepos = NULL, type = getOption('p
             if( !is.null(to_install$GHref) )
                 repo_type[grepl("GRAN\\*?", to_install$Source) & !is.na(to_install$GHref)] <- 'zGRAN'
             repo_type <- factor(repo_type)
-                # put last group type first to allow optimal merging  
+            # put last group's type first to allow optimal merging  
             if( length(install_groups) ){
                 ltype <- tail(install_groups, 1L)[[1L]]$type
                 if( ltype %in% levels(repo_type) )
@@ -499,17 +498,15 @@ install.pkgs <- function(pkgs, lib = NULL, siteRepos = NULL, type = getOption('p
             }
             type_groups <- split(seq(nrow(to_install)), repo_type)
             sapply(names(type_groups), function(t, ...){
-                    if( length(install_groups) && tail(install_groups, 1L)[[1L]]$type == t ){
-                        install_groups[[length(install_groups)]]$to_install <<- rbind(install_groups[[length(install_groups)]]$to_install, to_install[type_groups[[t]], , drop = FALSE])
+                lg <- length(install_groups)
+                if( lg && install_groups[[lg]]$type == t ){
+                    install_groups[[lg]]$to_install <<- rbind(install_groups[[lg]]$to_install, to_install[type_groups[[t]], , drop = FALSE])
                 }else{
-                        install_groups[[length(install_groups) + 1L]] <<- list(to_install = to_install[type_groups[[t]], , drop = FALSE], type = t)
+                    install_groups[[lg + 1L]] <<- list(to_install = to_install[type_groups[[t]], , drop = FALSE], type = t)
                 }
             }, ...)
         }, ...)
-    
-        }else{
-            install_groups <- list(list(to_install = to_install, type = 'source'))
-        }
+        ##
 
         message("* Installing packages as follows:")
         sapply(seq_along(install_groups), function(i){
