@@ -462,7 +462,7 @@ install.pkgs <- function(pkgs, lib = NULL, siteRepos = NULL, type = getOption('p
     }
     
     # install remaining packages from repositories
-    if( nrow(to_install) ){
+    if( nrow(to_install) && !is.null(to_install$Repository) ){
         
         # use the computed set of dependencies as available data  
         if( is.null(available) ) available <- to_install0
@@ -480,37 +480,37 @@ install.pkgs <- function(pkgs, lib = NULL, siteRepos = NULL, type = getOption('p
         # this is because on non-unix host, one needs to fiddle a bit in order to get mixed source/binary packages installed
         if( (OS_type() != 'unix' ||  grepl('.both', type, fixed = TRUE)) && grepl('both', type, fixed = TRUE) && any(grepl('/src/contrib$', to_install[, 'Repository'])) ){
             
-            install_groups <- list()
-            # split by depth level
-            dep_groups <- rev(split(seq(nrow(to_install)), to_install$depth))
-            sapply(dep_groups, function(i, ...){
-                to_install <- to_install[i, , drop = FALSE]
-                # split by repo type
-                repo_type <- ifelse(grepl('/src/contrib$', to_install[, 'Repository']), 'source', contrib_bintype(type))
-                # add GRAN-src fake type
-                if( !is.null(to_install$GHref) )
-                    repo_type[grepl("GRAN\\*?", to_install$Source) & !is.na(to_install$GHref)] <- 'zGRAN'
-                repo_type <- factor(repo_type)
+        install_groups <- list()
+        # split by depth level
+        dep_groups <- rev(split(seq(nrow(to_install)), to_install$depth))
+        sapply(dep_groups, function(i, ...){
+            to_install <- to_install[i, , drop = FALSE]
+            # split by repo type
+            repo_type <- ifelse(grepl('/src/contrib$', to_install[, 'Repository']), 'source', contrib_bintype(type))
+            # add GRAN-src fake type
+            if( !is.null(to_install$GHref) )
+                repo_type[grepl("GRAN\\*?", to_install$Source) & !is.na(to_install$GHref)] <- 'zGRAN'
+            repo_type <- factor(repo_type)
                 # put last group type first to allow optimal merging  
-                if( length(install_groups) ){
-                    ltype <- tail(install_groups, 1L)[[1L]]$type
-                    if( ltype %in% levels(repo_type) )
-                        repo_type <- relevel(repo_type, ltype)
-                }
-                type_groups <- split(seq(nrow(to_install)), repo_type)
-                sapply(names(type_groups), function(t, ...){
+            if( length(install_groups) ){
+                ltype <- tail(install_groups, 1L)[[1L]]$type
+                if( ltype %in% levels(repo_type) )
+                    repo_type <- relevel(repo_type, ltype)
+            }
+            type_groups <- split(seq(nrow(to_install)), repo_type)
+            sapply(names(type_groups), function(t, ...){
                     if( length(install_groups) && tail(install_groups, 1L)[[1L]]$type == t ){
                         install_groups[[length(install_groups)]]$to_install <<- rbind(install_groups[[length(install_groups)]]$to_install, to_install[type_groups[[t]], , drop = FALSE])
-                    }else{
+                }else{
                         install_groups[[length(install_groups) + 1L]] <<- list(to_install = to_install[type_groups[[t]], , drop = FALSE], type = t)
-                    }
-                }, ...)
+                }
             }, ...)
+        }, ...)
     
         }else{
             install_groups <- list(list(to_install = to_install, type = 'source'))
         }
-        
+
         message("* Installing packages as follows:")
         sapply(seq_along(install_groups), function(i){
                 to_install <- install_groups[[i]]$to_install
