@@ -28,23 +28,26 @@ has_userpwd <- function(x){
 
 .setup_rcurl_exec <- function(verbose = FALSE){
     
-    # script directory
-    tmpdir <- tempfile("curl_")
-    dir.create(tmpdir)
-    file0 <- "curl"
+    # script name
+    exefile <- "curl"
     if( .Platform$OS.type == 'windows' ){
-        file0 <- file.path(.Platform$r_arch, paste0(file0, ".exe"))
+        exefile <- file.path(.Platform$r_arch, paste0(exefile, '.exe'))
     }
-    file0 <- file.path('bin', file0)
-    ok <- if( isDevNamespace() ) file.copy(file.path(tempdir(), 'repotools', file0), tmpdir)
-    else file.copy(system.file(file0, package = 'repotools'), tmpdir)
-    if( !ok )
-        warning("repotools - Could not copy rcurl executable '", file0, "' into '", tmpdir, "'")
-    cmd_file <- file.path(tmpdir, basename(file0))
-    Sys.chmod(cmd_file, mode = "0777", use_umask = TRUE)
-    if( verbose ) message("Temporary curl [", tmpdir, "]: ", str_out(list.files(tmpdir), Inf))
-    # return temporary directory
-    tmpdir
+    
+    pkg_file <- function(...){
+        if( isDevNamespace() ) file.path(tempdir(), 'repotools', ...)
+        else system.file(..., package = 'repotools')
+    }
+    
+    # use pre-built binary stored in binaries/ if necessary
+    if( !file.exists(cmd_file <- pkg_file(file.path('bin', exefile))) ){
+        if( !file.exists(cmd_file <- pkg_file(file.path('binaries', exefile))) )
+            stop("repotools - Could not find rcurl executable")
+    }
+        
+    if( verbose ) message("Using curl executable: ", cmd_file)
+    # return location of executable
+    cmd_file
 }
 
 .setup_rcurl <- local({
@@ -60,7 +63,7 @@ has_userpwd <- function(x){
         if( isFALSE(reset) ){ # setup
             .settings$options <<- options(download.file.method = 'curl')
             # define custom curl executable to handle protected repo
-            .settings$tmpdir <<- .setup_rcurl_exec(FALSE)
+            .settings$curl_exec <<- .setup_rcurl_exec(FALSE)
             rscript <- file.path(R.home('bin'), "Rscript")
             if( .Platform$OS.type == 'windows' ) rscript <- paste0(rscript, ".exe")
             # set environment variable read by custom rcurl binary
@@ -69,7 +72,7 @@ has_userpwd <- function(x){
             Sys.setenv(`R_REPOTOOLS_RCURL.r` = path.pkg('repotools', 'exec/rcurl.R'))
             # prepend binary path to system PATH
             .settings$PATH <<- Sys.getenv('PATH')
-            Sys.setenv(PATH = paste(.settings$tmpdir, .settings$PATH, sep = .Platform$path.sep))
+            Sys.setenv(PATH = paste(dirname(.settings$curl_exec), .settings$PATH, sep = .Platform$path.sep))
             # return backup list of previous settings
             .settings
             TRUE    
@@ -77,7 +80,6 @@ has_userpwd <- function(x){
             old <- if( is.list(reset) ) reset else .settings
             options(old$options)
             if( !is.null(old$PATH) ) Sys.setenv(PATH = old$PATH)
-            if( !is.null(old$tmpdir) ) unlink(old$tmpdir, recursive = TRUE)
             # clean up repotools environment variables
             Sys.unsetenv('R_REPOTOOLS_RSCRIPT')
             Sys.unsetenv('R_REPOTOOLS_RCURL')
