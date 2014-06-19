@@ -24,17 +24,18 @@ require2 <- function(x, lib.loc = NULL, version = NULL, cmp = ">="){
     }
 }
 
-if( !require2('repotools', version = '1.3.9') ){
+if( !require2('repotools', version = '1.3.11') ){
     
+    WINDOWS <- .Platform$OS.type == 'windows' 
     # load devtools
     if( !require2('devtools') ){
         install.packages('devtools')
-        library(devtools)
+        suppressMessages(library(devtools))
     }
     
     # install required version of pkgmaker
     if( !require2('pkgmaker', version = '0.25') ){    
-        install_github('pkgmaker', 'renozao', 'develop')
+        install_github('pkgmaker', 'renozao', 'develop', quick = WINDOWS)
     }
     
     # install BiocInstaller
@@ -43,7 +44,7 @@ if( !require2('repotools', version = '1.3.9') ){
     }
     
     # install repotools
-    if( .Platform$OS.type == 'windows' ){
+    if( WINDOWS ){
         install.packages('repotools', repos = c(getOption('repos'), 'http://tx.technion.ac.il/~renaud/GRAN'))
     }else{
         install_github('repotools', 'renozao')
