@@ -33,6 +33,7 @@ match_available <- function(deps, available, latest = FALSE){
         
     }else{
     
+        #print(available)
         # check against version requirement
         i_available <- function(pkg, compare, version) {
             if ( !length(i <- which(available[, 'Package'] == pkg)) ) NA
@@ -258,7 +259,7 @@ pkg.dependencies <- function(pkg, dependencies = NA, ..., verbose = TRUE){
 
 # utils to list dependencies
 str_deps <- function(x, n = 5L){    
-    v <- ifelse(is.na(x$compare), '', sprintf(" (%s %s)", x$compare, x$version))
+    v <- ifelse(is.na(x$compare), paste0('-', x$Hit), sprintf(" (%s %s %s)", x$Hit, x$compare, x$version))
     str_out(paste0(x$name, v), n, total = TRUE)
 }
 

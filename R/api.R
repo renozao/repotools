@@ -119,6 +119,8 @@ contrib.url2 <- function(repos = getOption('repos'), type = getOption('pkgType')
             if( !is.na(cran_default) && !identical(unname(cran_default), '@CRAN@') )
                 repos['CRAN'] <<- cran_default
         }
+        # TODO: remove this (for debug)
+#        res <- gsub("3.1", "3.0", res, fixed = TRUE)
         res
     }))
 }
@@ -251,9 +253,9 @@ install.pkgs <- function(pkgs, lib = NULL, siteRepos = NULL, type = getOption('p
     # check that all dependencies are available in the current loaded repo
     check_repo <- local({
         .all_available <- NULL
-        f <- c('parent', 'name', 'compare', 'version', 'depLevel', 'depth', 'Source', 'idx')
+        f <- c('parent', 'name', 'compare', 'version', 'depLevel', 'depth', 'Source', 'idx', 'Hit')
         cNA <- as.character(NA)
-        .pkgs <- data.frame(parent = pkgs, name = pkgs, cNA, cNA, cNA, 0, cNA, as.integer(NA), stringsAsFactors = FALSE)
+        .pkgs <- data.frame(parent = pkgs, name = pkgs, cNA, cNA, cNA, 0, cNA, as.integer(NA), cNA, stringsAsFactors = FALSE)
         colnames(.pkgs) <- f
         .pkgs_init <- .pkgs 
         function(available, source, disjoint = FALSE, latest = FALSE){
@@ -305,6 +307,7 @@ install.pkgs <- function(pkgs, lib = NULL, siteRepos = NULL, type = getOption('p
                     if( !is.null(deps) && nrow(deps) ){
                             deps$Source <- NA
                             deps$idx <- as.integer(NA)
+                            deps$Hit <- NA
                             .pkgs <<- rbind(.pkgs_init, deps)
                     }    
                 }
@@ -322,8 +325,12 @@ install.pkgs <- function(pkgs, lib = NULL, siteRepos = NULL, type = getOption('p
     #            print(.all_available[i_avail[!is.na(i_avail)], 1:3])
                 i_found <- which(!is.na(i_avail))
                 # save source name
-                if( length(i_found) )
-                        .pkgs[i_found, 'Source'] <<- .all_available[i_avail[!is.na(i_avail)], 'Source']
+                if( length(i_found) ){
+                    p_found <- .all_available[i_avail[!is.na(i_avail)], , drop = FALSE]
+                    .pkgs[i_found, 'Source'] <<- p_found[, 'Source']
+                    .pkgs[i_found, 'Hit'] <<- p_found[, 'Version']
+                }
+                # R (fake non-NA source)
                 .pkgs[.pkgs$name == 'R', 'Source'] <<- ''
 
                 found <- .pkgs[i_found, ]$name
@@ -354,8 +361,8 @@ install.pkgs <- function(pkgs, lib = NULL, siteRepos = NULL, type = getOption('p
     }else{
     
         
-        # check availability using plain repos list    
-        p <- available.pkgs(contrib.url2(repos, type = type), fields = .fields)
+        # check availability using plain repos list
+        p <- available.pkgs(contrib.url2(repos, type = type), fields = .fields, type = type)
         # update repos list (to get chosen CRAN mirror)
         repos <- c(getOption('repos'), siteRepos)
         
@@ -499,16 +506,17 @@ install.pkgs <- function(pkgs, lib = NULL, siteRepos = NULL, type = getOption('p
             type_groups <- split(seq(nrow(to_install)), repo_type)
             sapply(names(type_groups), function(t, ...){
                 lg <- length(install_groups)
+                addon <- to_install[type_groups[[t]], , drop = FALSE]
                 if( lg && install_groups[[lg]]$type == t ){
-                    install_groups[[lg]]$to_install <<- rbind(install_groups[[lg]]$to_install, to_install[type_groups[[t]], , drop = FALSE])
+                    install_groups[[lg]]$to_install <<- rbind(install_groups[[lg]]$to_install, addon)
                 }else{
-                    install_groups[[lg + 1L]] <<- list(to_install = to_install[type_groups[[t]], , drop = FALSE], type = t)
+                    install_groups[[lg + 1L]] <<- list(to_install = addon, type = t)
                 }
             }, ...)
         }, ...)
         ##
 
-        message("* Installing packages as follows:")
+        message("* Installing ", nrow(to_install), " package(s) as follows:")
         sapply(seq_along(install_groups), function(i){
                 to_install <- install_groups[[i]]$to_install
                 t <- install_groups[[i]]$type
@@ -528,7 +536,7 @@ install.pkgs <- function(pkgs, lib = NULL, siteRepos = NULL, type = getOption('p
                         op <- options(repos = repos)
                         on.exit( options(op) )
                         # install from GitHub
-                        install_github(pkg$name, pkg$GHuser, pkg$GHref)
+                        install_github(pkg['name'], pkg['GHuser'], pkg['GHref'])
                     })   
                 }else{
                     utils::install.packages(to_install$name, ..., dependencies = dependencies, available = available, type = t)
@@ -547,13 +555,21 @@ install.pkgs <- function(pkgs, lib = NULL, siteRepos = NULL, type = getOption('p
 available.pkgs <- function(...){
     
     # internal function that detects the presence of userpwd specification in contrib urls 
-    .urls <- function(contriburl = contrib.url(getOption("repos"), type), type = getOption("pkgType"), ...){
-        contriburl
+    .local <- function(contriburl = NULL, type = getOption("pkgType"), ...){
+        
+        type_std <- ifelse(grepl('both', type), 'both', type)
+        if( is.null(contriburl) ) contriburl <- contrib.url(getOption("repos"), type_std)
+        
+        # setup custom rcurl only if necessary
+        if( .setup_rcurl(contriburl) ) on.exit( .setup_rcurl(TRUE) )
+        
+        if( type_std == 'both' ){
+            # load all versions
+            available.packages(contriburl, ..., filters = c("R_version", "OS_type", "subarch"))
+        }else available.packages(contriburl, ...)
+        
     }
-    # setup custom rcurl only if necessary
-    if( .setup_rcurl(.urls(...)) ) on.exit( .setup_rcurl(TRUE) )
-    
-    available.packages(...) 
+    .local(...)
 }
 
 #' \code{download.pkgs} downloads packages.
