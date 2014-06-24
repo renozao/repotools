@@ -202,8 +202,8 @@ install.pkgs <- function(pkgs, lib = NULL, siteRepos = NULL, type = getOption('p
     x <- pkgs
     # fix type
     is.mac <- (length(grep("darwin", R.version$platform)) > 0)
-    if( .Platform$OS.type == 'unix' && !is.mac && type == 'both' ){
-        warning("WARNING: Switching to only package type allowed on nix machines ['source']", immediate. = TRUE)
+    if( OS_type() == 'unix' && type == 'both' ){
+        message("NOTE: Switching to the only package type allowed on nix machines ['source']")
         type <- 'source'
     } 
     
