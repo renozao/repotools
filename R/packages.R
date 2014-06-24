@@ -253,8 +253,9 @@ parse_deps <- function (string)
 	pieces[pieces != "R"]
 }
 
-pkg.dependencies <- function(pkg, dependencies = NA, ..., verbose = TRUE){
-    install.pkgs(pkg, dependencies = dependencies, ..., dry.run = TRUE, verbose = verbose)
+pkg.dependencies <- function(pkg, dependencies = NA, ..., verbose = FALSE){
+    deps <- install.pkgs(pkg, dependencies = dependencies, ..., dry.run = TRUE, verbose = verbose)
+    deps
 }
 
 # utils to list dependencies
