@@ -190,6 +190,9 @@ OS_type <- function(){
 #' @export
 install.pkgs <- function(pkgs, lib = NULL, siteRepos = NULL, type = getOption('pkgType'), dependencies = NA, available = NULL, ..., dry.run = NULL, devel = FALSE, verbose = TRUE){
     
+    # detect situation where the package type(s) should be decided based on pkgs
+    auto_type <- missing(type)
+    
     # dump messages if requested
     if( !verbose ) message <- function(...) NULL
     # infer dry.run if necessary: when there is mismatch between the requested and the OS binary types
@@ -221,6 +224,10 @@ install.pkgs <- function(pkgs, lib = NULL, siteRepos = NULL, type = getOption('p
         lrepo_path <- tempfile("tmprepo_")
         lrepo <- create_repo(lrepo_path, pkgs = sx)
         on.exit( unlink(lrepo_path, recursive = TRUE), add = TRUE)
+        # check for source files and adapt type if necessary
+        if( OS_type() != 'unix' && auto_type && any(grepl("\\.tar\\.gz$", sx)) ){
+            type <- 'both'
+        }
         # install including local repo in repos list
         install.pkgs(package_name(sx), siteRepos = c(lrepo, siteRepos), type = type, dependencies = dependencies, available = available, ..., dry.run = dry.run)
         x <- x[-i_src]    
