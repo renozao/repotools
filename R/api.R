@@ -217,7 +217,8 @@ install.pkgs <- function(pkgs, lib = NULL, siteRepos = NULL, type = getOption('p
         on.exit( .libPaths(ol) )
     }
     
-    # handle source/binary packages
+    # handle local source/binary packages
+    loc_install <- NULL
     if( is.character(x) && length(i_src <- grep("_", x)) ){
         # create temporary local repo to install from
         sx <- x[i_src]
@@ -229,8 +230,14 @@ install.pkgs <- function(pkgs, lib = NULL, siteRepos = NULL, type = getOption('p
             type <- 'both'
         }
         # install including local repo in repos list
-        install.pkgs(package_name(sx), siteRepos = c(lrepo, siteRepos), type = type, dependencies = dependencies, available = available, ..., dry.run = dry.run)
-        x <- x[-i_src]    
+        loc_install <- install.pkgs(package_name(sx), siteRepos = c(lrepo, siteRepos), type = type
+                                    , dependencies = dependencies, available = available, ...
+                                    , devel = devel, verbose = verbose, dry.run = dry.run)
+        # remove installed packages from query
+        x <- x[-i_src]
+        
+        # early exit if everything is done
+        if( !length(x) ) return(invisible(loc_install))
     }
     
     if( !length(x) ) return()
@@ -552,6 +559,10 @@ install.pkgs <- function(pkgs, lib = NULL, siteRepos = NULL, type = getOption('p
         }
     }
     
+    # add loc_install if necessary
+    if( !is.null(loc_install) ){
+        to_install0 <- rbind(loc_install, to_install0)
+    }
     invisible(to_install0)
 }
 
