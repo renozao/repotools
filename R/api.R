@@ -55,7 +55,7 @@ package_type <- function(x){
 .OS_contrib_types <- setNames(.contrib_types, c('unix', 'windows', 'mac'))
 
 #' @importFrom tools write_PACKAGES
-create_repo <- function(dir = '.', type = NULL, pkgs = NULL, ..., clean = FALSE, verbose = FALSE){
+create_repo <- function(dir = '.', type = NULL, pkgs = NULL, all = TRUE, ..., clean = FALSE, verbose = FALSE){
     
     
     # clean root directory if requested
@@ -94,7 +94,9 @@ create_repo <- function(dir = '.', type = NULL, pkgs = NULL, ..., clean = FALSE,
     }
     
     n <- sapply(.contrib_types, function(t, ...){
-                makePACKAGES(contrib.url('.', type = t), type = t, ...)
+                bdir <- contrib.url('.', type = t)
+                if( all ) bdir <- list.dirs(dirname(bdir), full.names = TRUE, recursive = FALSE)
+                sapply(bdir, makePACKAGES, type = t, ...)
     }, ...)
     if( verbose ) message()
     
