@@ -1,0 +1,282 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+<title>install.pkgs. repotools 1.3.12</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="author" content="">
+
+<!-- bootstrap css -->
+<link href="css/bootstrap.css" rel="stylesheet">
+<link href="css/bootstrap-responsive.css" rel="stylesheet">
+<!-- highlighting css -->
+<link href="css/highlight.css" rel="stylesheet">
+<!-- custom css -->
+<link href="css/staticdocs.css" rel="stylesheet">
+<!-- knitr files -->
+<script src="js/highlight.js"></script>
+<script>hljs.initHighlightingOnLoad();</script>
+
+<!-- bootstrap javascript -->
+<script src="js/jquery.min.js"></script>
+<script src="js/bootstrap.min.js"></script>
+<!-- d3 word cloud -->
+<script src="js/d3.v3.min.js"></script>
+<script src="js/d3.layout.cloud.js"></script>
+  </head>
+
+  <body>
+    <nav class="navbar navbar-inverse navbar-fixed-top" role="navigation">
+  <!-- Brand and toggle get grouped for better mobile display -->
+  <div class="navbar-header">
+    <button type="button" class="navbar-toggle" data-toggle="collapse" data-target=".navbar-ex1-collapse">
+      <span class="sr-only">Toggle navigation</span>
+      <span class="icon-bar"></span>
+      <span class="icon-bar"></span>
+      <span class="icon-bar"></span>
+    </button>
+    <a class="navbar-brand" href="index.html">repotools</a>
+  </div>
+
+  <!-- Collect the nav links, forms, and other content for toggling -->
+  <div class="collapse navbar-collapse navbar-ex1-collapse">
+    <ul class="nav navbar-nav">
+	  <li><a href="PAGE-MAN.html"><span class="glyphicon glyphicon-home"></span> Index</a></li>
+    </ul>
+    <!-- <form class="navbar-form navbar-left" role="search">
+      <div class="form-group">
+        <input type="text" class="form-control" placeholder="Search">
+      </div>
+      <button type="submit" class="btn btn-default">Submit</button>
+    </form>--> 
+    <ul class="nav navbar-nav navbar-right">
+      <li><p class="navbar-text">
+      <span style="font-size:14px" class="label label-primary">Version&nbsp;1.3.12</span>
+      &nbsp;</p></li>
+    </ul>
+  </div><!-- /.navbar-collapse -->
+</nav>
+
+    <div class="container">
+      <header>
+        
+      </header>
+      
+      <h1>Enhanced Package Installation</h1>
+
+<div class="row">
+  <div class="span8">
+    <div class="description">
+      <h2>Description</h2>
+      
+      <p><p>These functions are enhanced versions of the base
+  functions <code><a href='http://www.inside-r.org/r-doc/utils/install.packages'>install.packages</a></code>,
+  <code><a href='http://www.inside-r.org/r-doc/utils/available.packages'>available.packages</a></code> and
+  <code>link{download.packages}</code> (see <em>Details</em>).</p>
+<p><code>available.pkgs</code> returns a matrix of the packages
+  available in given repositories.</p>
+<p><code>download.pkgs</code> downloads packages.</p>
+<p><code>exists.pkgs</code> tells if packages are available from
+  repositories.</p>
+<p><code>Library</code> tries loading packages and install them if
+  needed.</p></p>
+  
+    </div>
+    
+    <h2>Usage</h2>
+    <pre>install.pkgs(pkgs, lib = NULL, siteRepos = NULL, type = getOption("pkgType"), dependencies = NA, 
+  available = NULL, ..., dry.run = NULL, devel = FALSE, verbose = TRUE)
+
+available.pkgs(...)
+
+download.pkgs(pkgs, destdir, available = NULL, ...)
+
+exists.pkgs(pkgs, repos = getOption("repos"), ..., value = FALSE, fixed = TRUE)
+
+Library(package, lib = NULL, ...)</pre>
+    
+    <h2>Arguments</h2>
+    <dl>
+      <dt>siteRepos</dt>
+      <dd>extra user-defined CRAN-like package
+  repository</dd>
+      <dt>...</dt>
+      <dd>extra parameters eventually passed to the
+  corresponding base function.</dd>
+      <dt>dry.run</dt>
+      <dd>logical that indicates if one should only
+  return the computed set of packages and dependencies to
+  install. If <code>NULL</code>, then it is internally set to
+  <code>TRUE</code> only when there is a mismatch between the
+  requested and the OS binary package types (e.g., if
+  <code>type = 'win.both'</code> on a Unix/Mac host).</dd>
+      <dt>devel</dt>
+      <dd>indicates if development packages hosted on
+  GRAN (GitHub) should be preferred to versions available
+  in regular repositories. The following values are
+  allowed: <ul>
+<li> <code>FALSE</code>: package versions
+  on regular repositories have priority over all other
+  versions. </li>
+<li> <code>TRUE</code>: 'release' GRAN versions
+  (i.e. from master branches) are preferred to versions on
+  regular repositories (if their version is number is
+  larger) and 'devel' development versions (i.e. on
+  branches that start with 'devel'). </li>
+<li> <code>2</code>:
+  'devel' GRAN versions are preferred over all other
+  versions. </li>
+</ul>
+
+
+  In any case, packages not found in regular repositories
+  are looked up on GRAN release, then GRAN devel if still
+  not found.</dd>
+      <dt>verbose</dt>
+      <dd>verbosity level (logical or numeric)</dd>
+      <dt>fixed</dt>
+      <dd>logical that indicates if the elements of
+  <code>x</code> should match exactly (<code>TRUE</code>) or
+  interpreted and matched as regular expressions.</dd>
+      <dt>value</dt>
+      <dd>logical, used only when <code>fixed=FALSE</code>,
+  that indicates if the name of the matched packages should
+  be returned (instead of a <code>TRUE/FALSE</code> logical
+  value.</dd>
+      <dt>pkgs</dt>
+      <dd>character vector of the names of packages
+  whose current versions should be downloaded from the
+  repositories.
+
+  If <code>repos = NULL</code>, a character vector of file paths
+  of #ifdef windows not active &#145;<span class = "file">.tar.gz</span>&#146; files.  These
+  can be source archives or binary package archive files
+  (as created by <code>R CMD build --binary</code>).  On a
+  CRAN build of <span style="R">R</span> for OS X these can be &#145;<span class = "file">.tgz</span>&#146; files
+  containing binary package archives.  Tilde-expansion will
+  be done on the file paths.
+
+  If this is missing or a zero-length character vector, a
+  listbox of available packages is presented where possible
+  in an interactive <span style="R">R</span> session.  </dd>
+      <dt>lib</dt>
+      <dd> character vector giving the library
+  directories where to install the packages.  Recycled as
+  needed.  If missing, defaults to the first element of
+  <code><a href='http://www.inside-r.org/r-doc/base/libPaths'>.libPaths</a>()</code>.  </dd>
+      <dt>type</dt>
+      <dd>character, indicating the type of package to
+  download and install.
+
+  Possible values are (currently) <code>"source"</code>,
+  <code>"mac.binary"</code> and <code>"win.binary"</code>: the binary
+  types can be listed and downloaded but not installed on
+  other platforms.
+
+  The default is the appropriate binary type on Windows and
+  on the CRAN binary OS X distribution, otherwise
+  <code>"source"</code>.  For the platforms where binary packages
+  are the default, an alternative is <code>"both"</code> which
+  means &#145;try binary if available, otherwise try
+  source&#146;.  (This will only choose the binary package if
+  its version number is no older than the source version.
+  In interactive use it will ask before attempting to
+  install source packages.)  </dd>
+      <dt>dependencies</dt>
+      <dd>logical indicating to also install
+  uninstalled packages which these packages depend on/link
+  to/import/suggest (and so on recursively).  Not used if
+  <code>repos = NULL</code>.  Can also be a character vector, a
+  subset of <code>c("Depends", "Imports", "LinkingTo",
+  "Suggests", "Enhances")</code>.
+
+  Only supported if <code>lib</code> is of length one (or
+  missing), so it is unambiguous where to install the
+  dependent packages.  If this is not the case it is
+  ignored, with a warning.
+
+  The default, <code>NA</code>, means <code>c("Depends",
+  "Imports", "LinkingTo")</code>.
+
+  <code>TRUE</code> means to use <code>c("Depends", "Imports",
+  "LinkingTo", "Suggests")</code> for <code>pkgs</code> and
+  <code>c("Depends", "Imports", "LinkingTo")</code> for added
+  dependencies: this installs all the packages needed to
+  run <code>pkgs</code>, their examples, tests and vignettes (if
+  the package author specified them correctly).
+
+  In all of these, <code>"LinkingTo"</code> is omitted for binary
+  packages.  </dd>
+      <dt>available</dt>
+      <dd> an object as returned by
+  <code><a href='http://www.inside-r.org/r-doc/utils/available.packages'>available.packages</a></code> listing packages
+  available at the repositories, or <code>NULL</code> when the
+  function makes an internal call to
+  <code>available.packages</code>.  </dd>
+      <dt>destdir</dt>
+      <dd> directory where downloaded packages are
+  stored.  If it is <code>NULL</code> (the default) a
+  subdirectory <code>downloaded_packages</code> of the session
+  temporary directory will be used (and the files will be
+  deleted at the end of the session).  </dd>
+      <dt>repos</dt>
+      <dd> character vector, the base URL(s) of the
+  repositories to use, e.g., the URL of a CRAN mirror such
+  as <code>"http://cran.us.r-project.org"</code>.  For more
+  details on supported URL schemes see <code><a href='http://www.inside-r.org/r-doc/base/connections'>url</a></code>.
+
+  Can be <code>NULL</code> to install from local files (with
+  extension &#145;<span class = "file">.tar.gz</span>&#146; for source packages).  </dd>
+      <dt>package</dt>
+      <dd>the name of a package, given as a
+  <a href='http://www.inside-r.org/r-doc/base/name'>name</a> or literal character string, or a character
+  string, depending on whether <code>character.only</code> is
+  <code>FALSE</code> (default) or <code>TRUE</code>).</dd>
+    </dl>
+    
+    <div class="Details">
+      <h2>Details</h2>
+      
+      <p>The main differences with the base functions are that:
+  <ul>
+<li> Bioconductor (soft, data/annotation,
+  etc..) and Omegahat dependencies are automatically
+  resolved, without the need to enable these repositories;
+  </li>
+<li> if necessary, it uses a custom download method
+  based on <span class = "pkg">RCurl</span> that can access password protected
+  repositories; </li>
+<li> it supports the mixed-type
+  installation, of binary and source packages; </li>
+<li> it can
+  install packages hosted on GitHub, if those have been
+  hooked to the GRAN repository. </li>
+</ul></p>
+  
+      <p><code>install.pkgs</code> installs packages, which can be
+  local, remote or in a CRAN-like repository, possibly
+  password protected. Packages and their dependencies are
+  automatically search in Bioconductor, Omegahat and GRAN
+  repositories if needed.</p>
+  
+    </div>
+      </div>
+  <div class="span4">
+    <!-- <ul>
+      <li>available.pkgs</li><li>download.pkgs</li><li>exists.pkgs</li><li>install.pkgs</li><li>Library</li>
+    </ul>
+    <ul>
+      
+    </ul> -->
+      
+        
+  </div>
+</div>
+      
+      <footer>
+      
+<p>Built by <a href="https://github.com/renozao/staticdocs">staticdocs</a>. Styled with <a href="http://twitter.github.com/bootstrap">bootstrap</a>.</p>
+      </footer>
+    </div>
+  </body>
+</html>
