@@ -259,9 +259,9 @@ pkg.dependencies <- function(pkg, dependencies = NA, ..., verbose = FALSE){
 }
 
 # utils to list dependencies
-str_deps <- function(x, n = 5L){    
+str_deps <- function(x, n = 5L){
     v <- ifelse(is.na(x$compare), paste0('-', x$Hit), sprintf(" (%s %s %s)", x$Hit, x$compare, x$version))
-    str_out(paste0(x$name, v), n, total = TRUE)
+    str_out(paste0(x$name, ifelse(is.na(x$Hit), '', v)), n, total = TRUE)
 }
 
 
