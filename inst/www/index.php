@@ -30,8 +30,9 @@ function api_get_contents($user, $repo, $ref, $path){
 
     // close curl resource to free up system resources
     curl_close($ch); 
-    
-	return json_decode($output);
+    $res = json_decode($output);
+    if( $res->message && preg_match("/not found/i", $res->message) ) return null;
+	return res;
 }
 
 // load local config
@@ -105,7 +106,7 @@ if( isset($_POST['payload']) ){
 	echo "* Checking src/ sub-directory ... ";
 	// look for src/ sub-directory
 	$local_src = "{$GRAN_contrib}{$repo_name}-{$suffix}/src";
-	if( count(api_get_contents($user, $repo_name, $ref, 'src')) ){
+	if( !is_null(api_get_contents($user, $repo_name, $ref, 'src')) ){
 		if( is_dir($local_src) ) echo "[SKIP: no changes]\n";
 		else{
 		
