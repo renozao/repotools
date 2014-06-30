@@ -8,8 +8,8 @@
 \usage{
   install.pkgs(pkgs, lib = NULL, siteRepos = NULL,
     type = getOption("pkgType"), dependencies = NA,
-    available = NULL, ..., dry.run = NULL, devel = FALSE,
-    verbose = TRUE)
+    available = NULL, ..., quick = FALSE, dry.run = NULL,
+    devel = FALSE, verbose = TRUE)
 
   available.pkgs(...)
 
@@ -145,6 +145,10 @@
 
   Can be \code{NULL} to install from local files (with
   extension \file{.tar.gz} for source packages).  }
+
+  \item{quick}{if \code{TRUE} skips docs,
+  multiple-architectures, demos, and vignettes, to make
+  installation as fast as possible.}
 
   \item{package}{the name of a package, given as a
   \link{name} or literal character string, or a character

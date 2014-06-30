@@ -167,6 +167,7 @@ OS_type <- function(){
 #' @inheritParams utils::install.packages
 #' @param siteRepos extra user-defined CRAN-like package repository
 #' @param ... extra parameters eventually passed to the corresponding base function.
+#' @inheritParams devtools::install
 #' @param dry.run logical that indicates if one should only return the computed set of 
 #' packages and dependencies to install.
 #' If \code{NULL}, then it is internally set to \code{TRUE} only when there is a mismatch between
@@ -190,7 +191,7 @@ OS_type <- function(){
 #' @importFrom tools md5sum
 #' @rdname api
 #' @export
-install.pkgs <- function(pkgs, lib = NULL, siteRepos = NULL, type = getOption('pkgType'), dependencies = NA, available = NULL, ..., dry.run = NULL, devel = FALSE, verbose = TRUE){
+install.pkgs <- function(pkgs, lib = NULL, siteRepos = NULL, type = getOption('pkgType'), dependencies = NA, available = NULL, ..., quick = FALSE, dry.run = NULL, devel = FALSE, verbose = TRUE){
     
     # detect situation where the package type(s) should be decided based on pkgs
     auto_type <- missing(type)
@@ -557,10 +558,15 @@ install.pkgs <- function(pkgs, lib = NULL, siteRepos = NULL, type = getOption('p
                         op <- options(repos = repos)
                         on.exit( options(op) )
                         # install from GitHub
-                        install_github(pkg['name'], pkg['GHuser'], pkg['GHref'])
+                        install_github(pkg['name'], pkg['GHuser'], pkg['GHref'], quick = quick)
                     })   
                 }else{
-                    utils::install.packages(to_install$name, ..., dependencies = dependencies, available = available, type = t)
+                    opts <- "--with-keep.source"
+                    if (quick) {
+                        opts <- c(opts, "--no-docs", "--no-multiarch", "--no-demo")
+                    }
+                    utils::install.packages(to_install$name, ..., dependencies = dependencies, available = available, type = t
+                                            , INSTALL_opts = opts)
                 }
             }, ...)
             message("\n# DONE")
