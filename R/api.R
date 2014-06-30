@@ -397,7 +397,8 @@ install.pkgs <- function(pkgs, lib = NULL, siteRepos = NULL, type = getOption('p
             if( length(check_res$found) ) repos <- bioc_repo
         }
     
-        if( check_res$missing ){ # try against Omega 
+        # check Omegahat
+        if( check_res$missing ){
             message("* Checking including Omegahat repository ... ", appendLF = FALSE)
             p_omega <- available.pkgs(contrib.url2(omega_repo <- "http://www.omegahat.org/R", type = type), fields = .fields)
             # use Bioc repos if anything found (this includes CRAN)
@@ -541,11 +542,15 @@ install.pkgs <- function(pkgs, lib = NULL, siteRepos = NULL, type = getOption('p
         })
         
         if( !dry.run ){
+            message("# START")
             # install all groups
             sapply(seq_along(install_groups), function(i, ...){
                 to_install <- install_groups[[i]]$to_install
                 t <- install_groups[[i]]$type
-                if( t == 'zGRAN' ){
+                if( t == 'zGRAN' ) t <- 'GitHub'
+
+                message("\n## Installing ", t, " package(s): ", str_deps(to_install, Inf))
+                if( t == 'GitHub' ){
                     # store package hash before installing anything
                     apply(to_install, 1L, function(pkg){
                         # temporary set repos
@@ -558,6 +563,7 @@ install.pkgs <- function(pkgs, lib = NULL, siteRepos = NULL, type = getOption('p
                     utils::install.packages(to_install$name, ..., dependencies = dependencies, available = available, type = t)
                 }
             }, ...)
+            message("\n# DONE")
         }
     }
     
