@@ -384,7 +384,8 @@ install.pkgs <- function(pkgs, lib = NULL, siteRepos = NULL, type = getOption('p
         repos <- c(getOption('repos'), siteRepos)
         
         repo_type <- if( is.null(siteRepos) ) 'default' else 'extended'
-        message('* Using ', repo_type, ' repository list: ', str_out(repos, Inf))
+        mask_repos <- gsub("(.+://)[^:]+:[^:]+@(.+)", "\\1\\2*", repos)
+        message('* Using ', repo_type, ' repository list: ', str_out(mask_repos, Inf, quote = FALSE))
         
         message("* Looking up available packages in ", repo_type, " repositories ... ", appendLF = FALSE)
         check_res <- check_repo(p, paste0('REPOS', if( !is.null(siteRepos) ) '*'))
