@@ -24,7 +24,7 @@ require2 <- function(x, lib.loc = NULL, version = NULL, cmp = ">="){
     }
 }
 
-if( !require2('repotools', version = '1.3.12') ){
+if( !require2('repotools', version = '1.3.14') ){
     
     WINDOWS <- .Platform$OS.type == 'windows' 
     # load devtools
@@ -34,7 +34,7 @@ if( !require2('repotools', version = '1.3.12') ){
     }
     
     # install required version of pkgmaker
-    if( !require2('pkgmaker', version = '0.25') ){    
+    if( !require2('pkgmaker', version = '0.25.4') ){    
         install_github('pkgmaker', 'renozao', 'develop', quick = WINDOWS)
     }
     

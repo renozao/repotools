@@ -260,10 +260,49 @@ pkg.dependencies <- function(pkg, dependencies = NA, ..., verbose = FALSE){
 
 # utils to list dependencies
 str_deps <- function(x, n = 5L){
+    if( is.logical(n) ) n <- ifelse(n, Inf, 5L) 
+        
     v <- ifelse(is.na(x$compare), paste0('-', x$Hit), sprintf(" (%s %s %s)", x$Hit, x$compare, x$version))
     str_out(paste0(x$name, ifelse(is.na(x$Hit), '', v)), n, total = TRUE)
 }
 
+mask_repos <- function(repos){
+    gsub("(.+://)[^:]+:[^:]+@(.+)", "\\1\\2*", repos)
+}
+str_repos <- function(url, n = Inf, quote = FALSE, ..., mask.credentials = TRUE, details = FALSE, repos = NULL){
+    
+    out <- url
+    if( details ){
+        x <- strsplit(out, "/")
+        #print(x)
+        # extract versions
+        v <- rep(NA, length(out))
+        if( length(i <- grep("/([0-9.]+)/?$", out)) )
+            v[i] <- gsub(".*/([0-9.]+)/?$", "\\1", out[i])
+        # extract type
+        t <- gsub(".*/([^/]+)/contrib/?.*", "\\1", out)
+        # extract repos base
+        b <- gsub("(.*)/((src)|(bin))/.*", "\\1", out)
+        res <- data.frame(repos = b, base = b, type = t, version = v, stringsAsFactors = FALSE)
+        if( !is.null(repos) ){
+            repos <- sort(unique(repos), decreasing = TRUE)
+            res$repos <- sapply(res$base, function(x){
+                i <- pmatch(repos, x)
+                repos[!is.na(i)][1L]
+            })
+        }
+        i <- split(seq(nrow(res)), res$repos)
+        out <- sapply(i, function(i) sprintf("%s %s (%s total)", res$repos[i[1L]]
+                                                                , paste0(unique(paste0(' [', res$type[i], ifelse(!is.na(res$version[i]), paste0('-', res$version[i]), ''), ']')), collapse = '')
+                                                                , length(i)))
+        return(out)
+    }
+    out <- unique(out)
+    if( mask.credentials ) out <- mask_repos(out)
+    
+    # format output
+    str_out(out, max = n, quote = quote, ...)
+}
 
 #' Installing All Package Dependencies
 #' 

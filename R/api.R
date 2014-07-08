@@ -304,7 +304,7 @@ install.pkgs <- function(pkgs, lib = NULL, siteRepos = NULL, type = getOption('p
                 
                 if( !nrow(available) ){
                     message("NOTE [Empty]")
-                    return( list(found = character(), missing = sum(is.na(.pkgs$Source))) )
+                    return( list(hit = character(), found = character(), missing = sum(is.na(.pkgs$Source))) )
                 }
                 
                 if( is.null(.all_available) ) .all_available <<- cbind(available, Source = source)
@@ -353,18 +353,19 @@ install.pkgs <- function(pkgs, lib = NULL, siteRepos = NULL, type = getOption('p
                 found <- .pkgs[i_found, ]$name
                 nR <- sum(.pkgs$name == 'R')
                 i_changed <- which(!mapply(identical, unname(prev_hit[found]), unname(.pkgs$Source[i_found])))
+                new_hit <- .pkgs[i_found[i_changed], ]
                 if( verbose <= 1 ){
                     message("OK [", if( !length(i_changed) ) "-" 
                                     else paste0("Hits: ", length(i_found), "/", nrow(.pkgs) - nR, " +", length(i_changed)), "]")
                 }else message("OK ["
                                 , if( length(i_changed) ){
-                                    paste0("Hits: ", length(i_found), "/", nrow(.pkgs) - nR, " | ", str_deps(.pkgs[i_found[i_changed], ]))
+                                    paste0("Hits: ", length(i_found), "/", nrow(.pkgs) - nR, " | ", str_deps(new_hit))
                                 }else{ "-" } 
                                 , "]")
                 
                 
                 
-                list(found = found, missing = sum(is.na(.pkgs$Source)))
+                list(hit = new_hit$name, found = found, missing = sum(is.na(.pkgs$Source)))
         }
     })
     
@@ -381,11 +382,13 @@ install.pkgs <- function(pkgs, lib = NULL, siteRepos = NULL, type = getOption('p
         # check availability using plain repos list
         p <- available.pkgs(contrib.url2(repos, type = type), fields = .fields, type = type)
         # update repos list (to get chosen CRAN mirror)
+        message('* Default repos: ', str_repos(getOption('repos')))
+        repo_type <- 'default' 
+        if( !is.null(siteRepos) ){
+            repo_type <- 'extended'
+            message('* Extra repos: ', str_repos(siteRepos))
+        }
         repos <- c(getOption('repos'), siteRepos)
-        
-        repo_type <- if( is.null(siteRepos) ) 'default' else 'extended'
-        mask_repos <- gsub("(.+://)[^:]+:[^:]+@(.+)", "\\1\\2*", repos)
-        message('* Using ', repo_type, ' repository list: ', str_out(mask_repos, Inf, quote = FALSE))
         
         message("* Looking up available packages in ", repo_type, " repositories ... ", appendLF = FALSE)
         check_res <- check_repo(p, paste0('REPOS', if( !is.null(siteRepos) ) '*'))
@@ -396,7 +399,7 @@ install.pkgs <- function(pkgs, lib = NULL, siteRepos = NULL, type = getOption('p
             p_bioc <- available.pkgs(contrib.url2(setdiff(bioc_repo, repos), type = type), fields = .fields)
             # use Bioc repos if anything found (this includes CRAN)
             check_res <- check_repo(p_bioc, 'BioC', disjoint = TRUE)
-            if( length(check_res$found) ) repos <- bioc_repo
+            if( length(check_res$hit) ) repos <- bioc_repo
         }
     
         # check Omegahat
@@ -405,7 +408,7 @@ install.pkgs <- function(pkgs, lib = NULL, siteRepos = NULL, type = getOption('p
             p_omega <- available.pkgs(contrib.url2(omega_repo <- "http://www.omegahat.org/R", type = type), fields = .fields)
             # use Bioc repos if anything found (this includes CRAN)
             check_res <- check_repo(p_omega, 'Omega', disjoint = TRUE)
-            if( length(check_res$found) ) repos <- c(repos, omega_repo)
+            if( length(check_res$hit) ) repos <- c(repos, omega_repo)
         }
         
         # check GRAN repo (binary)
@@ -415,7 +418,7 @@ install.pkgs <- function(pkgs, lib = NULL, siteRepos = NULL, type = getOption('p
             p_gran <- GRAN.available(type = contrib_bintype(type), fields = .fields)
             check_res <- check_repo(p_gran, 'GRAN!', latest = TRUE)
             # add GRAN to repos list
-            if( length(gran_pkg <- check_res$found) ){
+            if( length(gran_pkg <- check_res$hit) ){
                repos <- c(repos, GRAN.repos())
             }
         }
@@ -427,7 +430,7 @@ install.pkgs <- function(pkgs, lib = NULL, siteRepos = NULL, type = getOption('p
             p_gran <- GRAN.available(type = 'source', fields = .fields, version = 'master')
             check_res <- check_repo(p_gran, 'GRAN', latest = devel > 0)
             # add GRAN to repos list
-            if( length(gran_pkg <- check_res$found) ){
+            if( length(gran_pkg <- check_res$hit) ){
                 ##repos <- c(repos, gran_repo)
             }
         }
@@ -439,7 +442,7 @@ install.pkgs <- function(pkgs, lib = NULL, siteRepos = NULL, type = getOption('p
             p_granD <- GRAN.available(type = 'source', fields = .fields, version = '!master')
             check_res <- check_repo(p_granD, 'GRAN*', latest = devel > 1)
             # add GRAN to repos list
-            if( length(granD_pkg <- check_res$found) ){
+            if( length(granD_pkg <- check_res$hit) ){
                 ##repos <- c(repos, gran_repo)
             }
         }
@@ -449,6 +452,8 @@ install.pkgs <- function(pkgs, lib = NULL, siteRepos = NULL, type = getOption('p
     }
     
     to_install0 <- to_install
+    # attache relevant repo list
+    attr(to_install0, 'repos') <- repos
     
     # check R version
     if( iR <- match('R', to_install$name, nomatch = 0L) ){
@@ -535,13 +540,20 @@ install.pkgs <- function(pkgs, lib = NULL, siteRepos = NULL, type = getOption('p
         }, ...)
         ##
 
+        ## Description of installation
         message("* Installing ", nrow(to_install), " package(s) as follows:")
         sapply(seq_along(install_groups), function(i){
                 to_install <- install_groups[[i]]$to_install
                 t <- install_groups[[i]]$type
                 if( t == 'zGRAN' ) t <- 'GitHub'
-                message("  * ", t, " package(s): ", str_deps(to_install, Inf))
+                message("  * ", t, " package(s): ", str_deps(to_install, verbose > 1))
         })
+        # list repositories from where packages are downloaded 
+        all_repos <- to_install$Repository
+        repos_desc <- str_repos(all_repos[!is.na(all_repos)], details = TRUE, repos = repos)
+        message("* Using repositories: ")
+        sapply(paste('  *', repos_desc), message)
+        #
         
         if( !dry.run ){
             message("# START")
