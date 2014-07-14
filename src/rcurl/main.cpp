@@ -55,8 +55,7 @@ int main(int argc, const char* argv[] ){
 	}
 
 	// determine silent download
-	bool silent = silent_flags > 1;
-	silent = false;
+	bool silent = !debug && silent_flags > 1;
 
 	silent_s = silent ? "TRUE" : "FALSE";
 	if( !silent ){
