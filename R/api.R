@@ -113,6 +113,11 @@ contrib.url2 <- function(repos = getOption('repos'), type = getOption('pkgType')
     }else if( type == 'win.both' ) type <- c('win.binary', 'source')
     else if( type == 'mac.both' ) type <- c('mac.binary', 'source')
     
+    # non-interactive => use RStudio mirror if necessary
+    if( identical(unname(repos['CRAN']), '@CRAN@') && !interactive() ){
+        repos['CRAN'] <- 'http://cran.rstudio.com'
+    }
+    
     unname(sapply(type, function(t){
         res <- contrib.url(repos = repos, type = t)
         # update CRAN mirror if it was chosen in first round
@@ -123,7 +128,7 @@ contrib.url2 <- function(repos = getOption('repos'), type = getOption('pkgType')
         }
         # TODO: remove this (for debug)
 #        res <- gsub("3.1", "3.0", res, fixed = TRUE)
-        res
+        repos.url(res)
     }))
 }
 
@@ -136,6 +141,18 @@ contrib_bintype <- function(type = NULL){
     else 'source'
 }
     
+#' Determinate Type of Operating System
+#' 
+#' Returns the type of OS. 
+#' 
+#' @return a single character string: code{'unix'}, code{'mac'}, or code{'windows'} 
+#' depending on the OS of the calling machine.
+#' 
+#' @export
+#' @examples 
+#' 
+#' OS_type()
+#' 
 OS_type <- function(){
     if( .Platform$OS.type == 'unix' ){
         if( length(grep("darwin", R.version$platform)) > 0 ) 'mac'
@@ -165,7 +182,8 @@ OS_type <- function(){
 #' repositories if needed.
 #' 
 #' @inheritParams utils::install.packages
-#' @param siteRepos extra user-defined CRAN-like package repository
+#' @param repos URL or specification of CRAN-like package repository (see section \emph{Repositories}).
+#' Use \code{repos = .('http://myrepo.org')} to append repositories to the default ones.
 #' @param ... extra parameters eventually passed to the corresponding base function.
 #' @inheritParams devtools::install
 #' @param dry.run logical that indicates if one should only return the computed set of 
@@ -187,11 +205,49 @@ OS_type <- function(){
 #' if still not found.
 #' @param verbose verbosity level (logical or numeric)
 #' 
+#' @section Repositories:
+#' 
+#' Respositories can be specified as a character vector that is processed in the following way:
+#' 
+#' \itemize{
+#' \item \code{repos = NULL}, then the default set of repositories defined in option \code{'repos'} are used 
+#' (see \code{getOption('repos')});
+#' \item \code{repos = .('http://one.repo.org', 'http://two.repo.org')} appends one or 
+#' more repositories to the default set of repositories.
+#' \item if an element of \code{repos} is \code{'@@CRAN@@'}, then the user is asked to choose a CRAN mirror, 
+#' except if in non-interactive mode, where RStudio mirror is used (\url{http://cran.rstudio.com});
+#' \item Full URL, that can be remote (start with 'http://') or local (start with file://), and 
+#' may include authentication credentials in the form \code{'http://username:password@@cran.domain.org'}, 
+#' for password protected repositories (Basic, Digest, etc..);
+#' \item Repo URL shortcut, defined as a string prefixed with \code{'@@'}, e.g., \code{'@@myHOST/path/to/repo'}, 
+#' which match credentials stored in an \emph{.netrc} file in the user's home directory -- as returned by 
+#' \code{Sys.getenv('HOME')}.
+#' Credentials in the .netrc file must be defined by sections like this:
+#' 
+#' \preformatted{
+#' repos myHOST
+#' url www.myhost.org/~somebody/a/b/c
+#' login user
+#' password 1234
+#' }
+#' 
+#' In this case, the repository specification \code{'@@myHOST/path/to/repo'} will be substituted by the URL
+#' \code{'http://user:1234@@www.myhost.org/~somebody/a/b/c/path/to/repo'} and the actual contrib URL eventually 
+#' used by \code{link{available.packages}} will be 
+#' \code{'http://user:1234@@www.myhost.org/~somebody/a/b/c/path/to/repo/src/contrib/'} (or another variation
+#' on Windows and Mac).
+#' 
+#' }
+#' 
 #' @import devtools
 #' @importFrom tools md5sum
 #' @rdname api
 #' @export
-install.pkgs <- function(pkgs, lib = NULL, siteRepos = NULL, type = getOption('pkgType'), dependencies = NA, available = NULL, ..., quick = FALSE, dry.run = NULL, devel = FALSE, verbose = TRUE){
+install.pkgs <- function(pkgs, lib = NULL, repos = getOption('repos'), type = getOption('pkgType'), dependencies = NA, available = NULL, ..., quick = FALSE, dry.run = NULL, devel = FALSE, verbose = TRUE){
+    
+    # eval repos
+    repos <- eval(substitute(repos), envir = list(`.` = function(...) c(getOption('repos'), ...) ))
+    if( is.null(repos) ) repos <- getOption('repos')
     
     # detect situation where the package type(s) should be decided based on pkgs
     auto_type <- missing(type)
@@ -207,7 +263,6 @@ install.pkgs <- function(pkgs, lib = NULL, siteRepos = NULL, type = getOption('p
     
     x <- pkgs
     # fix type
-    is.mac <- (length(grep("darwin", R.version$platform)) > 0)
     if( OS_type() == 'unix' && type == 'both' ){
         message("NOTE: Switching to the only package type allowed on nix machines ['source']")
         type <- 'source'
@@ -233,7 +288,7 @@ install.pkgs <- function(pkgs, lib = NULL, siteRepos = NULL, type = getOption('p
             type <- 'both'
         }
         # install including local repo in repos list
-        loc_install <- install.pkgs(package_name(sx), siteRepos = c(lrepo, siteRepos), type = type
+        loc_install <- install.pkgs(package_name(sx), repos = c(lrepo, repos), type = type
                                     , dependencies = dependencies, available = available, ...
                                     , devel = devel, verbose = verbose, dry.run = dry.run)
         # remove installed packages from query
@@ -262,8 +317,6 @@ install.pkgs <- function(pkgs, lib = NULL, siteRepos = NULL, type = getOption('p
         message(dtype, " [", ifelse(missing.only, "missing only", "re-install") , " - ", ifelse(shallow.deps, "shallow", "deep"), "]")
     }
     
-    # build complete repos list
-    repos <- c(getOption('repos'), siteRepos)
     
     .fields <- GRAN.fields()
     
@@ -377,25 +430,28 @@ install.pkgs <- function(pkgs, lib = NULL, siteRepos = NULL, type = getOption('p
         to_install <- check_repo()
         
     }else{
-    
         
         # check availability using plain repos list
         p <- available.pkgs(contrib.url2(repos, type = type), fields = .fields, type = type)
-        # update repos list (to get chosen CRAN mirror)
-        message('* Default repos: ', str_repos(getOption('repos')))
+        # update repos list with chosen CRAN mirror
+        repos <- repos.url(repos)
+        siteRepos <- setdiff(repos, getOption('repos'))
+        default_repos <- setdiff(repos, siteRepos)
+        
+        message('* Initial lookup:\n  - Default repos: ', if( length(default_repos) ) default_repos else NA)
         repo_type <- 'default' 
-        if( !is.null(siteRepos) ){
+        if( length(siteRepos) ){
             repo_type <- 'extended'
-            message('* Extra repos: ', str_repos(siteRepos))
+            message('  - Extra repos: ', str_repos(siteRepos))
         }
-        repos <- c(getOption('repos'), siteRepos)
+        repos <- repos.url(repos)
         
         message("* Looking up available packages in ", repo_type, " repositories ... ", appendLF = FALSE)
-        check_res <- check_repo(p, paste0('REPOS', if( !is.null(siteRepos) ) '*'))
+        check_res <- check_repo(p, paste0('REPOS', if( length(siteRepos) ) '*'))
         
         if( check_res$missing ){ # try against Bioc repos
             message("* Checking including Bioconductor repository ... ", appendLF = FALSE)
-            bioc_repo <- .biocinstallRepos(repos)
+            bioc_repo <- .biocinstallRepos()
             p_bioc <- available.pkgs(contrib.url2(setdiff(bioc_repo, repos), type = type), fields = .fields)
             # use Bioc repos if anything found (this includes CRAN)
             check_res <- check_repo(p_bioc, 'BioC', disjoint = TRUE)
@@ -546,17 +602,19 @@ install.pkgs <- function(pkgs, lib = NULL, siteRepos = NULL, type = getOption('p
                 to_install <- install_groups[[i]]$to_install
                 t <- install_groups[[i]]$type
                 if( t == 'zGRAN' ) t <- 'GitHub'
-                message("  * ", t, " package(s): ", str_deps(to_install, verbose > 1))
+                message("  - ", t, " package(s): ", str_deps(to_install, verbose > 1))
         })
         # list repositories from where packages are downloaded 
         all_repos <- to_install$Repository
         repos_desc <- str_repos(all_repos[!is.na(all_repos)], details = TRUE, repos = repos)
-        message("* Using repositories: ")
-        sapply(paste('  *', repos_desc), message)
+        if( length(repos_desc) ){
+            message("* Using repositories: ")
+            sapply(paste('  -', repos_desc), message)
+        }
         #
         
         if( !dry.run ){
-            message("# START")
+            message("")
             # install all groups
             sapply(seq_along(install_groups), function(i, ...){
                 to_install <- install_groups[[i]]$to_install
@@ -593,6 +651,58 @@ install.pkgs <- function(pkgs, lib = NULL, siteRepos = NULL, type = getOption('p
     invisible(to_install0)
 }
 
+read_netrc <- function(x = file.path(Sys.getenv('HOME'), '.netrc'), quiet = FALSE){
+    if( !file.exists(x) ){
+        if( !quiet ) stop("netrc file '", x, "' does not exist.")
+        return()
+    }
+    
+    l <- readLines(x)
+    if( !length(l) ) return()
+    
+    chunk <- grep("^\\s*$", l)
+    if( tail(chunk, 1L) != length(l) ){
+        chunk <- c(chunk, length(l)+1)
+    }
+    chunk <- c(0L, chunk)
+    chunk <- chunk[!chunk %in% (chunk+1)]
+    if( identical(chunk, 0L) ) return()
+            
+    res <- sapply(seq_along(chunk)[-1L], function(i){
+        def <- l[seq(chunk[i-1L]+1L, chunk[i]-1L)]
+        m <- str_match(def, "^\\s*([^ ]+)\\s([^ ]+)")
+        fields <- c('repos', 'url', 'login', 'password')
+        setNames(setNames(m[, 3L], m[, 2L])[fields], fields)
+    })
+    t(res)
+}
+
+repos.url <- function(x = getOption('repos')){
+    
+    if( length(icran <- which(x == '@CRAN@')) && !is.na(cran_url <- getOption('repos')['CRAN']) ){
+        x[icran] <- cran_url
+    }
+    
+    .i_shortcut <- function(x) setdiff(grep("^@", x), which(x == '@CRAN@'))
+    # complete repo shortcut specifications
+    if( length(i <- .i_shortcut(x)) ){
+        
+        if( !is.null(net <- read_netrc(quiet = TRUE)) ){
+            m <- str_match(x[i], "^@([^/]+)(.*)")
+            j <- match(m[, 2L], net[, 1L], nomatch = 0L)
+            m <- m[j>0, , drop = FALSE]
+            net <- net[j, , drop = FALSE]
+            x[i[j>0]] <- sprintf("http://%s:%s@%s%s", net[, 3L], net[, 4L], net[, 2L], m[, 3L])
+        }
+        if( length(i <- .i_shortcut(x)) ){
+            warning("Some repositories could not be resolved (check .netrc file): ", str_out(x[i], Inf))
+            x <- x[-i]
+        }
+    }
+    
+    x
+}
+
 #' \code{available.pkgs} returns a matrix of the packages available in given repositories.
 #' @rdname api
 #' @export
@@ -604,6 +714,9 @@ available.pkgs <- function(...){
         
         type_std <- ifelse(grepl('both', type), 'both', type)
         if( is.null(contriburl) ) contriburl <- contrib.url(getOption("repos"), type_std)
+        
+        # complete urls for user:passwd
+        contriburl <- repos.url(contriburl)
         
         # setup custom rcurl only if necessary
         if( .setup_rcurl(contriburl) ) on.exit( .setup_rcurl(TRUE) )

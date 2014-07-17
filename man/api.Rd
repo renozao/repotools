@@ -6,7 +6,8 @@
 \alias{Library}
 \title{Enhanced Package Installation}
 \usage{
-  install.pkgs(pkgs, lib = NULL, siteRepos = NULL,
+  install.pkgs(pkgs, lib = NULL,
+    repos = getOption("repos"),
     type = getOption("pkgType"), dependencies = NA,
     available = NULL, ..., quick = FALSE, dry.run = NULL,
     devel = FALSE, verbose = TRUE)
@@ -21,8 +22,10 @@
   Library(package, lib = NULL, ...)
 }
 \arguments{
-  \item{siteRepos}{extra user-defined CRAN-like package
-  repository}
+  \item{repos}{URL or specification of CRAN-like package
+  repository (see section \emph{Repositories}). Use
+  \code{repos = .('http://myrepo.org')} to append
+  repositories to the default ones.}
 
   \item{...}{extra parameters eventually passed to the
   corresponding base function.}
@@ -66,13 +69,15 @@
   whose current versions should be downloaded from the
   repositories.
 
-  If \code{repos = NULL}, a character vector of file paths
-  of #ifdef windows not active \file{.tar.gz} files.  These
-  can be source archives or binary package archive files
-  (as created by \command{R CMD build --binary}).  On a
-  CRAN build of \R for OS X these can be \file{.tgz} files
-  containing binary package archives.  Tilde-expansion will
-  be done on the file paths.
+  If \code{repos = NULL}, a character vector of #ifdef
+  windows not active file paths.  These can be source
+  directories or archives or binary package archive files
+  (as created by \command{R CMD build --binary}).
+  (\code{http://} and \code{file://} URLs are also accepted
+  and the files will be downloaded and installed from local
+  copies.)  On a CRAN build of \R for OS X these can be
+  \file{.tgz} files containing binary package archives.
+  Tilde-expansion will be done on file paths.
 
   If this is missing or a zero-length character vector, a
   listbox of available packages is presented where possible
@@ -87,19 +92,19 @@
   download and install.
 
   Possible values are (currently) \code{"source"},
-  \code{"mac.binary"} and \code{"win.binary"}: the binary
-  types can be listed and downloaded but not installed on
-  other platforms.
+  \code{"mac.binary"}, \code{"mac.binary.mavericks"} and
+  \code{"win.binary"}: the binary types can be listed and
+  downloaded but not installed on other platforms.
 
   The default is the appropriate binary type on Windows and
-  on the CRAN binary OS X distribution, otherwise
+  on the CRAN binary OS X distributions, otherwise
   \code{"source"}.  For the platforms where binary packages
   are the default, an alternative is \code{"both"} which
-  means \sQuote{try binary if available, otherwise try
-  source}.  (This will only choose the binary package if
-  its version number is no older than the source version.
-  In interactive use it will ask before attempting to
-  install source packages.)  }
+  means \sQuote{try binary if available and current,
+  otherwise try source}.  (This will only choose the binary
+  package if its version number is no older than the source
+  version.  In interactive use it will ask before
+  attempting to install source packages.)  }
 
   \item{dependencies}{logical indicating to also install
   uninstalled packages which these packages depend on/link
@@ -137,14 +142,6 @@
   subdirectory \code{downloaded_packages} of the session
   temporary directory will be used (and the files will be
   deleted at the end of the session).  }
-
-  \item{repos}{ character vector, the base URL(s) of the
-  repositories to use, e.g., the URL of a CRAN mirror such
-  as \code{"http://cran.us.r-project.org"}.  For more
-  details on supported URL schemes see \code{\link{url}}.
-
-  Can be \code{NULL} to install from local files (with
-  extension \file{.tar.gz} for source packages).  }
 
   \item{quick}{if \code{TRUE} skips docs,
   multiple-architectures, demos, and vignettes, to make
@@ -189,5 +186,44 @@
   password protected. Packages and their dependencies are
   automatically search in Bioconductor, Omegahat and GRAN
   repositories if needed.
+}
+\section{Repositories}{
+  Respositories can be specified as a character vector that
+  is processed in the following way:
+
+  \itemize{ \item \code{repos = NULL}, then the default set
+  of repositories defined in option \code{'repos'} are used
+  (see \code{getOption('repos')}); \item \code{repos =
+  .('http://one.repo.org', 'http://two.repo.org')} appends
+  one or more repositories to the default set of
+  repositories. \item if an element of \code{repos} is
+  \code{'@CRAN@'}, then the user is asked to choose a CRAN
+  mirror, except if in non-interactive mode, where RStudio
+  mirror is used (\url{http://cran.rstudio.com}); \item
+  Full URL, that can be remote (start with 'http://') or
+  local (start with file://), and may include
+  authentication credentials in the form
+  \code{'http://username:password@cran.domain.org'}, for
+  password protected repositories (Basic, Digest, etc..);
+  \item Repo URL shortcut, defined as a string prefixed
+  with \code{'@'}, e.g., \code{'@myHOST/path/to/repo'},
+  which match credentials stored in an \emph{.netrc} file
+  in the user's home directory -- as returned by
+  \code{Sys.getenv('HOME')}. Credentials in the .netrc file
+  must be defined by sections like this:
+
+  \preformatted{ repos myHOST url
+  www.myhost.org/~somebody/a/b/c login user password 1234 }
+
+  In this case, the repository specification
+  \code{'@myHOST/path/to/repo'} will be substituted by the
+  URL
+  \code{'http://user:1234@www.myhost.org/~somebody/a/b/c/path/to/repo'}
+  and the actual contrib URL eventually used by
+  \code{link{available.packages}} will be
+  \code{'http://user:1234@www.myhost.org/~somebody/a/b/c/path/to/repo/src/contrib/'}
+  (or another variation on Windows and Mac).
+
+  }
 }
 
