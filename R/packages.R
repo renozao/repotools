@@ -292,6 +292,7 @@ str_repos <- function(url, n = Inf, quote = FALSE, ..., mask.credentials = TRUE,
             })
         }
         i <- split(seq(nrow(res)), res$repos)
+        if( mask.credentials ) res$repos <- mask_repos(res$repos)
         out <- sapply(i, function(i) sprintf("%s %s (%s total)", res$repos[i[1L]]
                                                                 , paste0(unique(paste0(' [', res$type[i], ifelse(!is.na(res$version[i]), paste0('-', res$version[i]), ''), ']')), collapse = '')
                                                                 , length(i)))
