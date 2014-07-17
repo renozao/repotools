@@ -1,0 +1,22 @@
+\name{OS_type}
+\alias{OS_type}
+\title{Determinate Type of Operating System}
+\usage{
+  OS_type()
+}
+\value{
+  a single character string: code{'unix'}, code{'mac'}, or
+  code{'windows'} depending on the OS of the calling
+  machine.
+}
+\description{
+  Returns the type of OS.
+}
+\examples{
+\dontshow{# roxygen generated flag
+options(R_CHECK_RUNNING_EXAMPLES_=TRUE)
+}
+
+OS_type()
+}
+
