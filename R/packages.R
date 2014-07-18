@@ -317,7 +317,7 @@ str_repos <- function(url, n = Inf, quote = FALSE, ..., mask.credentials = TRUE,
 #' @export
 #' @examples 
 #' 
-#' try( install.dependencies('Matrix', dry.run=TRUE) )
+#' try( install.dependencies('Matrix', dep = "!", dry.run = TRUE) )
 #' \dontrun{
 #' install.dependencies("mypackage_1.0.tar.gz", dry.run=TRUE)
 #' }
@@ -325,10 +325,11 @@ str_repos <- function(url, n = Inf, quote = FALSE, ..., mask.credentials = TRUE,
 install.dependencies <- function(pkg, dependencies = NA, ..., verbose = TRUE, dry.run = FALSE) 
 {
     # dump messages if requested
+    miss_verb <- missing(verbose)
     if( !verbose ) message <- function(...) NULL
     
     # list dependencies
-    deps <- pkg.dependencies(pkg, dependencies = dependencies, ..., verbose = FALSE)
+    deps <- pkg.dependencies(pkg, dependencies = dependencies, ..., verbose = (miss_verb && dry.run) || verbose > 1L)
     pkg_names <- deps$name[deps$depth == 0]
     deps <- deps[deps$depth > 0, , drop = FALSE]
     message("Package dependencies to install ", pkg_names, ": ", str_deps(deps, Inf))
