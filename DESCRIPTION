@@ -1,7 +1,7 @@
 Package: repotools
 Type: Package
 Title: Tools for R Package Repositories
-Version: 1.3.15
+Version: 1.3.16
 Date: 2014-13-06
 Authors@R: person('Renaud', 'Gaujoux', email = 'renaud@tx.technion.ac.il', role
     = c('aut', 'cre'))
@@ -12,7 +12,7 @@ License: GPL (>=2)
 SCM: github+gran:renozao
 Depends:
     R (>= 3.0),
-    pkgmaker (>= 0.25.4)
+    pkgmaker (>= 0.25.5)
 Imports:
     digest,
     tools,
@@ -26,6 +26,7 @@ Suggests:
 Collate:
     'utils.R'
     'download.R'
+    'url.R'
     'api.R'
     'GRAN.R'
     'packages.R'

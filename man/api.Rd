@@ -205,25 +205,15 @@
   authentication credentials in the form
   \code{'http://username:password@cran.domain.org'}, for
   password protected repositories (Basic, Digest, etc..);
-  \item Repo URL shortcut, defined as a string prefixed
-  with \code{'@'}, e.g., \code{'@myHOST/path/to/repo'},
-  which match credentials stored in an \emph{.netrc} file
-  in the user's home directory -- as returned by
-  \code{Sys.getenv('HOME')}. Credentials in the .netrc file
-  must be defined by sections like this:
-
-  \preformatted{ repos myHOST url
-  www.myhost.org/~somebody/a/b/c login user password 1234 }
-
-  In this case, the repository specification
-  \code{'@myHOST/path/to/repo'} will be substituted by the
-  URL
-  \code{'http://user:1234@www.myhost.org/~somebody/a/b/c/path/to/repo'}
-  and the actual contrib URL eventually used by
-  \code{link{available.packages}} will be
-  \code{'http://user:1234@www.myhost.org/~somebody/a/b/c/path/to/repo/src/contrib/'}
-  (or another variation on Windows and Mac).
-
-  }
+  \item Repo URL shortcut key [+ path], defined as a string
+  prefixed with \code{'@'}, e.g.,
+  \code{'@myRepo/path/to/repo'}, that matches a repository
+  entry in file \code{'.netrc'} in the user's home
+  directory -- as returned by \code{Sys.getenv('HOME')}. It
+  is internally substituted into a full repository base URL
+  using by \code{repos.url} (see details in
+  \code{\link{read_netrc}} and \code{\link{repos.url}} for
+  details on how repository entries are defined and
+  substituted respectively. }
 }
 

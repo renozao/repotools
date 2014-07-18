@@ -6,6 +6,7 @@
 
 #' @include utils.R 
 #' @include download.R
+#' @include url.R
 NULL
 
 repo_auth <- function(...){
@@ -219,24 +220,12 @@ OS_type <- function(){
 #' \item Full URL, that can be remote (start with 'http://') or local (start with file://), and 
 #' may include authentication credentials in the form \code{'http://username:password@@cran.domain.org'}, 
 #' for password protected repositories (Basic, Digest, etc..);
-#' \item Repo URL shortcut, defined as a string prefixed with \code{'@@'}, e.g., \code{'@@myHOST/path/to/repo'}, 
-#' which match credentials stored in an \emph{.netrc} file in the user's home directory -- as returned by 
+#' \item Repo URL shortcut key [+ path], defined as a string prefixed with \code{'@@'}, e.g., \code{'@@myRepo/path/to/repo'}, 
+#' that matches a repository entry in file \code{'.netrc'} in the user's home directory -- as returned by 
 #' \code{Sys.getenv('HOME')}.
-#' Credentials in the .netrc file must be defined by sections like this:
-#' 
-#' \preformatted{
-#' repos myHOST
-#' url www.myhost.org/~somebody/a/b/c
-#' login user
-#' password 1234
-#' }
-#' 
-#' In this case, the repository specification \code{'@@myHOST/path/to/repo'} will be substituted by the URL
-#' \code{'http://user:1234@@www.myhost.org/~somebody/a/b/c/path/to/repo'} and the actual contrib URL eventually 
-#' used by \code{link{available.packages}} will be 
-#' \code{'http://user:1234@@www.myhost.org/~somebody/a/b/c/path/to/repo/src/contrib/'} (or another variation
-#' on Windows and Mac).
-#' 
+#' It is internally substituted into a full repository base URL using by \code{repos.url} (see details in  
+#' \code{\link{read_netrc}} and \code{\link{repos.url}} for details on how repository entries are defined 
+#' and substituted respectively.
 #' }
 #' 
 #' @import devtools
@@ -246,7 +235,8 @@ OS_type <- function(){
 install.pkgs <- function(pkgs, lib = NULL, repos = getOption('repos'), type = getOption('pkgType'), dependencies = NA, available = NULL, ..., quick = FALSE, dry.run = NULL, devel = FALSE, verbose = TRUE){
     
     # eval repos
-    repos <- eval(substitute(repos), envir = list(`.` = function(...) c(getOption('repos'), ...) ))
+    e <- parent.frame()
+    repos <- eval(substitute(repos), envir = list(`.` = function(...) c(getOption('repos'), ...) ), enclos = e)
     if( is.null(repos) ) repos <- getOption('repos')
     
     # detect situation where the package type(s) should be decided based on pkgs
@@ -649,58 +639,6 @@ install.pkgs <- function(pkgs, lib = NULL, repos = getOption('repos'), type = ge
         to_install0 <- rbind(loc_install, to_install0)
     }
     invisible(to_install0)
-}
-
-read_netrc <- function(x = file.path(Sys.getenv('HOME'), '.netrc'), quiet = FALSE){
-    if( !file.exists(x) ){
-        if( !quiet ) stop("netrc file '", x, "' does not exist.")
-        return()
-    }
-    
-    l <- readLines(x)
-    if( !length(l) ) return()
-    
-    chunk <- grep("^\\s*$", l)
-    if( tail(chunk, 1L) != length(l) ){
-        chunk <- c(chunk, length(l)+1)
-    }
-    chunk <- c(0L, chunk)
-    chunk <- chunk[!chunk %in% (chunk+1)]
-    if( identical(chunk, 0L) ) return()
-            
-    res <- sapply(seq_along(chunk)[-1L], function(i){
-        def <- l[seq(chunk[i-1L]+1L, chunk[i]-1L)]
-        m <- str_match(def, "^\\s*([^ ]+)\\s([^ ]+)")
-        fields <- c('repos', 'url', 'login', 'password')
-        setNames(setNames(m[, 3L], m[, 2L])[fields], fields)
-    })
-    t(res)
-}
-
-repos.url <- function(x = getOption('repos')){
-    
-    if( length(icran <- which(x == '@CRAN@')) && !is.na(cran_url <- getOption('repos')['CRAN']) ){
-        x[icran] <- cran_url
-    }
-    
-    .i_shortcut <- function(x) setdiff(grep("^@", x), which(x == '@CRAN@'))
-    # complete repo shortcut specifications
-    if( length(i <- .i_shortcut(x)) ){
-        
-        if( !is.null(net <- read_netrc(quiet = TRUE)) ){
-            m <- str_match(x[i], "^@([^/]+)(.*)")
-            j <- match(m[, 2L], net[, 1L], nomatch = 0L)
-            m <- m[j>0, , drop = FALSE]
-            net <- net[j, , drop = FALSE]
-            x[i[j>0]] <- sprintf("http://%s:%s@%s%s", net[, 3L], net[, 4L], net[, 2L], m[, 3L])
-        }
-        if( length(i <- .i_shortcut(x)) ){
-            warning("Some repositories could not be resolved (check .netrc file): ", str_out(x[i], Inf))
-            x <- x[-i]
-        }
-    }
-    
-    x
 }
 
 #' \code{available.pkgs} returns a matrix of the packages available in given repositories.

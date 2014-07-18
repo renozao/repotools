@@ -54,7 +54,7 @@
 options(R_CHECK_RUNNING_EXAMPLES_=TRUE)
 }
 
-try( install.dependencies('Matrix', dry.run=TRUE) )
+try( install.dependencies('Matrix', dep = "!", dry.run = TRUE) )
 \dontrun{
 install.dependencies("mypackage_1.0.tar.gz", dry.run=TRUE)
 }

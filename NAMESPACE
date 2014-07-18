@@ -1,6 +1,8 @@
 export(repos.getOption)
 export(repos.options)
 export(sourceURL)
+export(read_netrc)
+export(repos.url)
 export(OS_type)
 export(install.pkgs)
 export(available.pkgs)
