@@ -1,0 +1,13 @@
+machine www.domain.com
+login somebody
+password abcd
+
+# standard host credential entry
+machine www.privatehost.org
+login tata
+password toto
+
+#repos @myRepo/a/b/c
+machine www.myrepo.org
+login user
+password 1234
