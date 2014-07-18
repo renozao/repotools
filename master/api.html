@@ -2,7 +2,7 @@
 <html lang="en">
   <head>
     <meta charset="utf-8">
-<title>install.pkgs. repotools 1.3.12</title>
+<title>install.pkgs. repotools 1.3.16</title>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <meta name="author" content="">
 
@@ -51,7 +51,7 @@
     </form>--> 
     <ul class="nav navbar-nav navbar-right">
       <li><p class="navbar-text">
-      <span style="font-size:14px" class="label label-primary">Version&nbsp;1.3.12</span>
+      <span style="font-size:14px" class="label label-primary">Version&nbsp;1.3.16</span>
       &nbsp;</p></li>
     </ul>
   </div><!-- /.navbar-collapse -->
@@ -84,8 +84,9 @@
     </div>
     
     <h2>Usage</h2>
-    <pre>install.pkgs(pkgs, lib = NULL, siteRepos = NULL, type = getOption("pkgType"), dependencies = NA, 
-  available = NULL, ..., dry.run = NULL, devel = FALSE, verbose = TRUE)
+    <pre>install.pkgs(pkgs, lib = NULL, repos = getOption("repos"), type = getOption("pkgType"), 
+  dependencies = NA, available = NULL, ..., quick = FALSE, dry.run = NULL, devel = FALSE, 
+      verbose = TRUE)
 
 available.pkgs(...)
 
@@ -97,9 +98,11 @@ Library(package, lib = NULL, ...)</pre>
     
     <h2>Arguments</h2>
     <dl>
-      <dt>siteRepos</dt>
-      <dd>extra user-defined CRAN-like package
-  repository</dd>
+      <dt>repos</dt>
+      <dd>URL or specification of CRAN-like package
+  repository (see section <em>Repositories</em>). Use
+  <code>repos = .('http://myrepo.org')</code> to append
+  repositories to the default ones.</dd>
       <dt>...</dt>
       <dd>extra parameters eventually passed to the
   corresponding base function.</dd>
@@ -148,13 +151,15 @@ Library(package, lib = NULL, ...)</pre>
   whose current versions should be downloaded from the
   repositories.
 
-  If <code>repos = NULL</code>, a character vector of file paths
-  of #ifdef windows not active &#145;<span class = "file">.tar.gz</span>&#146; files.  These
-  can be source archives or binary package archive files
-  (as created by <code>R CMD build --binary</code>).  On a
-  CRAN build of <span style="R">R</span> for OS X these can be &#145;<span class = "file">.tgz</span>&#146; files
-  containing binary package archives.  Tilde-expansion will
-  be done on the file paths.
+  If <code>repos = NULL</code>, a character vector of #ifdef
+  windows not active file paths.  These can be source
+  directories or archives or binary package archive files
+  (as created by <code>R CMD build --binary</code>).
+  (<code>http://</code> and <code>file://</code> URLs are also accepted
+  and the files will be downloaded and installed from local
+  copies.)  On a CRAN build of <span style="R">R</span> for OS X these can be
+  &#145;<span class = "file">.tgz</span>&#146; files containing binary package archives.
+  Tilde-expansion will be done on file paths.
 
   If this is missing or a zero-length character vector, a
   listbox of available packages is presented where possible
@@ -169,19 +174,19 @@ Library(package, lib = NULL, ...)</pre>
   download and install.
 
   Possible values are (currently) <code>"source"</code>,
-  <code>"mac.binary"</code> and <code>"win.binary"</code>: the binary
-  types can be listed and downloaded but not installed on
-  other platforms.
+  <code>"mac.binary"</code>, <code>"mac.binary.mavericks"</code> and
+  <code>"win.binary"</code>: the binary types can be listed and
+  downloaded but not installed on other platforms.
 
   The default is the appropriate binary type on Windows and
-  on the CRAN binary OS X distribution, otherwise
+  on the CRAN binary OS X distributions, otherwise
   <code>"source"</code>.  For the platforms where binary packages
   are the default, an alternative is <code>"both"</code> which
-  means &#145;try binary if available, otherwise try
-  source&#146;.  (This will only choose the binary package if
-  its version number is no older than the source version.
-  In interactive use it will ask before attempting to
-  install source packages.)  </dd>
+  means &#145;try binary if available and current,
+  otherwise try source&#146;.  (This will only choose the binary
+  package if its version number is no older than the source
+  version.  In interactive use it will ask before
+  attempting to install source packages.)  </dd>
       <dt>dependencies</dt>
       <dd>logical indicating to also install
   uninstalled packages which these packages depend on/link
@@ -219,14 +224,10 @@ Library(package, lib = NULL, ...)</pre>
   subdirectory <code>downloaded_packages</code> of the session
   temporary directory will be used (and the files will be
   deleted at the end of the session).  </dd>
-      <dt>repos</dt>
-      <dd> character vector, the base URL(s) of the
-  repositories to use, e.g., the URL of a CRAN mirror such
-  as <code>"http://cran.us.r-project.org"</code>.  For more
-  details on supported URL schemes see <code><a href='http://www.inside-r.org/r-doc/base/connections'>url</a></code>.
-
-  Can be <code>NULL</code> to install from local files (with
-  extension &#145;<span class = "file">.tar.gz</span>&#146; for source packages).  </dd>
+      <dt>quick</dt>
+      <dd>if <code>TRUE</code> skips docs,
+  multiple-architectures, demos, and vignettes, to make
+  installation as fast as possible.</dd>
       <dt>package</dt>
       <dd>the name of a package, given as a
   <a href='http://www.inside-r.org/r-doc/base/name'>name</a> or literal character string, or a character
@@ -258,6 +259,47 @@ Library(package, lib = NULL, ...)</pre>
   password protected. Packages and their dependencies are
   automatically search in Bioconductor, Omegahat and GRAN
   repositories if needed.</p>
+  
+    </div>
+
+    <div class="Repositories">
+      <h2>Repositories</h2>
+      
+      <p>Respositories can be specified as a character vector that
+  is processed in the following way:</p>
+  
+      <p><ul>
+<li> <code>repos = NULL</code>, then the default set
+  of repositories defined in option <code>'repos'</code> are used
+  (see <code>getOption('repos')</code>); </li>
+<li> <code>repos =
+  .('http://one.repo.org', 'http://two.repo.org')</code> appends
+  one or more repositories to the default set of
+  repositories. </li>
+<li> if an element of <code>repos</code> is
+  <code>'@CRAN@'</code>, then the user is asked to choose a CRAN
+  mirror, except if in non-interactive mode, where RStudio
+  mirror is used (<a href = 'http://cran.rstudio.com'>http://cran.rstudio.com</a>); </li>
+<li>
+  Full URL, that can be remote (start with 'http://') or
+  local (start with file://), and may include
+  authentication credentials in the form
+  <code>'http://username:password@cran.domain.org'</code>, for
+  password protected repositories (Basic, Digest, etc..);
+  </li>
+<li> Repo URL shortcut key [+ path], defined as a string
+  prefixed with <code>'@'</code>, e.g.,
+  <code>'@myRepo/path/to/repo'</code>, that matches a repository
+  entry in file <code>'.netrc'</code> in the user's home
+  directory -- as returned by <code>Sys.getenv('HOME')</code>. It
+  is internally substituted into a full repository base URL
+  using by <code>repos.url</code> (see details in
+  <code><a href='read_netrc.html'>read_netrc</a></code> and <code><a href='repos.url.html'>repos.url</a></code> for
+  details on how repository entries are defined and
+  substituted respectively. </li>
+</ul></p>
+  
+      <p></p>
   
     </div>
       </div>

@@ -2,7 +2,7 @@
 <html lang="en">
   <head>
     <meta charset="utf-8">
-<title>install.dependencies. repotools 1.3.12</title>
+<title>install.dependencies. repotools 1.3.16</title>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <meta name="author" content="">
 
@@ -51,7 +51,7 @@
     </form>--> 
     <ul class="nav navbar-nav navbar-right">
       <li><p class="navbar-text">
-      <span style="font-size:14px" class="label label-primary">Version&nbsp;1.3.12</span>
+      <span style="font-size:14px" class="label label-primary">Version&nbsp;1.3.16</span>
       &nbsp;</p></li>
     </ul>
   </div><!-- /.navbar-collapse -->
@@ -121,13 +121,25 @@
     </dl>
         
     <h2 id="examples">Examples</h2>
-    <pre><code class="r">## Don&#39;t show: 
-# roxygen generated flag
-options(R_CHECK_RUNNING_EXAMPLES_=TRUE)
-## End Don&#39;t show
+    <pre><code class="r">
 
-try( install.dependencies(&#39;Matrix&#39;, dry.run=TRUE) )
-## Not run: 
+try( install.dependencies(&#39;Matrix&#39;, dep = &quot;!&quot;, dry.run = TRUE) )
+</code></pre>
+
+<pre><code>## *** DRY RUN ***
+## * Dependencies installation: required [re-install - shallow]
+## * Initial lookup:
+##   - Default repos: NA
+##   - Extra repos: http://cran.rstudio.com
+## * Looking up available packages in extended repositories ... OK [Hits: 2/2 +2]
+## * Installing 2 package(s) as follows:
+##   - source package(s): &#39;lattice-0.20-29&#39;, &#39;Matrix-1.1-4&#39; (2 total)
+## * Using repositories: 
+##   - http://cran.rstudio.com  [src] (2 total)
+## Package dependencies to install Matrix: &#39;lattice-0.20-29&#39;, &#39;R&#39; (2 total)
+</code></pre>
+
+<pre><code class="r">## Not run: 
 ##D install.dependencies(&quot;mypackage_1.0.tar.gz&quot;, dry.run=TRUE)
 ## End(Not run)
 </code></pre>
