@@ -303,9 +303,16 @@ install.pkgs <- function(pkgs, lib = NULL, repos = getOption('repos'), type = ge
         dependencies <- ifelse(grepl('^all', spec), TRUE, NA)
         missing.only <- !grepl('!', spec, fixed = TRUE)
         shallow.deps <- !grepl('*', spec, fixed = TRUE)
+        # specify devel versions with '+' 
+        dev.flag <- gregexpr('+', spec, fixed = TRUE)[[1L]]
+        if( !all(dev.flag == -1L) ) devel <- min(length(dev.flag), 2L)
         dtype <- ifelse(isTRUE(dependencies), 'all', 'required') 
         message(dtype, " [", ifelse(missing.only, "missing only", "re-install") , " - ", ifelse(shallow.deps, "shallow", "deep"), "]")
     }
+    
+    # show details of some options
+    opts <- c(mode = ifelse(quick, 'quick', 'standard'), version = ifelse(devel, ifelse(devel>1, 'development', 'stable'), 'release'))
+    message("* Installation options: ", str_out(opts, Inf, quote = FALSE, sep = " | "))
     
     
     .fields <- GRAN.fields()
