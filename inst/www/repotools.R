@@ -3,7 +3,7 @@
 # Author: Renaud Gaujoux
 # Created: Jun 11, 2014
 # Usage:
-# source('http://tx.technion.ac.il/~renaud/GRAN/repotools.R')
+# source('http://renozao.github.io/repotools/install.R')
 # 
 ###############################################################################
 
