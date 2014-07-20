@@ -2,7 +2,7 @@
 <html lang="en">
   <head>
     <meta charset="utf-8">
-<title>install.pkgs. repotools 1.4.2</title>
+<title>install.pkgs. repotools 1.4.3</title>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <meta name="author" content="">
 
@@ -51,7 +51,7 @@
     </form>--> 
     <ul class="nav navbar-nav navbar-right">
       <li><p class="navbar-text">
-      <span style="font-size:14px" class="label label-primary">Version&nbsp;1.4.2</span>
+      <span style="font-size:14px" class="label label-primary">Version&nbsp;1.4.3</span>
       &nbsp;</p></li>
     </ul>
   </div><!-- /.navbar-collapse -->
@@ -93,6 +93,12 @@ available.pkgs(...)
 download.pkgs(pkgs, destdir, available = NULL, ...)
 
 exists.pkgs(pkgs, repos = getOption("repos"), ..., value = FALSE, fixed = TRUE)
+
+old.pkgs(lib.loc = NULL, repos = getOption("repos"), available = NULL, ..., type = getOption("pkgType"), 
+      verbose = TRUE)
+
+update.pkgs(lib.loc = NULL, repos = getOption("repos"), available = NULL, ..., type = getOption("pkgType"), 
+      verbose = TRUE)
 
 Library(package, lib = NULL, ...)</pre>
     
@@ -228,6 +234,12 @@ Library(package, lib = NULL, ...)</pre>
       <dd>if <code>TRUE</code> skips docs,
   multiple-architectures, demos, and vignettes, to make
   installation as fast as possible.</dd>
+      <dt>lib.loc</dt>
+      <dd>a character vector describing the location
+  of <span style="R">R</span> library trees to search through, or <code>NULL</code>.
+  The default value of <code>NULL</code> corresponds to all
+  libraries currently known to <code><a href='http://www.inside-r.org/r-doc/base/libPaths'>.libPaths</a>()</code>.
+  Non-existent library trees are silently ignored.</dd>
       <dt>package</dt>
       <dd>the name of a package, given as a
   <a href='http://www.inside-r.org/r-doc/base/name'>name</a> or literal character string, or a character
@@ -244,14 +256,18 @@ Library(package, lib = NULL, ...)</pre>
   etc..) and Omegahat dependencies are automatically
   resolved, without the need to enable these repositories;
   </li>
-<li> if necessary, it uses a custom download method
-  based on <span class = "pkg">RCurl</span> that can access password protected
-  repositories; </li>
-<li> it supports the mixed-type
-  installation, of binary and source packages; </li>
-<li> it can
-  install packages hosted on GitHub, if those have been
-  hooked to the GRAN repository. </li>
+<li> if necessary, they use an enhanced <em>curl</em>
+  binary that internally uses the <span class = "pkg">RCurl</span> package,
+  which is configured to support authentication for
+  password protected repositories. Credentials can either
+  passed embbedded within the URL or transparently taken
+  from the user's <em>.netrc</em> file; </li>
+<li> it supports the
+  mixed-type installation, of binary and source packages;
+  </li>
+<li> it can install packages and recursive dependencies
+  hosted on GitHub, if these have been hooked to the GRAN
+  repository. </li>
 </ul></p>
   
       <p><code>install.pkgs</code> installs packages, which can be
@@ -305,7 +321,7 @@ Library(package, lib = NULL, ...)</pre>
       </div>
   <div class="span4">
     <!-- <ul>
-      <li>available.pkgs</li><li>download.pkgs</li><li>exists.pkgs</li><li>install.pkgs</li><li>Library</li>
+      <li>available.pkgs</li><li>download.pkgs</li><li>exists.pkgs</li><li>install.pkgs</li><li>Library</li><li>old.pkgs</li><li>update.pkgs</li>
     </ul>
     <ul>
       
