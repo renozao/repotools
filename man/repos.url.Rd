@@ -45,6 +45,10 @@
 options(R_CHECK_RUNNING_EXAMPLES_=TRUE)
 }
 
+# appending to default repos
+repos.url('+')
+repos.url('+http://another.repo.org')
+
 # using toy example
 f <- system.file('netrc', package = 'repotools')
 if( interactive() ) file.show(f) else cat(readLines(f), sep = "\\n")

@@ -184,7 +184,7 @@ OS_type <- function(){
 #' 
 #' @inheritParams utils::install.packages
 #' @param repos URL or specification of CRAN-like package repository (see section \emph{Repositories}).
-#' Use \code{repos = .('http://myrepo.org')} to append repositories to the default ones.
+#' Use \code{repos = '+http://myrepo.org'} to append repositories to the default ones.
 #' @param ... extra parameters eventually passed to the corresponding base function.
 #' @inheritParams devtools::install
 #' @param dry.run logical that indicates if one should only return the computed set of 
@@ -213,7 +213,7 @@ OS_type <- function(){
 #' \itemize{
 #' \item \code{repos = NULL}, then the default set of repositories defined in option \code{'repos'} are used 
 #' (see \code{getOption('repos')});
-#' \item \code{repos = .('http://one.repo.org', 'http://two.repo.org')} appends one or 
+#' \item \code{repos = c('+http://one.repo.org', 'http://two.repo.org')} appends one or 
 #' more repositories to the default set of repositories.
 #' \item if an element of \code{repos} is \code{'@@CRAN@@'}, then the user is asked to choose a CRAN mirror, 
 #' except if in non-interactive mode, where RStudio mirror is used (\url{http://cran.rstudio.com});
@@ -234,10 +234,13 @@ OS_type <- function(){
 #' @export
 install.pkgs <- function(pkgs, lib = NULL, repos = getOption('repos'), type = getOption('pkgType'), dependencies = NA, available = NULL, ..., quick = FALSE, dry.run = NULL, devel = FALSE, verbose = TRUE){
     
-    # eval repos
-    e <- parent.frame()
-    repos <- eval(substitute(repos), envir = list(`.` = function(...) c(getOption('repos'), ...) ), enclos = e)
+    substitute_q <- function(x, env) {
+          call <- substitute(substitute(y, env), list(y = x))
+          eval(call)
+    }
+    
     if( is.null(repos) ) repos <- getOption('repos')
+    repos <- repos.url(repos)
     
     # detect situation where the package type(s) should be decided based on pkgs
     auto_type <- missing(type)

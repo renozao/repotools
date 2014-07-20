@@ -24,7 +24,7 @@
 \arguments{
   \item{repos}{URL or specification of CRAN-like package
   repository (see section \emph{Repositories}). Use
-  \code{repos = .('http://myrepo.org')} to append
+  \code{repos = '+http://myrepo.org'} to append
   repositories to the default ones.}
 
   \item{...}{extra parameters eventually passed to the
@@ -194,7 +194,7 @@
   \itemize{ \item \code{repos = NULL}, then the default set
   of repositories defined in option \code{'repos'} are used
   (see \code{getOption('repos')}); \item \code{repos =
-  .('http://one.repo.org', 'http://two.repo.org')} appends
+  c('+http://one.repo.org', 'http://two.repo.org')} appends
   one or more repositories to the default set of
   repositories. \item if an element of \code{repos} is
   \code{'@CRAN@'}, then the user is asked to choose a CRAN

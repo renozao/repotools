@@ -144,6 +144,10 @@ read_netrc <- function(x = file.path(Sys.getenv('HOME'), '.netrc'), std = TRUE, 
 #' @export
 #' @examples
 #' 
+#' # appending to default repos
+#' repos.url('+')
+#' repos.url('+http://another.repo.org')
+#' 
 #' # using toy example
 #' f <- system.file('netrc', package = 'repotools')
 #' if( interactive() ) file.show(f) else cat(readLines(f), sep = "\n")
@@ -155,6 +159,14 @@ read_netrc <- function(x = file.path(Sys.getenv('HOME'), '.netrc'), std = TRUE, 
 repos.url <- function(repos = getOption('repos'), ..., .netrc = NULL){
     
     x <- c(repos, unlist(list(...), use.names = FALSE))
+    
+    # check if appending repos to default repos
+    if( length(grep("^\\+", x)) ){
+        x <- gsub("^\\+", '', x)
+        x <- Filter(nzchar, x)
+        x <- c(getOption('repos'), x)
+    }
+    
     if( length(i <- which(x == '@CRAN@')) ){
         if( !interactive() ) x[i] <- 'http://cran.rstudio.com' 
         else if( !is.na(cran_url <- getOption('repos')['CRAN']) ) x[i] <- cran_url
