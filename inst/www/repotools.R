@@ -24,7 +24,7 @@ require2 <- function(x, lib.loc = NULL, version = NULL, cmp = ">="){
     }
 }
 
-if( !require2('repotools', version = '1.4') ){
+if( !require2('repotools', version = '1.4.1') ){
     
     WINDOWS <- .Platform$OS.type == 'windows' 
     # load devtools
