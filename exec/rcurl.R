@@ -42,9 +42,11 @@ if( !quiet ){
 
 rcurl <- function(){
     suppressMessages(library(RCurl, lib.loc = lib.loc))
-    curl_opts <- list(progressfunction = rcurl_progress_func
-                    , userpwd = userpwd
-                    , noprogress = quiet )
+    curl_opts <- curlOptions(progressfunction = rcurl_progress_func
+                    , userpwd = userpwd # credentials wihtin url
+                    , noprogress = quiet
+                    , netrc = as.numeric(!nzchar(userpwd)) # look for credentials in netrc file if not already provided in url
+                    )
     if( !url.exists(src, .opts = curl_opts) ){
         if( !quiet ){ 
             rcurl_progress_func(NULL, NULL)
