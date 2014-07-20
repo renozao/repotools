@@ -101,7 +101,7 @@ Library(package, lib = NULL, ...)</pre>
       <dt>repos</dt>
       <dd>URL or specification of CRAN-like package
   repository (see section <em>Repositories</em>). Use
-  <code>repos = .('http://myrepo.org')</code> to append
+  <code>repos = '+http://myrepo.org'</code> to append
   repositories to the default ones.</dd>
       <dt>...</dt>
       <dd>extra parameters eventually passed to the
@@ -273,7 +273,7 @@ Library(package, lib = NULL, ...)</pre>
   of repositories defined in option <code>'repos'</code> are used
   (see <code>getOption('repos')</code>); </li>
 <li> <code>repos =
-  .('http://one.repo.org', 'http://two.repo.org')</code> appends
+  c('+http://one.repo.org', 'http://two.repo.org')</code> appends
   one or more repositories to the default set of
   repositories. </li>
 <li> if an element of <code>repos</code> is

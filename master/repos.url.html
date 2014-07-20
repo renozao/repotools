@@ -115,7 +115,22 @@
     <h2 id="examples">Examples</h2>
     <pre><code class="r">
 
-# using toy example
+# appending to default repos
+repos.url(&#39;+&#39;)
+</code></pre>
+
+<pre><code>##                      CRAN 
+## &quot;http://cran.rstudio.com&quot;
+</code></pre>
+
+<pre><code class="r">repos.url(&#39;+http://another.repo.org&#39;)
+</code></pre>
+
+<pre><code>##                      CRAN                           
+## &quot;http://cran.rstudio.com&quot; &quot;http://another.repo.org&quot;
+</code></pre>
+
+<pre><code class="r"># using toy example
 f &lt;- system.file(&#39;netrc&#39;, package = &#39;repotools&#39;)
 if( interactive() ) file.show(f) else cat(readLines(f), sep = &quot;\n&quot;)
 </code></pre>
