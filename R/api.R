@@ -52,8 +52,8 @@ package_type <- function(x){
     .contrib_types[it]
 }
 
-.contrib_types <- c('source', 'win.binary', 'mac.binary')
-.OS_contrib_types <- setNames(.contrib_types, c('unix', 'windows', 'mac'))
+.contrib_types <- c('source', 'win.binary', 'mac.binary', 'mac.binary.mavericks')
+.OS_contrib_types <- setNames(.contrib_types, c('unix', 'windows', 'mac', 'mac'))
 
 #' @importFrom tools write_PACKAGES
 create_repo <- function(dir = '.', type = NULL, pkgs = NULL, all = TRUE, ..., clean = FALSE, verbose = FALSE){
@@ -170,11 +170,13 @@ OS_type <- function(){
 #' \itemize{
 #' \item Bioconductor (soft, data/annotation, etc..) and Omegahat dependencies 
 #' are automatically resolved, without the need to enable these repositories; 
-#' \item if necessary, it uses a custom download method based on \pkg{RCurl} that 
-#' can access password protected repositories;
+#' \item if necessary, they use an enhanced \emph{curl} binary that internally uses the \pkg{RCurl} 
+#' package, which is configured to support authentication for password protected repositories.
+#' Credentials can either passed embbedded within the URL or transparently taken from the 
+#' user's \emph{.netrc} file;
 #' \item it supports the mixed-type installation, of binary and source packages;
-#' \item it can install packages hosted on GitHub, if those have been hooked to 
-#' the GRAN repository.
+#' \item it can install packages and recursive dependencies hosted on GitHub, 
+#' if these have been hooked to the GRAN repository.
 #' } 
 #' 
 #' \code{install.pkgs} installs packages, which can be local, remote or in a CRAN-like repository, 
@@ -252,10 +254,14 @@ install.pkgs <- function(pkgs, lib = NULL, repos = getOption('repos'), type = ge
         on.exit(Sys.unsetenv('R_REPOTOOLS_DEBUG'), add = TRUE)
     }
     # infer dry.run if necessary: when there is mismatch between the requested and the OS binary types
+    dry.run.show <- TRUE
     if( is.null(dry.run) ){
         dry.run <- contrib_bintype(type) != contrib_bintype()
         if( dry.run ) 
             message("NOTE: forcing dry run due incompatible binary package type [", contrib_bintype(type) ," vs. ", contrib_bintype(), " (OS)]")
+    }else if( is_NA(dry.run) ){
+        dry.run.show <- FALSE
+        dry.run <- TRUE
     }
     
     x <- pkgs
@@ -297,9 +303,9 @@ install.pkgs <- function(pkgs, lib = NULL, repos = getOption('repos'), type = ge
     
     if( !length(x) ) return()
     
-    if( dry.run ) message("*** DRY RUN ***")
+    if( dry.run && dry.run.show ) message("*** DRY RUN ***")
     
-    message("* Dependencies installation: ", appendLF = FALSE)
+    message("* Dependency scope: ", appendLF = FALSE)
     if( isFALSE(dependencies) ) message("none")
     else {
         if( isTRUE(dependencies) ) dependencies <- 'all'
@@ -326,11 +332,20 @@ install.pkgs <- function(pkgs, lib = NULL, repos = getOption('repos'), type = ge
     
     # check that all dependencies are available in the current loaded repo
     check_repo <- local({
+        pkgs <- x
         .all_available <- NULL
-        f <- c('parent', 'name', 'compare', 'version', 'depLevel', 'depth', 'Source', 'idx', 'Hit')
+        f <- c('parent', 'query', 'name', 'compare', 'version', 'depLevel', 'depth', 'Source', 'idx', 'Hit')
         cNA <- as.character(NA)
-        .pkgs <- data.frame(parent = pkgs, name = pkgs, cNA, cNA, cNA, 0, cNA, as.integer(NA), cNA, stringsAsFactors = FALSE)
+        
+        .pkgs <- data.frame(parent = pkgs, query = pkgs, name = pkgs, cNA, cNA, cNA, 0, cNA, as.integer(NA), cNA, stringsAsFactors = FALSE)
         colnames(.pkgs) <- f
+        # add initial target version requirement if any
+        if( length(iv <- grep("[~ (]", pkgs)) ){
+            m <- str_match(pkgs, "^~?([^ (]+)\\s*(\\(?\\s*([<>=]=?)\\s*([0-9.-]+).*)?")
+            .pkgs[, c('parent', 'name', 'compare', 'version')] <- m[, c(2L, 2, 4:5)]
+            pkgs <- m[, 2L]
+        }
+        
         .pkgs_init <- .pkgs 
         function(available, source, disjoint = FALSE, latest = FALSE){
                 if( !nargs() ){
@@ -379,6 +394,7 @@ install.pkgs <- function(pkgs, lib = NULL, repos = getOption('repos'), type = ge
                     }
                     
                     if( !is.null(deps) && nrow(deps) ){
+                            deps$query <- NA
                             deps$Source <- NA
                             deps$idx <- as.integer(NA)
                             deps$Hit <- NA
@@ -430,8 +446,9 @@ install.pkgs <- function(pkgs, lib = NULL, repos = getOption('repos'), type = ge
         to_install <- x
         
     }else if( !is.null(available) ){
-        check_repo(available, 'AVAIL')
+        check_repo(available, 'AVAIL', latest = devel > 0)
         to_install <- check_repo()
+        repos <- unique(as.character(to_install$Repository))
         
     }else{
         
@@ -451,14 +468,14 @@ install.pkgs <- function(pkgs, lib = NULL, repos = getOption('repos'), type = ge
         repos <- repos.url(repos)
         
         message("* Looking up available packages in ", repo_type, " repositories ... ", appendLF = FALSE)
-        check_res <- check_repo(p, paste0('REPOS', if( length(siteRepos) ) '*'))
+        check_res <- check_repo(p, paste0('REPOS', if( length(siteRepos) ) '*'), latest = devel > 0)
         
         if( check_res$missing ){ # try against Bioc repos
             message("* Checking including Bioconductor repository ... ", appendLF = FALSE)
-            bioc_repo <- .biocinstallRepos()
+            bioc_repo <- .biocinstallRepos(siteRepos)
             p_bioc <- available.pkgs(contrib.url2(setdiff(bioc_repo, repos), type = type), fields = .fields)
             # use Bioc repos if anything found (this includes CRAN)
-            check_res <- check_repo(p_bioc, 'BioC', disjoint = TRUE)
+            check_res <- check_repo(p_bioc, 'BioC', disjoint = TRUE, latest = devel > 0)
             if( length(check_res$hit) ) repos <- bioc_repo
         }
     
@@ -531,6 +548,11 @@ install.pkgs <- function(pkgs, lib = NULL, repos = getOption('repos'), type = ge
     }
     
 #    to_install[c(1, sample(nrow(to_install), 5)), 'Source'] <- NA
+    # skip packages flagged as trials
+    if( length(try_no_hit <- which(is.na(to_install$Source) & grepl("^~", to_install$query))) )
+        to_install <- to_install[-try_no_hit,, drop = FALSE]
+    
+    # check not found
     if( length(not_found <- which(is.na(to_install$Source))) ){
         
         miss <- to_install[not_found, ]
@@ -550,6 +572,7 @@ install.pkgs <- function(pkgs, lib = NULL, repos = getOption('repos'), type = ge
             if( !dry.run ) stop(msg)
             else warning(msg)
         }
+        to_install <- to_install[-not_found[c(miss_pkg, miss_req, miss_dep)], ]
     }
     
     # install remaining packages from repositories
@@ -725,6 +748,58 @@ exists.pkgs <- function(pkgs, repos = getOption('repos'), ..., value = FALSE, fi
     # use original names
     setNames(res, pkgs)
 }
+
+#' @rdname api
+#' @export
+old.pkgs <- function(lib.loc = NULL, repos = getOption("repos"), available = NULL, ..., type = getOption("pkgType"), verbose = TRUE){
+    
+    # dump messages if requested
+    if( !verbose ) message <- function(...) NULL
+    
+    # load installed packages
+    inst <- installed.packages(lib.loc)
+    if( is.null(available) ){
+        # preform a fake installation available packages
+        avail <- install.pkgs(rownames(inst), repos = repos, type = type, dry.run = NA, verbose = verbose)
+        avail <- as.matrix(avail)
+    }else{
+        avail <- as.matrix(available)
+        avail[rownames(avail) %in% rownames(inst),, drop = FALSE]
+    }
+    
+    ## cleanup/reformat
+    # remove packages with no Hit
+    avail <- avail[!is.na(avail[,'Package']),, drop = FALSE]
+    # drop non-standard columns (repotools-specific)
+    istd <- which(colnames(avail) == 'Package') - 1L
+    extra <- avail[, 1:istd, drop = FALSE]
+    avail <- avail[, -(1:istd), drop = FALSE]
+    
+    # call base function
+    old <- old.packages(lib.loc = lib.loc, available = avail, instPkgs = inst)
+    # re-attach extra fields
+    cbind(extra[rownames(old), , drop = FALSE], old) 
+}
+
+#' @rdname api
+#' @export
+update.pkgs <- function(lib.loc = NULL, repos = getOption("repos"), available = NULL, ..., type = getOption("pkgType"), verbose = TRUE){
+    
+    # load installed packages
+    inst <- installed.packages(lib.loc)
+    req <- sprintf("~%s (> %s)", inst[, 'Package'], inst[, 'Version'])
+    
+    if( is.null(available) ){
+        # preform a fake installation available packages
+        available <- install.pkgs(req, repos = repos, type = type, ..., verbose = verbose)
+        
+    }else install.pkgs(req, available = as.matrix(available), ..., verbose = verbose) 
+    
+#    old <- old.pkgs(lib.loc = lib.loc, available = available, verbose = verbose)
+#    install.pkgs(req, available = as.matrix(available), verbose = verbose, dry.run = TRUE)
+    
+}
+
 
 #' \code{Library} tries loading packages and install them if needed. 
 #' 

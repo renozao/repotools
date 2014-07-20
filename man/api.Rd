@@ -4,6 +4,8 @@
 \alias{exists.pkgs}
 \alias{install.pkgs}
 \alias{Library}
+\alias{old.pkgs}
+\alias{update.pkgs}
 \title{Enhanced Package Installation}
 \usage{
   install.pkgs(pkgs, lib = NULL,
@@ -18,6 +20,14 @@
 
   exists.pkgs(pkgs, repos = getOption("repos"), ...,
     value = FALSE, fixed = TRUE)
+
+  old.pkgs(lib.loc = NULL, repos = getOption("repos"),
+    available = NULL, ..., type = getOption("pkgType"),
+    verbose = TRUE)
+
+  update.pkgs(lib.loc = NULL, repos = getOption("repos"),
+    available = NULL, ..., type = getOption("pkgType"),
+    verbose = TRUE)
 
   Library(package, lib = NULL, ...)
 }
@@ -147,6 +157,12 @@
   multiple-architectures, demos, and vignettes, to make
   installation as fast as possible.}
 
+  \item{lib.loc}{a character vector describing the location
+  of \R library trees to search through, or \code{NULL}.
+  The default value of \code{NULL} corresponds to all
+  libraries currently known to \code{\link{.libPaths}()}.
+  Non-existent library trees are silently ignored.}
+
   \item{package}{the name of a package, given as a
   \link{name} or literal character string, or a character
   string, depending on whether \code{character.only} is
@@ -174,12 +190,16 @@
   \itemize{ \item Bioconductor (soft, data/annotation,
   etc..) and Omegahat dependencies are automatically
   resolved, without the need to enable these repositories;
-  \item if necessary, it uses a custom download method
-  based on \pkg{RCurl} that can access password protected
-  repositories; \item it supports the mixed-type
-  installation, of binary and source packages; \item it can
-  install packages hosted on GitHub, if those have been
-  hooked to the GRAN repository. }
+  \item if necessary, they use an enhanced \emph{curl}
+  binary that internally uses the \pkg{RCurl} package,
+  which is configured to support authentication for
+  password protected repositories. Credentials can either
+  passed embbedded within the URL or transparently taken
+  from the user's \emph{.netrc} file; \item it supports the
+  mixed-type installation, of binary and source packages;
+  \item it can install packages and recursive dependencies
+  hosted on GitHub, if these have been hooked to the GRAN
+  repository. }
 
   \code{install.pkgs} installs packages, which can be
   local, remote or in a CRAN-like repository, possibly

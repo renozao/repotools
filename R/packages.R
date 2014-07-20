@@ -13,7 +13,7 @@ package.hash <- function(x){
 }
 package.hash <- Vectorize(package.hash)
 
-# match lowest/latest compatible version
+# match minimal/latest compatible version
 match_available <- function(deps, available, latest = FALSE){
     
     dep_name <- if( is.character(deps) ) deps else deps$name
@@ -23,8 +23,8 @@ match_available <- function(deps, available, latest = FALSE){
     if( !length(ia) ) return( setNames(rep(NA, length(dep_name)), dep_name))
     
     available <- available[ia, , drop = FALSE]
-    # reorder as requested
-    ov <- orderVersion(available[, 'Version'], decreasing = latest)
+    # reorder always prioritizing the latest version
+    ov <- orderVersion(available[, 'Version'], decreasing = TRUE)
     available <- available[ov, , drop = FALSE]
     
     # case of a package name
@@ -33,25 +33,29 @@ match_available <- function(deps, available, latest = FALSE){
         
     }else{
     
+        # On Windows prefer versions that do not need compilation (i.e. binaries --- most likely)
+        prefer_no_compile <- !latest && OS_type() == 'windows'
+
         #print(available)
         # check against version requirement
         i_available <- function(pkg, compare, version) {
+            # NA if not found
             if ( !length(i <- which(available[, 'Package'] == pkg)) ) NA
-            else if (is.na(compare)){
+            else if (is.na(compare)){ # no version requirement
                 # limit to binary packages if necessary and possible
-                if( !latest && length(i) > 1L ){
+                if( prefer_no_compile && length(i) > 1L ){
                     compilation <- available[i, 'NeedsCompilation']
                     if( any(tolower(compilation) %in% 'yes') && length(i_bin <- which(is.na(compilation))) )
                         i <- i[i_bin]
                 }
                 unname(i[1L])
-            }else{
+            }else{ # filter based on version requirement
                 compare <- match.fun(compare)
                 pass <- which(compare(package_version(available[i, 'Version']), version))
                 if( length(pass) ){
                     i <- i[pass]
                     # limit to binary packages if necessary and possible
-                    if( !latest && length(i) > 1L ){
+                    if( prefer_no_compile && length(i) > 1L ){
                         compilation <- available[i, 'NeedsCompilation']
                         if( any(tolower(compilation) %in% 'yes') && length(i_bin <- which(is.na(compilation))) )
                                 i <- i[i_bin]
@@ -77,7 +81,7 @@ list.dependencies <- function(pkg, available, all = NA, missing.only = FALSE, re
         
         # empty result
         c0 <- character(0)
-        empty <- data.frame(parent = c0, name = c0, compare = c0, version = c0, depLevel = c0, depth = numeric(0), stringsAsFactors = FALSE)
+        empty <- data.frame(parent = c0, query = c0, name = c0, compare = c0, version = c0, depLevel = c0, depth = numeric(0), stringsAsFactors = FALSE)
         
         # early exit if no package passed
         if( !nargs() ) return(empty)
