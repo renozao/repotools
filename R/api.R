@@ -442,7 +442,7 @@ install.pkgs <- function(pkgs, lib = NULL, repos = getOption('repos'), type = ge
         siteRepos <- setdiff(repos, getOption('repos'))
         default_repos <- setdiff(repos, siteRepos)
         
-        message('* Initial lookup:\n  - Default repos: ', if( length(default_repos) ) default_repos else NA)
+        message('* Initial lookup:\n  - Default repos: ', if( length(default_repos) ) str_out(default_repos, Inf) else NA)
         repo_type <- 'default' 
         if( length(siteRepos) ){
             repo_type <- 'extended'
