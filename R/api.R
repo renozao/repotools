@@ -247,6 +247,10 @@ install.pkgs <- function(pkgs, lib = NULL, repos = getOption('repos'), type = ge
     
     # dump messages if requested
     if( !verbose ) message <- function(...) NULL
+    if( is.infinite(verbose) ){ # enable rcurl debug mode
+        Sys.setenv(R_REPOTOOLS_DEBUG='')
+        on.exit(Sys.unsetenv('R_REPOTOOLS_DEBUG'), add = TRUE)
+    }
     # infer dry.run if necessary: when there is mismatch between the requested and the OS binary types
     if( is.null(dry.run) ){
         dry.run <- contrib_bintype(type) != contrib_bintype()
@@ -265,7 +269,7 @@ install.pkgs <- function(pkgs, lib = NULL, repos = getOption('repos'), type = ge
     if( !is.null(lib) ){
         ol <- .libPaths()
         .libPaths(c(lib, .libPaths()))
-        on.exit( .libPaths(ol) )
+        on.exit( .libPaths(ol), add = TRUE)
     }
     
     # handle local source/binary packages
