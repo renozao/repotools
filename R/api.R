@@ -340,8 +340,8 @@ install.pkgs <- function(pkgs, lib = NULL, repos = getOption('repos'), type = ge
         .pkgs <- data.frame(parent = pkgs, query = pkgs, name = pkgs, cNA, cNA, cNA, 0, cNA, as.integer(NA), cNA, stringsAsFactors = FALSE)
         colnames(.pkgs) <- f
         # add initial target version requirement if any
-        if( length(iv <- grep("[~ (]", pkgs)) ){
-            m <- str_match(pkgs, "^~?([^ (]+)\\s*(\\(?\\s*([<>=]=?)\\s*([0-9.-]+).*)?")
+        if( length(iv <- grep("[? (]", pkgs)) ){
+            m <- str_match(pkgs, "^[?]?([^ (]+)\\s*(\\(?\\s*([<>=]=?)\\s*([0-9.-]+).*)?")
             .pkgs[, c('parent', 'name', 'compare', 'version')] <- m[, c(2L, 2, 4:5)]
             pkgs <- m[, 2L]
         }
@@ -549,7 +549,7 @@ install.pkgs <- function(pkgs, lib = NULL, repos = getOption('repos'), type = ge
     
 #    to_install[c(1, sample(nrow(to_install), 5)), 'Source'] <- NA
     # skip packages flagged as trials
-    if( length(try_no_hit <- which(is.na(to_install$Source) & grepl("^~", to_install$query))) )
+    if( length(try_no_hit <- which(is.na(to_install$Source) & grepl("^[?]", to_install$query))) )
         to_install <- to_install[-try_no_hit,, drop = FALSE]
     
     # check not found
@@ -764,7 +764,7 @@ old.pkgs <- function(lib.loc = NULL, repos = getOption("repos"), available = NUL
         avail <- as.matrix(avail)
     }else{
         avail <- as.matrix(available)
-        avail[rownames(avail) %in% rownames(inst),, drop = FALSE]
+        avail[avail[, 'Package'] %in% rownames(inst), , drop = FALSE]
     }
     
     ## cleanup/reformat
@@ -787,17 +787,15 @@ update.pkgs <- function(lib.loc = NULL, repos = getOption("repos"), available = 
     
     # load installed packages
     inst <- installed.packages(lib.loc)
-    req <- sprintf("~%s (> %s)", inst[, 'Package'], inst[, 'Version'])
+    # build query: request optional installation of package with version higher than the one installed
+    query <- sprintf("?%s (> %s)", inst[, 'Package'], inst[, 'Version'])
     
     if( is.null(available) ){
-        # preform a fake installation available packages
-        available <- install.pkgs(req, repos = repos, type = type, ..., verbose = verbose)
+        # installation available packages
+        install.pkgs(query, repos = repos, type = type, ..., verbose = verbose)
         
-    }else install.pkgs(req, available = as.matrix(available), ..., verbose = verbose) 
-    
-#    old <- old.pkgs(lib.loc = lib.loc, available = available, verbose = verbose)
-#    install.pkgs(req, available = as.matrix(available), verbose = verbose, dry.run = TRUE)
-    
+    }else install.pkgs(query, available = as.matrix(available), ..., verbose = verbose) 
+        
 }
 
 
