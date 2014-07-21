@@ -26,8 +26,9 @@ if( !devel ){
 	suppressMessages(devtools::load_all('pkg', quiet = TRUE))
 }
 
-# genererate repository next to source github/ directory
-src <- getArg('--src', '~/public_html/GRAN/github')
+# genererate repository from source github/ directory
+src <- normalizePath(getArg('--src', 'github'))
+out <- getArg('--out', dirname(src))
 
-updated_repo_path <- repotools:::GRAN.update(src, verbose = TRUE)
+updated_repo_path <- repotools:::GRAN.update(src, out, verbose = TRUE)
 cat(updated_repo_path)
