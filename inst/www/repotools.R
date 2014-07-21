@@ -69,8 +69,9 @@ if( !require2('repotools', version = '1.5.1') ){
         
     }else{
         # add BiocInstaller if needed
-        if( !QUICK ) .biocinstallRepos()
-        install_github('repotools', 'renozao', quick = QUICK)    
+        # NB: do not setup repos tom make sure ReportingTools CANNOT be found (too big)
+            if( !QUICK ) .biocinstallRepos()
+            install_github('repotools', 'renozao', quick = QUICK)
         
     }
     library(repotools)
