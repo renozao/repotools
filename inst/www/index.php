@@ -1,5 +1,7 @@
 <?php
 
+$GRAN_github = "github";
+
 //error_reporting(E_ALL);
 ini_set('display_errors', 0);
 
@@ -39,7 +41,7 @@ function api_get_contents($user, $repo, $ref, $path){
 //   * $secret = 'YOUR_OWN_HOOK_SECRET';
 //   * or $secret = array('user1' => 'HOOK_SECRET_FOR_USER1', 'user2' => 'HOOK_SECRET_FOR_USER2', ...);
 //
-include("config.php");
+include("$GRAN_github/config.php");
 
 if( isset($_POST['payload']) ){
 
@@ -94,8 +96,8 @@ if( isset($_POST['payload']) ){
 	echo "* Checking DESCRIPTION file ... ";
 	$hash_desc = md5($desc);
 	$suffix = $ref == 'master' ? 'release' : 'devel';
-	$GRAN_contrib = "github/";
-	$DESCRIPTION_file = "{$GRAN_contrib}{$repo_name}-{$suffix}/DESCRIPTION";
+	$GRAN_pkg_dir = $GRAN_github.'/';
+	$DESCRIPTION_file = "{$GRAN_pkg_dir}{$repo_name}-{$suffix}/DESCRIPTION";
 	if( !is_file($DESCRIPTION_file) || $hash_desc != md5_file($DESCRIPTION_file) ){
 		echo "[OK: $hash_desc]\n";
 		echo "* Updating DESCRIPTION file ... ";
@@ -115,7 +117,7 @@ if( isset($_POST['payload']) ){
 	
 	echo "* Checking src/ sub-directory ... ";
 	// look for src/ sub-directory
-	$local_src = "{$GRAN_contrib}{$repo_name}-{$suffix}/src";
+	$local_src = "{$GRAN_pkg_dir}{$repo_name}-{$suffix}/src";
 	if( !is_null(api_get_contents($user, $repo_name, $ref, 'src')) ){
 		if( is_dir($local_src) ) echo "[SKIP: no changes]\n";
 		else{
