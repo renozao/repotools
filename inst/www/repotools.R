@@ -7,6 +7,11 @@
 # 
 ###############################################################################
 
+# setup up RStudio mirror if necessary
+if( !interactive() ){
+    options(repos = gsub('@CRAN@', 'http://cran.rstudio.com', getOption('repos'), fixed = TRUE))
+}
+
 require2 <- function(x, lib.loc = NULL, version = NULL, cmp = ">="){
     
     # look for package
