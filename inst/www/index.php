@@ -11,7 +11,7 @@ function die_result($msg){
 }
 
 function flag_update(){
-	file_put_contents($GRAN_github."/do-update", time());
+	file_put_contents($GRAN_github."/do-update", strftime("%F %H:%M:%S"));
 }
 
 function api_get_contents($user, $repo, $ref, $path){
