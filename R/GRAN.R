@@ -143,6 +143,21 @@ gh_read.dcf <- function(repos, user = NULL, fields = NULL, raw = FALSE){
     res
 }
 
+.md5hash <- function(x, strip = x){
+    x <- normalizePath(x)
+    strip <- normalizePath(strip)
+    # compute hash list of source directory
+    hash <- md5sum(dir(x, recursive = TRUE, full.names = TRUE))
+    
+    # process
+    hash <- hash[names(hash) != 'MD5']
+    names(hash) <- gsub(strip, '', names(hash), fixed = TRUE)
+    names(hash) <- gsub('^/', '', names(hash))
+    
+    # return
+    hash
+}
+
 #' @importFrom tools md5sum
 GRAN.update <- function(src, outdir = dirname(normalizePath(src)), clean = FALSE, force = FALSE, fields = GRAN.fields(), actions = c('PACKAGES', 'index'), verbose = TRUE){
     
@@ -150,13 +165,16 @@ GRAN.update <- function(src, outdir = dirname(normalizePath(src)), clean = FALSE
     if( !verbose ) message <- function(...) NULL
     
     message("* Updating GRAN in ", outdir, ' [source: ', src, ']')
+    
+    # initialise complete repository structure if necessary
+    if( !is.dir(outdir) || clean ) create_repo(outdir, pkgs = NA)
+    
     # check if things have changed based on MD5 file -- unless required to force update
-    # generate current MD5 content
     MD5_file <- file.path(src, 'MD5')
-    hash <- md5sum(dir(src, recursive = TRUE, full.names = TRUE))
-    hash <- hash[names(hash) != MD5_file]
-    names(hash) <- gsub(src, '', names(hash), fixed = TRUE)
-    names(hash) <- gsub('^/', '', names(hash))
+    
+    # generate current MD5 content
+    # compute hash list of output repo directory
+    hash <- c(.md5hash(src), .md5hash(file.path(outdir, c('src', 'bin')), strip = outdir))
     
     if( file.exists(MD5_file) && !force ){
         message("* Checking changes based on MD5 file ... ", appendLF = FALSE)
@@ -184,9 +202,6 @@ GRAN.update <- function(src, outdir = dirname(normalizePath(src)), clean = FALSE
     # match type of action to perform
     actions <- match.arg(actions, several.ok = TRUE)
     
-    # initialise complete repository structure if necessary
-    if( !is.dir(outdir) || clean ) create_repo(outdir, pkgs = NA)
-
     # update PACKAGES files
     if( 'PACKAGES' %in% actions ){
         # update from built packages
@@ -201,13 +216,18 @@ GRAN.update <- function(src, outdir = dirname(normalizePath(src)), clean = FALSE
             P[no_repo, 'GithubRepo'] <- P[no_repo, 'Package']  
         }
         # merge with PACKAGES in src/contrib
-        src_contrib <- contrib.url(outdir, type = 'source');
-        pfile <- file.path(src_contrib, 'PACKAGES')
+        out_contrib <- contrib.url(outdir, type = 'source');
+        pfile <- file.path(out_contrib, 'PACKAGES')
         write.dcf(P, file = pfile, append = TRUE)
         # create .gz version
         gzfile <- gzfile(paste0(pfile, '.gz'))
         write.dcf(P, file = gzfile)
         close(gzfile)
+        
+        # update hash for the generated PACKAGES files
+        hash_PACK <- c(.md5hash(src), .md5hash(out_contrib, strip = outdir))
+        hash_PACK <- hash_PACK[grep("PACKAGES(\\.gz)?$", names(hash_PACK))]
+        hash[names(hash_PACK)] <- hash_PACK
     }
     
     # generate index file
