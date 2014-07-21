@@ -7,6 +7,21 @@
 # 
 ###############################################################################
 
+local({
+            
+WINDOWS <- .Platform$OS.type == 'windows' 
+QUICK <- if( exists('QUICK') ) get('QUICK') 
+                 else if( '--quick' %in% commandArgs(TRUE) ) TRUE
+                 else WINDOWS
+
+ .biocinstallRepos <- function(siteRepos = NULL, lib = NULL){
+     if( !require('BiocInstaller', character.only = TRUE, lib.loc = lib) ){
+        source('http://www.bioconductor.org/biocLite.R')
+     }
+     library(BiocInstaller, lib.loc = lib)
+     biocinstallRepos(siteRepos)
+ }
+ 
 # setup up RStudio mirror if necessary
 if( !interactive() ){
     options(repos = gsub('@CRAN@', 'http://cran.rstudio.com', getOption('repos'), fixed = TRUE))
@@ -31,7 +46,7 @@ require2 <- function(x, lib.loc = NULL, version = NULL, cmp = ">="){
 
 if( !require2('repotools', version = '1.5.1') ){
     
-    WINDOWS <- .Platform$OS.type == 'windows' 
+    
     # load devtools
     if( !require2('devtools') ){
         install.packages('devtools')
@@ -40,7 +55,7 @@ if( !require2('repotools', version = '1.5.1') ){
     
     # install required version of pkgmaker
     if( !require2('pkgmaker', version = '0.25.6') ){    
-        install_github('pkgmaker', 'renozao', 'develop', quick = WINDOWS)
+        install_github('pkgmaker', 'renozao', 'develop', quick = QUICK)
     }
     
     # install BiocInstaller
@@ -51,10 +66,15 @@ if( !require2('repotools', version = '1.5.1') ){
     # install repotools
     if( WINDOWS ){
         install.packages('repotools', repos = c(getOption('repos'), 'http://tx.technion.ac.il/~renaud/GRAN'))
+        
     }else{
-        install_github('repotools', 'renozao')
+        # add BiocInstaller if needed
+        if( !QUICK ) .biocinstallRepos()
+        install_github('repotools', 'renozao', quick = QUICK)    
+        
     }
     library(repotools)
 }
 message("Loaded repotools version ", packageVersion('repotools'))
 
+})
