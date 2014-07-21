@@ -10,6 +10,7 @@
 
 # update repotools
 source("http://renozao.github.io/repotools/install.R")
+#devtools::load_all('pkg', quiet = TRUE)
 
 # process command line arguments
 args <- commandArgs(TRUE)
@@ -19,5 +20,5 @@ getArg <- function(x, default = NULL){
 }
 
 # genererate repository next to source github/ directory
-src <- getArg('--src', '.')
+src <- getArg('--src', '~/public_html/GRAN/github')
 repotools:::GRAN.update(src, verbose = TRUE)

@@ -180,5 +180,7 @@ GRAN.update <- function(src, outdir = dirname(normalizePath(src)), clean = FALSE
         message("OK")
     }
     
+    # return output directory to calling script in non-interactive mode
+    if( !interactive() ) cat(outdir)
     invisible(outdir)
 }
