@@ -143,9 +143,6 @@ gh_read.dcf <- function(repos, user = NULL, fields = NULL, raw = FALSE){
     res
 }
 
-#' Update 
-#' 
-#' @export
 GRAN.update <- function(src, outdir = dirname(normalizePath(src)), clean = FALSE, fields = GRAN.fields(), actions = c('PACKAGES', 'index'), verbose = TRUE){
     
     # dump messages if non-verbose

@@ -20,4 +20,4 @@ getArg <- function(x, default = NULL){
 
 # genererate repository next to source github/ directory
 src <- getArg('--src', '.')
-GRAN.update(src, verbose = TRUE)
+repotools:::GRAN.update(src, verbose = TRUE)
