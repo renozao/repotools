@@ -52,25 +52,32 @@ package_type <- function(x){
     .contrib_types[it]
 }
 
-.contrib_types <- c('source', 'win.binary', 'mac.binary', 'mac.binary.mavericks')
-.OS_contrib_types <- setNames(.contrib_types, c('unix', 'windows', 'mac', 'mac'))
+.contrib_types <- c('source', 'win.binary', 'mac.binary')
+.contrib_url_types <- setNames(c(.contrib_types, 'mac.binary'), c('source', 'win.binary', 'mac.binary', 'mac.binary.mavericks'))
+.OS_contrib_types <- setNames(.contrib_types, c('unix', 'windows', 'mac'))
 
 #' @importFrom tools write_PACKAGES
 create_repo <- function(dir = '.', type = NULL, pkgs = NULL, all = TRUE, ..., clean = FALSE, verbose = FALSE){
     
+    # dump messages if non-verbose
+    if( !verbose ) message <- function(...) NULL
     
     # clean root directory if requested
-    if( clean ) unlink(dir, recursive = TRUE)
+    if( clean && is.dir(dir) ) unlink(dir, recursive = TRUE)
     
     # create root directory if needed
     dir.create(dir, recursive = TRUE, showWarnings = FALSE)
     repo_dir <- normalizePath(dir)
+    repo_url <- paste0('file://', if( OS_type() == 'windows' ) "/" , repo_dir)
     
-    if( !is.null(type) ) .contrib_types <- type
+    contrib_url_types <- type %||% names(.contrib_url_types)
     
     # create directory structure
-    contribs <- sapply(.contrib_types, contrib.url, repos = repo_dir)
+    contribs <- sapply(contrib_url_types, contrib.url, repos = repo_dir)
     sapply(contribs, dir.create, recursive = TRUE, showWarnings = FALSE)
+    
+    # early exit if required
+    if( is_NA(pkgs) ) return( invisible(repo_url) ) 
     
     # fill repo with files
     if( !is.null(pkgs) && is.character(pkgs) ){
@@ -79,30 +86,30 @@ create_repo <- function(dir = '.', type = NULL, pkgs = NULL, all = TRUE, ..., cl
     }
     
     # change to repo base directory
-    if( verbose ) message('Building repository in ', repo_dir)
+    message('* Building repository in ', repo_dir)
     od <- setwd(repo_dir)
     on.exit( setwd(od) )
     
     # write PACKAGES files
-    makePACKAGES <- function(dir = '.', ...){
+    .makePACKAGES <- function(dir = '.', ...){
         od <- setwd(dir)
         on.exit( setwd(od) )
         
-        if( verbose ) message('Generating PACKAGES file for ', dir, ' ... ', appendLF = FALSE)
+        if( verbose ) message('  - Processing ', dir, ' ... ', appendLF = FALSE)
         n <- write_PACKAGES('.', ...)
         if( verbose ) message('OK [', n, ']')
         n
     }
     
-    n <- sapply(.contrib_types, function(t, ...){
-                bdir <- contrib.url('.', type = t)
-                if( all ) bdir <- list.dirs(dirname(bdir), full.names = TRUE, recursive = FALSE)
-                sapply(bdir, makePACKAGES, type = t, ...)
-    }, ...)
-    if( verbose ) message()
+    message('* Generating PACKAGES files for type(s): ', str_out(contrib_url_types, Inf))
+    n <- sapply(contrib_url_types, function(t, ...){
+            bdir <- contrib.url('.', type = t)
+            if( all ) bdir <- list.dirs(dirname(bdir), full.names = TRUE, recursive = FALSE)
+            sapply(bdir, .makePACKAGES, type = .contrib_url_types[t], ...)
+        }, ...)
     
     # return repo URL
-    invisible(paste0('file://', if( .Platform$OS.type == 'windows' ) "/" , repo_dir))
+    invisible(repo_url)
 }
 
 contrib.url2 <- function(repos = getOption('repos'), type = getOption('pkgType')){
@@ -592,7 +599,8 @@ install.pkgs <- function(pkgs, lib = NULL, repos = getOption('repos'), type = ge
         
         # compute installation groups (source/binary/GRAN)
         # - on non-unix host, default install.packages does not handle mixed source/binary packages installed
-        # - source GRAN packages need to be treated in a special way 
+        # - source GRAN packages need to be treated in a special way and installed last so that their dependencies
+        # have already been installed
         install_groups <- list()
         # split by depth level
         dep_groups <- rev(split(seq(nrow(to_install)), to_install$depth))
@@ -601,8 +609,8 @@ install.pkgs <- function(pkgs, lib = NULL, repos = getOption('repos'), type = ge
             # split by repo type
             repo_type <- ifelse(grepl('/src/contrib$', to_install[, 'Repository']), 'source', contrib_bintype(type))
             # add GRAN-src fake type
-            if( !is.null(to_install$GHref) )
-                repo_type[grepl("GRAN\\*?", to_install$Source) & !is.na(to_install$GHref)] <- 'zGRAN'
+            if( !is.null(ghref <- to_install[['GithubRef']]) )
+                repo_type[grepl("GRAN\\*?", to_install$Source) & !is.na(ghref)] <- 'zGRAN'
             repo_type <- factor(repo_type)
             # put last group's type first to allow optimal merging  
             if( length(install_groups) ){
@@ -656,7 +664,7 @@ install.pkgs <- function(pkgs, lib = NULL, repos = getOption('repos'), type = ge
                         op <- options(repos = repos)
                         on.exit( options(op) )
                         # install from GitHub
-                        install_github(pkg['name'], pkg['GHuser'], pkg['GHref'], quick = quick)
+                        install_github(pkg['GithubRepo'], pkg['GithubUsername'], pkg['GithubRef'], quick = quick)
                     })   
                 }else{
                     opts <- "--with-keep.source"

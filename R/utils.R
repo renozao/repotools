@@ -7,6 +7,9 @@
 #' @import pkgmaker
 NULL
 
+# or-NULL operator (borrowed from Hadley Wickham)
+'%||%' <- function(x, y) if( !is.null(x) ) x else y
+
 smessage <- function(..., indent = 0L, item = NULL, appendLF = FALSE){
     if( is.null(item) ){ # choose item from indent
         .item <- c('*', '*', '-', '-', '>', '>') 

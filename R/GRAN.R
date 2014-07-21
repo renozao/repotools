@@ -11,28 +11,41 @@ api.path <- function(..., type = c('raw', 'api')){
     url
 }
 
+gh_repo_path <- function(user, repo, branch = 'master'){
+    sprintf("http://github.com/%s", file.path(user, repo, branch))
+}
+
 GRAN.repos <- function(...){
     file.path('http://tx.technion.ac.il/~renaud/GRAN', ...)
 }
-GRAN.fields <- function(){
-    c("GHuser", "GHref", 'GHfork')
+GRAN.fields <- function(named = FALSE){
+    f <- c(Repo = 'GithubRepo', User = "GithubUsername", Branch = "GithubRef", Forked = 'GithubFork')
+    if( !named ) f <- unname(f)
+    f
 }
 
 GRAN.available <- function(type = getOption('pkgType'), fields = GRAN.fields(), ..., version = NULL){
     if( is.null(version) ){
-        available.pkgs(contrib.url2(GRAN.repos(), type = type), fields = fields, ...)
+        p <- available.pkgs(contrib.url2(GRAN.repos(), type = type), fields = fields, ...)
     }else{
         p <- available.pkgs(contrib.url(GRAN.repos(), type = type), fields = fields, ..., filters = c("R_version", "OS_type", "subarch"))
         
         invert <- match.fun(ifelse(grepl("^!", version), "!", 'identity'))
         version <- gsub("^!", "", version)   
-        sel <- invert(p[, 'GHref'] %in% version)
-        p[sel, , drop = FALSE] 
+        sel <- invert(p[, 'GithubRef'] %in% version)
+        p <- p[sel, , drop = FALSE]
     }
+    # fix for migration of field names
+    if( length(no_repo <- is.na(p[, 'GithubRepo'])) ){
+        p[no_repo, 'GithubRepo'] <- p[no_repo, 'Package']  
+    }
+    
+    p
 }
 
+# deprecated setup (prior-webhook)
 #' @importFrom RCurl getURL
-update.GRAN <- function(path = 'GRAN', repos = NULL, cleanup = FALSE, fields = GRAN.fields()){
+.GRAN.setup <- function(path = 'GRAN', repos = NULL, cleanup = FALSE, fields = GRAN.fields()){
     
     # create repo src/contrib directory
     repo_dir <- contrib.url(path, type = 'source')
@@ -128,4 +141,47 @@ gh_read.dcf <- function(repos, user = NULL, fields = NULL, raw = FALSE){
         rownames(res) <- repos[, 2L]
     }
     res
+}
+
+#' Update 
+#' 
+#' @export
+GRAN.update <- function(src, outdir = dirname(normalizePath(src)), clean = FALSE, fields = GRAN.fields(), actions = c('PACKAGES', 'index'), verbose = TRUE){
+    
+    # dump messages if non-verbose
+    if( !verbose ) message <- function(...) NULL
+    
+    # match type of action to perform
+    actions <- match.arg(actions, several.ok = TRUE)
+    
+    # initialise complete repository structure if necessary
+    if( !is.dir(outdir) || clean ) create_repo(outdir, pkgs = NA)
+
+    # update PACKAGES files
+    if( 'PACKAGES' %in% actions ){
+        # update from built packages
+        create_repo(outdir, verbose = TRUE)
+        
+        ## add Github packages to source PACKAGES
+        # write PACKAGES file from Github directories 
+        write_PACKAGES(src, type = 'source', unpacked = TRUE, fields = fields, latestOnly = FALSE)
+        P <- available.packages(file.path('file:/', normalizePath(src)), fields = fields, filters = c("R_version", "OS_type", "subarch"))
+        # merge with PACKAGES in src/contrib
+        src_contrib <- contrib.url(outdir, type = 'source');
+        pfile <- file.path(src_contrib, 'PACKAGES')
+        write.dcf(P, file = pfile, append = TRUE)
+        # create .gz version
+        gzfile <- gzfile(paste0(pfile, '.gz'))
+        write.dcf(P, file = gzfile)
+        close(gzfile)
+    }
+    
+    # generate index file
+    if( 'index' %in% actions ){
+        message("* Generating index file ... ")
+        write_PACKAGES_index(outdir, title = 'GRAN: Github R Archive Network')
+        message("OK")
+    }
+    
+    invisible(outdir)
 }

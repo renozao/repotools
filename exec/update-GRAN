@@ -1,0 +1,23 @@
+#!/usr/bin/env Rscript
+# Project: repotools
+# 
+# Author: Renaud Gaujoux
+#
+# R script to run as a cron job to update
+#
+# Created: Jul 21, 2014
+###############################################################################
+
+# update repotools
+source("http://renozao.github.io/repotools/install.R")
+
+# process command line arguments
+args <- commandArgs(TRUE)
+getArg <- function(x, default = NULL){
+    if( length(i <- which(args == x)) ) args[i+1L]
+    else default
+}
+
+# genererate repository next to source github/ directory
+src <- getArg('--src', '.')
+GRAN.update(src, verbose = TRUE)

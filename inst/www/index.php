@@ -35,31 +35,39 @@ function api_get_contents($user, $repo, $ref, $path){
 	return res;
 }
 
-// load local config
-// contains: $secret = 'YOUR_OWN_HOOK_SECRET';
+// load local config, which contains either: 
+//   * $secret = 'YOUR_OWN_HOOK_SECRET';
+//   * or $secret = array('user1' => 'HOOK_SECRET_FOR_USER1', 'user2' => 'HOOK_SECRET_FOR_USER2', ...);
+//
 include("config.php");
 
 if( isset($_POST['payload']) ){
 
-	// compute/check signature (taken from http://isometriks.com/verify-github-webhooks-with-php)
+	// load headers and check for initial ping
 	$headers = getallheaders();
-	$hubSignature = $headers['X-Hub-Signature'];
-	list($algo, $hash) = explode('=', $hubSignature, 2);
-	$payload = file_get_contents('php://input');
-	$data = json_decode($_POST['payload']);
-	$payloadHash = hash_hmac($algo, $payload, $secret);
-	//echo $hash." | ".$payloadHash."\n";
-	if( $hash != $payloadHash ) die();
-
 	if( array_key_exists('X-GitHub-Event', $headers) && $headers['X-GitHub-Event'] == 'ping' ){
 		echo "Initial ping received\n";
 		die();
 	}
 
+	// load payload data, username and user secret SHA salt
+	$data = json_decode($_POST['payload']);
+	$user = $data->repository->owner->name;
+	$SHA_salt = $secret;
+	if( is_array($secret) && array_key_exists($user, $secret) ){
+		$SHA_salt = $secret[$user];
+	}
+	
+	// verify signature (taken from http://isometriks.com/verify-github-webhooks-with-php)
+	$hubSignature = $headers['X-Hub-Signature'];
+	list($algo, $hash) = explode('=', $hubSignature, 2);
+	$payload = file_get_contents('php://input');
+	$payloadHash = hash_hmac($algo, $payload, $SHA_salt);
+	//echo $hash." | ".$payloadHash."\n";
+	if( $hash != $payloadHash ) die();
 
 	//print_r($data);
 	$repo_name = $data->repository->name;
-	$user = $data->repository->owner->name;
 	echo "* Received pushed notification from repository '".$repo_name."'\n";
 	// extract relevant data
 	echo "* Checking pushed branch name ... ";
@@ -86,7 +94,7 @@ if( isset($_POST['payload']) ){
 	echo "* Checking DESCRIPTION file ... ";
 	$hash_desc = md5($desc);
 	$suffix = $ref == 'master' ? 'release' : 'devel';
-	$GRAN_contrib = "src/contrib/github/";
+	$GRAN_contrib = "github/";
 	$DESCRIPTION_file = "{$GRAN_contrib}{$repo_name}-{$suffix}/DESCRIPTION";
 	if( !is_file($DESCRIPTION_file) || $hash_desc != md5_file($DESCRIPTION_file) ){
 		echo "[OK: $hash_desc]\n";
@@ -94,9 +102,11 @@ if( isset($_POST['payload']) ){
 		// create package src/contrib directory if necessary
 		if( !is_dir($pkg_dir = dirname($DESCRIPTION_file)) ) mkdir($pkg_dir, 0777, true);
 		file_put_contents($DESCRIPTION_file, $desc);
-		file_put_contents($DESCRIPTION_file, "GHuser: ".$user."\n", FILE_APPEND);
-		file_put_contents($DESCRIPTION_file, "GHref: ".$ref."\n", FILE_APPEND);
-		file_put_contents($DESCRIPTION_file, "GHfork: ".($data->repository->fork ? 'yes' : 'no')."\n", FILE_APPEND);
+		// add Github-specific fields (including the ones added by devtools::install_github on installation)
+		file_put_contents($DESCRIPTION_file, "GithubRepo: ".$repo_name."\n", FILE_APPEND);
+		file_put_contents($DESCRIPTION_file, "GithubUsername: ".$user."\n", FILE_APPEND);
+		file_put_contents($DESCRIPTION_file, "GithubRef: ".$ref."\n", FILE_APPEND);
+		file_put_contents($DESCRIPTION_file, "GithubFork: ".($data->repository->fork ? 'yes' : 'no')."\n", FILE_APPEND);
 		echo "[OK]\n";
 		
 		// flag for update
@@ -126,8 +136,8 @@ if( isset($_POST['payload']) ){
 	
 }
 
-/* cron job does:
-Rscript -e "tools::write_PACKAGES('GRAN_REPO_URL/src/contrib', unpacked = TRUE, fields = c('GHuser', 'GHref', 'GHfork'), latestOnly = FALSE)"
+/* cron job essentially does:
+Rscript -e "tools::write_PACKAGES('GRAN_REPO_URL/github', unpacked = TRUE, fields = c('GithubRepo', 'GithubUsername', 'GithubRef', 'GithubFork'), latestOnly = FALSE)"
 # rsync ---recursive --delete GRAN_REPO_URL ...
 */
 
