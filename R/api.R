@@ -34,7 +34,7 @@ repo_auth <- function(...){
 }
 
 .biocinstallRepos <- function(siteRepos = NULL, lib = NULL){
-    if( !require.quiet('BiocInstaller', character.only = TRUE, lib.loc = lib) ){
+    if( !qrequire('BiocInstaller', character.only = TRUE, lib.loc = lib) ){
         sourceURL('http://www.bioconductor.org/biocLite.R')
     }
     library(BiocInstaller, lib.loc = lib)
