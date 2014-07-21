@@ -8,17 +8,26 @@
 # Created: Jul 21, 2014
 ###############################################################################
 
-# update repotools
-source("http://renozao.github.io/repotools/install.R")
-#devtools::load_all('pkg', quiet = TRUE)
-
 # process command line arguments
 args <- commandArgs(TRUE)
 getArg <- function(x, default = NULL){
-    if( length(i <- which(args == x)) ) args[i+1L]
-    else default
+    if( length(i <- which(args == x)) ){
+		if( length(args) > i && !grepl("^-", args[i+1L]) ) args[i+1L]
+		else TRUE
+    }else default
+}
+
+devel <- getArg("--devel", FALSE)
+# update repotools
+if( !devel ){
+	source("http://renozao.github.io/repotools/install.R")
+}else{
+	#source("pkg/inst/www/repotools.R")
+	suppressMessages(devtools::load_all('pkg', quiet = TRUE))
 }
 
 # genererate repository next to source github/ directory
 src <- getArg('--src', '~/public_html/GRAN/github')
-repotools:::GRAN.update(src, verbose = TRUE)
+
+updated_repo_path <- repotools:::GRAN.update(src, verbose = TRUE)
+cat(updated_repo_path)
