@@ -20,10 +20,10 @@ getArg <- function(x, default = NULL){
 devel <- getArg("--devel", FALSE)
 # update repotools
 if( !devel ){
-	source("http://renozao.github.io/repotools/install.R")
+	dump <- capture.output(source("http://renozao.github.io/repotools/install.R"))
 }else{
 	#source("pkg/inst/www/repotools.R")
-	suppressMessages(devtools::load_all('pkg', quiet = TRUE))
+	dump <- suppressMessages(devtools::load_all('pkg', quiet = TRUE))
 }
 
 # genererate repository from source github/ directory

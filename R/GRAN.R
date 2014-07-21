@@ -196,6 +196,10 @@ GRAN.update <- function(src, outdir = dirname(normalizePath(src)), clean = FALSE
         # write PACKAGES file from Github directories 
         write_PACKAGES(src, type = 'source', unpacked = TRUE, fields = fields, latestOnly = FALSE)
         P <- available.packages(file.path('file:/', normalizePath(src)), fields = fields, filters = c("R_version", "OS_type", "subarch"))
+        # fix for migration of field names
+        if( length(no_repo <- is.na(P[, 'GithubRepo'])) ){
+            P[no_repo, 'GithubRepo'] <- P[no_repo, 'Package']  
+        }
         # merge with PACKAGES in src/contrib
         src_contrib <- contrib.url(outdir, type = 'source');
         pfile <- file.path(src_contrib, 'PACKAGES')
