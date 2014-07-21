@@ -143,10 +143,43 @@ gh_read.dcf <- function(repos, user = NULL, fields = NULL, raw = FALSE){
     res
 }
 
-GRAN.update <- function(src, outdir = dirname(normalizePath(src)), clean = FALSE, fields = GRAN.fields(), actions = c('PACKAGES', 'index'), verbose = TRUE){
+#' @importFrom tools md5sum
+GRAN.update <- function(src, outdir = dirname(normalizePath(src)), clean = FALSE, force = FALSE, fields = GRAN.fields(), actions = c('PACKAGES', 'index'), verbose = TRUE){
     
     # dump messages if non-verbose
     if( !verbose ) message <- function(...) NULL
+    
+    message("* Updating GRAN in ", outdir, ' [source: ', src, ']')
+    # check if things have changed based on MD5 file -- unless required to force update
+    # generate current MD5 content
+    MD5_file <- file.path(src, 'MD5')
+    hash <- md5sum(dir(src, recursive = TRUE, full.names = TRUE))
+    hash <- hash[names(hash) != MD5_file]
+    names(hash) <- gsub(src, '', names(hash), fixed = TRUE)
+    names(hash) <- gsub('^/', '', names(hash))
+    
+    if( file.exists(MD5_file) && !force ){
+        message("* Checking changes based on MD5 file ... ", appendLF = FALSE)
+        hash0 <- readLines(MD5_file)
+        m <- str_match(hash0, "^([^ ]+) (.*)")
+        hash0 <- setNames(m[, 3L], m[, 2L])
+        # exit if nothing needs to be done
+        if( identical(hash, hash0) || identical(hash[names(hash0)], hash0) ){
+            message('OK [', digest(hash0), ']')
+            return(character())
+        }
+        
+        f_shared <- intersect(names(hash0), names(hash))
+        f <- list(New = setdiff(names(hash), names(hash0))
+                   , Deleted = setdiff(names(hash0), names(hash))
+                    , Changed = f_shared[which(hash[f_shared] != hash0[f_shared])])
+        message(sprintf('NOTE [ %s changed | %s new | %s deleted ]', length(f$Changed), length(f$New), length(f$Deleted)))
+        lapply(names(f), function(t){
+            if( length(f[[t]]) )
+                message(' * ', t, ':\n   - ', str_out(f[[t]], Inf, sep = "\n   - "))  
+        })
+    }
+    
     
     # match type of action to perform
     actions <- match.arg(actions, several.ok = TRUE)
@@ -175,12 +208,14 @@ GRAN.update <- function(src, outdir = dirname(normalizePath(src)), clean = FALSE
     
     # generate index file
     if( 'index' %in% actions ){
-        message("* Generating index file ... ")
+        message("* Generating index file:")
         write_PACKAGES_index(outdir, title = 'GRAN: Github R Archive Network')
-        message("OK")
     }
     
+    message("* Writing MD5 file ... ", appendLF = FALSE)
+    cat(paste(names(hash), hash), file = MD5_file, sep = "\n")
+    message('OK [', digest(hash), ']')
+    
     # return output directory to calling script in non-interactive mode
-    if( !interactive() ) cat(outdir)
     invisible(outdir)
 }
