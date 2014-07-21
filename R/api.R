@@ -56,62 +56,6 @@ package_type <- function(x){
 .contrib_url_types <- setNames(c(.contrib_types, 'mac.binary'), c('source', 'win.binary', 'mac.binary', 'mac.binary.mavericks'))
 .OS_contrib_types <- setNames(.contrib_types, c('unix', 'windows', 'mac'))
 
-#' @importFrom tools write_PACKAGES
-create_repo <- function(dir = '.', type = NULL, pkgs = NULL, all = TRUE, ..., clean = FALSE, verbose = FALSE){
-    
-    # dump messages if non-verbose
-    if( !verbose ) message <- function(...) NULL
-    
-    # clean root directory if requested
-    if( clean && is.dir(dir) ) unlink(dir, recursive = TRUE)
-    
-    # create root directory if needed
-    dir.create(dir, recursive = TRUE, showWarnings = FALSE)
-    repo_dir <- normalizePath(dir)
-    repo_url <- paste0('file://', if( OS_type() == 'windows' ) "/" , repo_dir)
-    
-    contrib_url_types <- type %||% names(.contrib_url_types)
-    
-    # create directory structure
-    contribs <- sapply(contrib_url_types, contrib.url, repos = repo_dir)
-    sapply(contribs, dir.create, recursive = TRUE, showWarnings = FALSE)
-    
-    # early exit if required
-    if( is_NA(pkgs) ) return( invisible(repo_url) ) 
-    
-    # fill repo with files
-    if( !is.null(pkgs) && is.character(pkgs) ){
-        if( verbose ) message('Copying package files into repository')
-        mapply(url.copy, pkgs, contribs[package_type(pkgs)])
-    }
-    
-    # change to repo base directory
-    message('* Building repository in ', repo_dir)
-    od <- setwd(repo_dir)
-    on.exit( setwd(od) )
-    
-    # write PACKAGES files
-    .makePACKAGES <- function(dir = '.', ...){
-        od <- setwd(dir)
-        on.exit( setwd(od) )
-        
-        if( verbose ) message('  - Processing ', dir, ' ... ', appendLF = FALSE)
-        n <- write_PACKAGES('.', ...)
-        if( verbose ) message('OK [', n, ']')
-        n
-    }
-    
-    message('* Generating PACKAGES files for type(s): ', str_out(contrib_url_types, Inf))
-    n <- sapply(contrib_url_types, function(t, ...){
-            bdir <- contrib.url('.', type = t)
-            if( all ) bdir <- list.dirs(dirname(bdir), full.names = TRUE, recursive = FALSE)
-            sapply(bdir, .makePACKAGES, type = .contrib_url_types[t], ...)
-        }, ...)
-    
-    # return repo URL
-    invisible(repo_url)
-}
-
 contrib.url2 <- function(repos = getOption('repos'), type = getOption('pkgType')){
     
     os <- OS_type()
