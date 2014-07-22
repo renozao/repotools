@@ -191,6 +191,7 @@ GRAN.update <- function(src, outdir = dirname(normalizePath(src)), clean = FALSE
     .md5hash <- function(...) md5hash(..., skip = "PACKAGES(\\.gz)?$")
     gh_hash <- .md5hash(src)
     hash <- c(setNames(gh_hash, names(gh_hash)), .md5hash(file.path(outdir, c('src', 'bin')), strip = outdir))
+    CHANGES <- list()
     if( file.exists(MD5_file) && !force ){
         message("* Checking changes based on MD5 file ... ", appendLF = FALSE)
         hash0 <- readLines(MD5_file)
@@ -204,7 +205,7 @@ GRAN.update <- function(src, outdir = dirname(normalizePath(src)), clean = FALSE
         }
         
         f_shared <- intersect(names(hash0), names(hash))
-        f <- list(New = setdiff(names(hash), names(hash0))
+        CHANGES <- f <- list(New = setdiff(names(hash), names(hash0))
                    , Deleted = setdiff(names(hash0), names(hash))
                     , Changed = f_shared[which(hash[f_shared] != hash0[f_shared])])
         message(sprintf('NOTE [ %s changed | %s new | %s deleted ]', length(f$Changed), length(f$New), length(f$Deleted)))
@@ -228,34 +229,42 @@ GRAN.update <- function(src, outdir = dirname(normalizePath(src)), clean = FALSE
         }
         message("* Pushing changes ... ", appendLF = FALSE)
         if( within_git ){
-            pkg_srcdir <- list.dirs(src, recursive = FALSE, full.names = TRUE)
-            nb <- sapply(pkg_srcdir, function(srcd){
-                        
-                message("\n  - ", basename(srcd), " ... " , appendLF = FALSE)
-                # load description file to extract some GitHub data 
-                desc <- read.dcf(file.path(srcd, 'DESCRIPTION'))
-                ghRepo <- if( 'GithubRepo' %in% colnames(desc) ) desc[1L, 'GithubRepo'] else desc[, 'Package']
-                ghUser <- desc[1L, 'GithubUsername']
-                ghSHA1 <- if( 'GithubSHA1' %in% colnames(desc) ) desc[1L, 'GithubSHA1']
-                
-                # build commit message
-                ref <- paste0(sprintf('%s/%s', ghUser, ghRepo), if( length(ghSHA1) ) paste0('@', ghSHA1))
-                msg <- sprintf('%s: %s', basename(srcd), ref) 
-                message("[", ref, ']')
-                
-                # commit
-                tmp <- tempfile(paste0("commit-", basename(srcd)), fileext=".log")
-                on.exit( unlink(tmp), add = TRUE)
-                cat(msg, file = tmp, sep = "\n\n")
-                git_cmd <- sprintf("git add . && git commit -F %s;", tmp)
-#                print(git_cmd)
-#                cat(readLines(tmp), sep = "\n")
-                owd <- setwd(srcd)
-                on.exit( setwd(owd), add = TRUE)
-                system(git_cmd)
-                length(msg)
-            })
-            if( all(nb == 0) ) message('OK [none]')
+            pkg_srcd <- file.path(list.dirs(src, recursive = FALSE, full.names = TRUE), 'DESCRIPTION')
+            print(pkg_srcd)
+            # filter those that changed
+            if( !is.null(CHANGES$Changed) )
+                pkg_srcd <- pkg_srcd[pkg_srcd %in% file.path(src, CHANGES$Changed)]
+            print(pkg_srcd)
+            if( !length(pkg_srcd) ) message('OK [none]')
+            else{
+                sapply(pkg_srcd, function(desc_file){
+                    
+                    srcd <- dirname(desc_file)
+                    message("\n  - ", basename(srcd), " ... " , appendLF = FALSE)
+                    # load description file to extract some GitHub data 
+                    desc <- read.dcf(desc_file)
+                    ghRepo <- if( 'GithubRepo' %in% colnames(desc) ) desc[1L, 'GithubRepo'] else desc[, 'Package']
+                    ghUser <- desc[1L, 'GithubUsername']
+                    ghSHA1 <- if( 'GithubSHA1' %in% colnames(desc) ) desc[1L, 'GithubSHA1']
+                    
+                    # build commit message
+                    ref <- paste0(sprintf('%s/%s', ghUser, ghRepo), if( length(ghSHA1) ) paste0('@', ghSHA1))
+                    msg <- sprintf('%s: %s', basename(srcd), ref) 
+                    message("[", ref, ']')
+                    
+                    # commit
+                    tmp <- tempfile(paste0("commit-", basename(srcd)), fileext=".log")
+                    on.exit( unlink(tmp), add = TRUE)
+                    cat(msg, file = tmp, sep = "\n\n")
+                    git_cmd <- sprintf("git add . && git commit -F %s;", tmp)
+    #                print(git_cmd)
+    #                cat(readLines(tmp), sep = "\n")
+                    owd <- setwd(srcd)
+                    on.exit( setwd(owd), add = TRUE)
+                    system(git_cmd)
+                    length(msg)
+                })
+            }
             
         }else message('SKIP [not a git repo]')
         
