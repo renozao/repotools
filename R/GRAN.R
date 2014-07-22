@@ -189,7 +189,7 @@ GRAN.update <- function(src, outdir = dirname(normalizePath(src)), clean = FALSE
         
         tmp <- src
         within_git <- FALSE
-        while( nzchar(tmp) || within_git){
+        while( !nzchar(tmp) && !within_git){
             within_git <- has_git(tmp)
             tmpd <- dirname(tmp)
             if( tmpd == tmp ) break
