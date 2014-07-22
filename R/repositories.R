@@ -130,7 +130,7 @@ write_PACKAGES_index <- function(path = '.', output = 'index.html', pattern = NU
     df <- ldply(split(seq(nrow(df)), paste0(df$Package, df$GithubRef)), function(i){
                 p <- df[i, , drop = FALSE]
                 if( !is.na(p$GithubRef)[1] )
-                    p[, 'Downloads'] <- gh_repo_path(p$GithubUser, p$GithubRepo, sprintf("archive/%s.zip", p$GithubRef))
+                    p[, 'Downloads'] <- gh_repo_path(p$GithubUsername, p$GithubRepo, sprintf("archive/%s.zip", p$GithubRef))
                 else{
                     
                     p <- ddply(p, 'Version', function(v){
