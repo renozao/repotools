@@ -145,17 +145,26 @@ gh_read.dcf <- function(repos, user = NULL, fields = NULL, raw = FALSE){
     res
 }
 
-.md5hash <- function(x, strip = x){
+md5hash <- function(x, strip = x, skip = NULL){
     x <- normalizePath(x)
-    strip <- normalizePath(strip)
     # compute hash list of source directory
     hash <- md5sum(dir(x, recursive = TRUE, full.names = TRUE))
     
     # process
-    hash <- hash[names(hash) != 'MD5']
-    names(hash) <- gsub(strip, '', names(hash), fixed = TRUE)
+    hash <- hash[basename(names(hash)) != 'MD5']
+    if( !is_NA(strip) ){
+        if( identical(strip, 1L) ) strip <- dirname(x)
+        else strip <- normalizePath(strip) 
+        names(hash) <- gsub(strip, '', names(hash), fixed = TRUE)
+    }
     names(hash) <- gsub('^/', '', names(hash))
     
+    # skip requested patterns
+    if( !is.null(skip) ){
+        for(s in skip){
+            hash <- hash[grep(s, names(hash), invert = TRUE)]
+        }
+    }
     # return
     hash
 }
@@ -176,14 +185,16 @@ GRAN.update <- function(src, outdir = dirname(normalizePath(src)), clean = FALSE
     
     # generate current MD5 content
     # compute hash list of output repo directory
-    hash <- c(.md5hash(src), .md5hash(file.path(outdir, c('src', 'bin')), strip = outdir))
-    
+    .md5hash <- function(...) md5hash(..., skip = "PACKAGES(\\.gz)?$")
+    gh_hash <- .md5hash(src)
+    hash <- c(setNames(gh_hash, file.path('github', names(gh_hash))), .md5hash(file.path(outdir, c('src', 'bin')), strip = outdir))
     if( file.exists(MD5_file) && !force ){
         message("* Checking changes based on MD5 file ... ", appendLF = FALSE)
         hash0 <- readLines(MD5_file)
         m <- str_match(hash0, "^([^ ]+) (.*)")
         hash0 <- setNames(m[, 3L], m[, 2L])
         # exit if nothing needs to be done
+        stopifnot( !anyDuplicated(names(hash0)) && !anyDuplicated(names(hash)) )
         if( identical(hash, hash0) || identical(hash[names(hash0)], hash0) ){
             message('OK [', digest(hash0), ']')
             return(character())
@@ -225,11 +236,6 @@ GRAN.update <- function(src, outdir = dirname(normalizePath(src)), clean = FALSE
         gzfile <- gzfile(paste0(pfile, '.gz'))
         write.dcf(P, file = gzfile)
         close(gzfile)
-        
-        # update hash for the generated PACKAGES files
-        hash_PACK <- c(.md5hash(src), .md5hash(out_contrib, strip = outdir))
-        hash_PACK <- hash_PACK[grep("PACKAGES(\\.gz)?$", names(hash_PACK))]
-        hash[names(hash_PACK)] <- hash_PACK
     }
     
     # generate index file
