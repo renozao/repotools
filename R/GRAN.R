@@ -170,7 +170,7 @@ md5hash <- function(x, strip = x, skip = NULL){
 }
 
 #' @importFrom tools md5sum
-GRAN.update <- function(src, outdir = dirname(normalizePath(src)), clean = FALSE, force = FALSE, fields = GRAN.fields(), actions = c('PACKAGES', 'index'), verbose = TRUE){
+GRAN.update <- function(src, outdir = dirname(normalizePath(src)), clean = FALSE, force = FALSE, fields = GRAN.fields(), actions = c('changes', 'PACKAGES', 'index'), verbose = TRUE){
     
     # dump messages if non-verbose
     if( !verbose ) message <- function(...) NULL
@@ -179,6 +179,51 @@ GRAN.update <- function(src, outdir = dirname(normalizePath(src)), clean = FALSE
     
     # initialise complete repository structure if necessary
     if( !is.dir(outdir) || clean ) create_repo(outdir, pkgs = NA)
+    
+    # match type of action to perform
+    actions <- match.arg(actions, several.ok = TRUE)
+    
+    # push changes to Github
+    has_git <- function(x) is.dir(file.path(x, '.git'))
+    if( 'changes' %in% actions ){
+        
+        tmp <- src
+        within_git <- FALSE
+        while( nzchar(tmp) || within_git){
+            within_git <- has_git(tmp)
+            tmpd <- dirname(tmp)
+            if( tmpd == tmp ) break
+            else tmp <- tmpd
+        }
+        message("* Pushing changes ... ", appendLF = FALSE)
+        if( within_git ){
+            pkg_srcdir <- list.dirs(src, recursive = FALSE, full.names = TRUE)
+            nb <- sapply(pkg_srcdir, function(srcd){
+                    cf <- list.files(srcd, pattern = "commit-[^/]+$", full.names = TRUE)
+                    if( !length(cf) ) return(0L)
+                    msg <- sapply(cf, function(f){
+                        l <- readLines(f)
+                        sha <- gsub(".*commit-", "", f)
+                        paste0(c(paste0('Commit: ', sha), l), collapse = "\n")
+                    })
+                    sha_sid <- substr(gsub("commit-", "", basename(cf), fixed = TRUE), 1, 8)
+                    message("\n  - ", basename(srcd), ": ", str_out(sha_sid, total = TRUE, quote = FALSE), appendLF = FALSE)
+                    tmp <- tempfile(paste0("commit-", basename(srcd)), fileext=".log")
+                    on.exit( unlink(tmp) )
+                    cat(msg, file = tmp, sep = "\n\n")
+                    git_cmd <- sprintf("git add %s/DESCRIPTION %s/src && git commit -F %s;", scrd, tmp)
+                    print(git_cmd)
+#                    cat(readLines(tmp), sep = "\n")
+                system(git_cmd)
+                unlink(cf)
+                length(msg)
+            })
+            if( all(nb == 0) ) message('OK [none]')
+            else message()
+            
+        }else message('SKIP [not a git repo]')
+        
+    }
     
     # check if things have changed based on MD5 file -- unless required to force update
     MD5_file <- file.path(src, 'MD5')
@@ -210,10 +255,6 @@ GRAN.update <- function(src, outdir = dirname(normalizePath(src)), clean = FALSE
                 message(' * ', t, ':\n   - ', str_out(f[[t]], Inf, sep = "\n   - "))  
         })
     }
-    
-    
-    # match type of action to perform
-    actions <- match.arg(actions, several.ok = TRUE)
     
     # update PACKAGES files
     if( 'PACKAGES' %in% actions ){

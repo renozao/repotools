@@ -81,7 +81,7 @@ write_PACKAGES_index <- function(path = '.', output = 'index.html', pattern = NU
     
     # parameters
     dir <- path
-    sel <- c(.PACKAGES_fields, GRAN.fields(TRUE), 'Downloads')
+    sel <- c(.PACKAGES_fields, GRAN.fields(TRUE))
     
     # load package list from contrib
     repo_dir <- normalizePath(dir)
@@ -111,18 +111,22 @@ write_PACKAGES_index <- function(path = '.', output = 'index.html', pattern = NU
         p <- p[i, , drop = FALSE]
     }
     rownames(p) <- NULL
+    sel <- c(sel, Downloads = 'Repository')
     df <- as.data.frame(p[, sel, drop = FALSE], stringsAsFactors = FALSE)
     
     # built version
     .pkg_files <- function(df){
         res <- alply(df, 1L, function(x){
             llply(.contrib_url_types, function(t){
-                sprintf("%s/%s_%s.%s", contrib.url('.', t), x$Package, x$Version, .contrib_ext[t])
+                sprintf("%s_%s.%s", x$Package, x$Version, .contrib_ext[t])
             })
         })
         as.character(unlist(res))
     }
     
+    # build list of built packages
+    pkg_builts <- unique(list.files(dirname(gsub("^file:/", "", df[, 'Repository'])), recursive = TRUE, full.names = TRUE
+                    , pattern = sprintf("(%s)$", paste0("(", .package_type.reg, ")", collapse = "|"))))
     # aggregate into single packages
     qlibrary('plyr')
     ov <- orderVersion(df[['Version']], decreasing = TRUE)
@@ -130,13 +134,14 @@ write_PACKAGES_index <- function(path = '.', output = 'index.html', pattern = NU
     df <- ldply(split(seq(nrow(df)), paste0(df$Package, df$GithubRef)), function(i){
                 p <- df[i, , drop = FALSE]
                 if( !is.na(p$GithubRef)[1] )
-                    p[, 'Downloads'] <- gh_repo_path(p$GithubUsername, p$GithubRepo, sprintf("archive/%s.zip", p$GithubRef))
+                    p[, 'Repository'] <- gh_repo_path(p$GithubUsername, p$GithubRepo, sprintf("archive/%s.zip", p$GithubRef))
                 else{
                     
                     p <- ddply(p, 'Version', function(v){
                         # build list of download links
-                        pf <- unique(Filter(file.exists, .pkg_files(v)))
-                        v[1L, 'Downloads'] <- paste0(pf, collapse = " | ")
+                        
+                        pf <- pkg_builts[basename(pkg_builts) %in% .pkg_files(v)]
+                        v[1L, 'Repository'] <- paste0(pf, collapse = " | ")
                         v[1L, ]
                     })
                     p <- p[1L, ]  
@@ -168,19 +173,37 @@ write_PACKAGES_index <- function(path = '.', output = 'index.html', pattern = NU
                         }) 
         }
         
+        hwrite_ghlink <- function(...) hwriter::hwrite(..., target = "_github")
 	    df$Package <- hwrite(as.character(df$Package), link = NA, table=FALSE)
         i_gh <- !is.na(df$Repo)
-        df$Repo <- hwrite(df$Repo, link = gh_repo_path(df$User, df$Repo, file.path('tree', df$Branch)), table=FALSE)
+        # SHA1
+        sha1 <- hwrite_ghlink(substr(df$SHA1, 1, 8), link = gh_repo_path(df$User, df$Repo, file.path('tree', df$SHA1)), table = FALSE)
+        sha1[is.na(df$SHA1)] <- NA
+        df$SHA1 <- sha1
+        # branch
+        df$Branch <- hwrite_ghlink(df$Repo, link = gh_repo_path(df$User, df$Repo, file.path('tree', df$Branch)), table = FALSE)
+        df$Branch[!i_gh] <- NA
+        # repo
+        df$Repo <- hwrite_ghlink(df$Repo, link = gh_repo_path(df$User, df$Repo, ''), table = FALSE)
         df$Repo[!i_gh] <- NA
         
+        # downloads
         .make_link <- function(x){
             if( !length(x) ) return(NA)
             i_gh <- grepl("^http", x)
             l <- character()
             if( sum(i_gh) )
-                l <- hwrite(sprintf('[%s]', tools::file_path_sans_ext(basename(x[i_gh]))), link = x[i_gh], table = FALSE)
-            if( length(x <- x[!i_gh]) )
-                l <- c(l, hwrite(sprintf('[%s]', .contrib_ext[package_type(x)]), link = x, table = FALSE))
+                l <- paste0('github: ', hwrite(sprintf('[%s]', tools::file_path_sans_ext(basename(x[i_gh]))), link = x[i_gh], table = FALSE))
+            if( length(x <- x[!i_gh]) ){
+                
+                p_ext <- split(seq_along(x), .contrib_ext[package_type(x)])
+                l <- lapply(names(p_ext), function(ext){
+                        t <- gsub("\\..*$", '', .contrib_ext_types[ext])
+                        x <- x[p_ext[[ext]]]
+                        if( t == 'source' ) paste0(t, ": ", hwrite(sprintf('[%s]', ext), link = x, table = FALSE))
+                        else paste0(t, ": ", paste(hwrite(sprintf('[%s]', basename(dirname(x))), link = x, table = FALSE), collapse = " "))
+                })
+            }
             paste0(l, collapse = " | ")
             
         }
@@ -196,16 +219,15 @@ write_PACKAGES_index <- function(path = '.', output = 'index.html', pattern = NU
     }
     
     # publish
-    publish(knit2html(quiet = TRUE, text = sprintf("Install packages from this repository as follows (in an R console):
-                            
+    publish(knit2html(quiet = TRUE, text = sprintf('Install packages from this repository as follows (in an R console):                            
 ```{r, eval = FALSE}
 # install repotools (only once)
-source('%s')
+source("%s")
                             
 # install package
 library(repotools)
-install.pkgs('<pkgname>', devel = TRUE)
-```", .repotools.setup.url), fragment.only = TRUE), index)
+install.pkgs("<pkgname>", devel = TRUE)
+```', .repotools.setup.url), fragment.only = TRUE), index)
     publish(df, index, name=title, .modifyDF = list(emailMaintainer, linkPackage))
     finish(index)
     message('OK')

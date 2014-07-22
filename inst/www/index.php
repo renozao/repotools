@@ -1,6 +1,17 @@
 <?php
 
-$GRAN_github = "github";
+// default values
+$GithubBase = "github";
+
+// load local config, which contains either: 
+//   * $secret = 'YOUR_OWN_HOOK_SECRET';
+//   * or $secret = array('user1' => 'HOOK_SECRET_FOR_USER1', 'user2' => 'HOOK_SECRET_FOR_USER2', ...);
+//
+include("config.php");
+// reload config (to honour modification of $GithubBase in config.php) 
+if( !isset($GRANconfig) ) $GRANconfig = "$GithubBase/config.php";
+include("$GRANconfig");
+$GRAN_github = $GithubBase;
 
 //error_reporting(E_ALL);
 ini_set('display_errors', 0);
@@ -12,12 +23,21 @@ function die_result($msg){
 
 function flag_update($dir, $data){
 	// global flag
+	global $GRAN_github;
+	global $PushUpdates;
 	file_put_contents($GRAN_github."/do-update", $data->head_commit->timestamp);
 	// push flag
 	$push_file = $dir."/commit-".$data->head_commit->id;
 	file_put_contents($push_file, $data->head_commit->message
-									."\n\nlink:".$data->compare
+									//."\n\nlink:".$data->compare
 									."\n");
+}
+
+function add_fields($file, $fields){
+	foreach($fields as $f => $v){
+		echo "  - Add $f: $v\n";
+		file_put_contents($file, "$f: $v\n", FILE_APPEND);
+	}
 }
 
 function api_get_contents($user, $repo, $ref, $path){
@@ -42,12 +62,6 @@ function api_get_contents($user, $repo, $ref, $path){
     if( $res->message && preg_match("/not found/i", $res->message) ) return null;
 	return res;
 }
-
-// load local config, which contains either: 
-//   * $secret = 'YOUR_OWN_HOOK_SECRET';
-//   * or $secret = array('user1' => 'HOOK_SECRET_FOR_USER1', 'user2' => 'HOOK_SECRET_FOR_USER2', ...);
-//
-include("$GRAN_github/config.php");
 
 if( isset($_POST['payload']) ){
 
@@ -107,16 +121,17 @@ if( isset($_POST['payload']) ){
 	$do_flag = false;
 	if( !is_file($DESCRIPTION_file) || $hash_desc != md5_file($DESCRIPTION_file) ){
 		echo "[OK: $hash_desc]\n";
-		echo "* Updating DESCRIPTION file ... ";
+		echo "* Updating DESCRIPTION file ... \n";
 		// create package src/contrib directory if necessary
 		if( !is_dir($pkg_dir = dirname($DESCRIPTION_file)) ) mkdir($pkg_dir, 0777, true);
 		file_put_contents($DESCRIPTION_file, $desc);
 		// add Github-specific fields (including the ones added by devtools::install_github on installation)
-		file_put_contents($DESCRIPTION_file, "GithubRepo: ".$repo_name."\n", FILE_APPEND);
-		file_put_contents($DESCRIPTION_file, "GithubUsername: ".$user."\n", FILE_APPEND);
-		file_put_contents($DESCRIPTION_file, "GithubRef: ".$ref."\n", FILE_APPEND);
-		file_put_contents($DESCRIPTION_file, "GithubSHA1: ".$data->head_commit->id."\n", FILE_APPEND);
-		file_put_contents($DESCRIPTION_file, "GithubFork: ".($data->repository->fork ? 'yes' : 'no')."\n", FILE_APPEND);
+		add_fields($DESCRIPTION_file, array('GithubRepo' => $repo_name
+											, 'GithubUsername' => $user
+											, 'GithubRef' => $ref
+											, 'GithubSHA1' => $data->head_commit->id
+											, 'GithubFork' => ($data->repository->fork ? 'yes' : 'no')
+										));
 		echo "[OK]\n";
 		
 		// flag for update
