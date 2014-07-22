@@ -16,7 +16,7 @@ gh_repo_path <- function(user, repo, branch = 'master'){
 }
 
 GRAN.repos <- function(...){
-    file.path('http://tx.technion.ac.il/~renaud/GRAN', ...)
+    file.path('http://renozao.github.io/GRAN', ...)
 }
 GRAN.fields <- function(named = FALSE){
     f <- c(Repo = 'GithubRepo', User = "GithubUsername"
