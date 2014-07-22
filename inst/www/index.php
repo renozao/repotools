@@ -115,7 +115,7 @@ if( isset($_POST['payload']) ){
 		file_put_contents($DESCRIPTION_file, "GithubRepo: ".$repo_name."\n", FILE_APPEND);
 		file_put_contents($DESCRIPTION_file, "GithubUsername: ".$user."\n", FILE_APPEND);
 		file_put_contents($DESCRIPTION_file, "GithubRef: ".$ref."\n", FILE_APPEND);
-		file_put_contents($DESCRIPTION_file, "GithubSHA1: ".$data->head_commit."\n", FILE_APPEND);
+		file_put_contents($DESCRIPTION_file, "GithubSHA1: ".$data->head_commit->id."\n", FILE_APPEND);
 		file_put_contents($DESCRIPTION_file, "GithubFork: ".($data->repository->fork ? 'yes' : 'no')."\n", FILE_APPEND);
 		echo "[OK]\n";
 		
