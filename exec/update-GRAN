@@ -19,9 +19,11 @@ getArg <- function(x, default = NULL){
 
 devel <- getArg("--devel", FALSE)
 force <- getArg("--force", FALSE)
+reinstall <- getArg("--init", FALSE)
 
 # update repotools
 if( !devel ){
+	if( reinstall ) remove.packages('repotools')
 	dump <- capture.output(source("http://renozao.github.io/repotools/install.R"))
 }else{
 	#source("pkg/inst/www/repotools.R")
