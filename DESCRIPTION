@@ -22,7 +22,8 @@ Imports:
 Suggests:
     BiocInstaller,
     hwriter,
-    ReportingTools
+    ReportingTools,
+    plyr
 Collate:
     'utils.R'
     'download.R'

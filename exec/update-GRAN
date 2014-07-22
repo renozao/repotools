@@ -18,17 +18,19 @@ getArg <- function(x, default = NULL){
 }
 
 devel <- getArg("--devel", FALSE)
+force <- getArg("--force", FALSE)
+
 # update repotools
 if( !devel ){
 	dump <- capture.output(source("http://renozao.github.io/repotools/install.R"))
 }else{
 	#source("pkg/inst/www/repotools.R")
-	dump <- suppressMessages(devtools::load_all('pkg', quiet = TRUE))
+	dump <- suppressMessages(l('repotools', quiet = TRUE))
 }
 
 # genererate repository from source github/ directory
 src <- normalizePath(getArg('--src', 'github'))
 out <- getArg('--out', dirname(src))
 
-updated_repo_path <- repotools:::GRAN.update(src, out, verbose = TRUE)
+updated_repo_path <- repotools:::GRAN.update(src, out, force = force, verbose = TRUE)
 cat(updated_repo_path)

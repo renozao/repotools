@@ -12,14 +12,16 @@ api.path <- function(..., type = c('raw', 'api')){
 }
 
 gh_repo_path <- function(user, repo, branch = 'master'){
-    sprintf("http://github.com/%s", file.path(user, repo, branch))
+    sprintf("https://github.com/%s", file.path(user, repo, branch))
 }
 
 GRAN.repos <- function(...){
     file.path('http://tx.technion.ac.il/~renaud/GRAN', ...)
 }
 GRAN.fields <- function(named = FALSE){
-    f <- c(Repo = 'GithubRepo', User = "GithubUsername", Branch = "GithubRef", Forked = 'GithubFork')
+    f <- c(Repo = 'GithubRepo', User = "GithubUsername"
+            , Branch = "GithubRef", Forked = 'GithubFork'
+            , SHA1 = 'GithubSHA1')
     if( !named ) f <- unname(f)
     f
 }
@@ -210,7 +212,7 @@ GRAN.update <- function(src, outdir = dirname(normalizePath(src)), clean = FALSE
         ## add Github packages to source PACKAGES
         # write PACKAGES file from Github directories 
         write_PACKAGES(src, type = 'source', unpacked = TRUE, fields = fields, latestOnly = FALSE)
-        P <- available.packages(file.path('file:/', normalizePath(src)), fields = fields, filters = c("R_version", "OS_type", "subarch"))
+        P <- available.packages(file.path('file:/', normalizePath(src)), fields = fields, filters = .PACKAGES_filters_all_versions)
         # fix for migration of field names
         if( length(no_repo <- is.na(P[, 'GithubRepo'])) ){
             P[no_repo, 'GithubRepo'] <- P[no_repo, 'Package']  

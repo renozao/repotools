@@ -47,12 +47,13 @@ package_name <- function(x){
 
 package_type <- function(x){
     t <- sapply(paste0(c("\\.tar\\.gz", "\\.zip", "\\.tgz"), "$"), grepl, x)
-    if( !is.matrix(t) ) t <- t(t)
-    it <- apply(t, 1L, which)
+    if( !is.matrix(t) ) it <- which(t) 
+    else it <- apply(t, 1L, which)
     .contrib_types[it]
 }
-
+ 
 .contrib_types <- c('source', 'win.binary', 'mac.binary')
+.contrib_ext <- setNames(c('tar.gz', 'zip', 'tgz'), .contrib_types)
 .contrib_url_types <- setNames(c(.contrib_types, 'mac.binary'), c('source', 'win.binary', 'mac.binary', 'mac.binary.mavericks'))
 .OS_contrib_types <- setNames(.contrib_types, c('unix', 'windows', 'mac'))
 

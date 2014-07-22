@@ -10,8 +10,14 @@ function die_result($msg){
 	die();
 }
 
-function flag_update(){
-	file_put_contents($GRAN_github."/do-update", strftime("%F %H:%M:%S"));
+function flag_update($dir, $data){
+	// global flag
+	file_put_contents($GRAN_github."/do-update", $data->head_commit->timestamp);
+	// push flag
+	$push_file = $dir."/commit-".$data->head_commit->id;
+	file_put_contents($push_file, $data->head_commit->message
+									."\n\nlink:".$data->compare
+									."\n");
 }
 
 function api_get_contents($user, $repo, $ref, $path){
@@ -96,8 +102,9 @@ if( isset($_POST['payload']) ){
 	echo "* Checking DESCRIPTION file ... ";
 	$hash_desc = md5($desc);
 	$suffix = $ref == 'master' ? 'release' : 'devel';
-	$GRAN_pkg_dir = $GRAN_github.'/';
-	$DESCRIPTION_file = "{$GRAN_pkg_dir}{$repo_name}-{$suffix}/DESCRIPTION";
+	$GRAN_pkg_dir = "{$GRAN_github}/{$repo_name}-{$suffix}";
+	$DESCRIPTION_file = "{$GRAN_pkg_dir}/DESCRIPTION";
+	$do_flag = false;
 	if( !is_file($DESCRIPTION_file) || $hash_desc != md5_file($DESCRIPTION_file) ){
 		echo "[OK: $hash_desc]\n";
 		echo "* Updating DESCRIPTION file ... ";
@@ -108,16 +115,17 @@ if( isset($_POST['payload']) ){
 		file_put_contents($DESCRIPTION_file, "GithubRepo: ".$repo_name."\n", FILE_APPEND);
 		file_put_contents($DESCRIPTION_file, "GithubUsername: ".$user."\n", FILE_APPEND);
 		file_put_contents($DESCRIPTION_file, "GithubRef: ".$ref."\n", FILE_APPEND);
+		file_put_contents($DESCRIPTION_file, "GithubSHA1: ".$data->head_commit."\n", FILE_APPEND);
 		file_put_contents($DESCRIPTION_file, "GithubFork: ".($data->repository->fork ? 'yes' : 'no')."\n", FILE_APPEND);
 		echo "[OK]\n";
 		
 		// flag for update
-		flag_update();
+		$do_flag = true;
 	}else echo "[SKIP: no changes]\n";
 	
 	echo "* Checking src/ sub-directory ... ";
 	// look for src/ sub-directory
-	$local_src = "{$GRAN_pkg_dir}{$repo_name}-{$suffix}/src";
+	$local_src = "{$GRAN_pkg_dir}/src";
 	if( !is_null(api_get_contents($user, $repo_name, $ref, 'src')) ){
 		if( is_dir($local_src) ) echo "[SKIP: no changes]\n";
 		else{
@@ -125,17 +133,18 @@ if( isset($_POST['payload']) ){
 			if( mkdir($local_src) ){
 				echo "[CREATED]\n";
 				// flag for update
-				flag_update();
+				$do_flag = true;
 			}else echo "[ERROR: failed creating src/]\n";
 		}
 	}else if( is_dir($local_src) ){
 		if( rmdir($local_src) ){
 			echo "[DELETED]\n";
 			// flag for update
-			flag_update();
+			$do_flag = true;
 		}else echo "[ERROR: failed deleting src/]\n";
 	}else echo "[SKIP: no changes]\n";
 	
+	if( $do_flag ) flag_update($GRAN_pkg_dir, $data);
 }
 
 /* cron job essentially does:

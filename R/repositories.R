@@ -7,6 +7,7 @@
 .repotools.setup.url = 'http://renozao.github.io/repotools/install.R'
 
 .PACKAGES_fields <- c('Package', 'Version')
+.PACKAGES_filters_all_versions <- c("R_version", "OS_type", "subarch")
 
 #' @importFrom tools write_PACKAGES
 create_repo <- function(dir = '.', type = NULL, pkgs = NULL, all = TRUE, ..., clean = FALSE, verbose = FALSE){
@@ -80,13 +81,13 @@ write_PACKAGES_index <- function(path = '.', output = 'index.html', pattern = NU
     
     # parameters
     dir <- path
-    sel <- c(.PACKAGES_fields, GRAN.fields(TRUE))
+    sel <- c(.PACKAGES_fields, GRAN.fields(TRUE), 'Downloads')
     
     # load package list from contrib
     repo_dir <- normalizePath(dir)
     contrib_dir <- contrib.url(repo_dir)
     repo <- paste0('file://', repo_dir)
-    contrib <- contrib.url(repo)
+    contrib <- contrib.url(repo, type = 'source')
     contrib_path <- contrib.url('.')
     
     # change to repo base directory
@@ -98,15 +99,53 @@ write_PACKAGES_index <- function(path = '.', output = 'index.html', pattern = NU
         write("User-agent: *\nDisallow: /\n\n", file = file.path(repo_dir, 'robots.txt'))
     }
     smessage('Reading PACKAGES file in ', contrib_path, ' ... ')
-    p <- available.packages(contrib, fields = sel)
-    message('OK [', nrow(p), ']')
+    p <- lapply(names(.contrib_url_types), function(t){
+                available.packages(file.path('file:/', normalizePath(contrib.url('.', t))), fields = sel, filters = .PACKAGES_filters_all_versions)
+            })
+    p <- do.call(rbind, p)
+    message(sprintf('OK [%s (%s dups)]', nrow(p), sum(duplicated(p[, 'Package']))))
     if( !is.null(pattern) ){
         smessage('Selecting packages matching pattern "', pattern, '" only ... ')
         i <- grep(pattern, p[, 'Package'])
         message('OK [', length(i), '/', nrow(p), ']')
         p <- p[i, , drop = FALSE]
     }
+    rownames(p) <- NULL
     df <- as.data.frame(p[, sel, drop = FALSE], stringsAsFactors = FALSE)
+    
+    # built version
+    .pkg_files <- function(df){
+        res <- alply(df, 1L, function(x){
+            llply(.contrib_url_types, function(t){
+                sprintf("%s/%s_%s.%s", contrib.url('.', t), x$Package, x$Version, .contrib_ext[t])
+            })
+        })
+        as.character(unlist(res))
+    }
+    
+    # aggregate into single packages
+    qlibrary('plyr')
+    ov <- orderVersion(df[['Version']], decreasing = TRUE)
+    df <- df[ov, , drop = FALSE]
+    df <- ldply(split(seq(nrow(df)), paste0(df$Package, df$GithubRef)), function(i){
+                p <- df[i, , drop = FALSE]
+                if( !is.na(p$GithubRef)[1] )
+                    p[, 'Downloads'] <- gh_repo_path(p$GithubUser, p$GithubRepo, sprintf("archive/%s.zip", p$GithubRef))
+                else{
+                    
+                    p <- ddply(p, 'Version', function(v){
+                        # build list of download links
+                        pf <- unique(Filter(file.exists, .pkg_files(v)))
+                        v[1L, 'Downloads'] <- paste0(pf, collapse = " | ")
+                        v[1L, ]
+                    })
+                    p <- p[1L, ]  
+                }
+                p
+            })
+    df$.id <- NULL
+    
+    # use field human names
     colnames(df) <- ifelse(nzchar(names(sel)), names(sel), sel)
     
     # write index page
@@ -120,12 +159,32 @@ write_PACKAGES_index <- function(path = '.', output = 'index.html', pattern = NU
     # link to source package
     linkPackage <- function(df, ...){
 	    pkg_src <- file.path(sub(file.path(repo, ''), '', contrib, fixed = TRUE), as.character(df$Package))
-        pkg_file <- sprintf("%s_%s.tar.gz", pkg_src, df$Version)
-        if( length(i <- which(!file.exists(pkg_file))) ){
-            gh <- df[i, ]
-            pkg_file[i] <- gh_repo_path(gh$User, gh$Repo, gh$Branch)
+        
+        dlinks <- replicate(nrow(df), character())
+        gh_repo <- gh_repo_path(df$User, df$Repo, df$Branch)
+        if( length(i <- which(!is.na(df$Downloads))) ){
+            dlinks[i] <- lapply(df$Downloads[i], function(x){
+                        strsplit(x, " | ", fixed = TRUE)[[1]]
+                        }) 
         }
-	    df$Package <- hwrite(as.character(df$Package), link = pkg_file, table=FALSE)
+        
+	    df$Package <- hwrite(as.character(df$Package), link = NA, table=FALSE)
+        i_gh <- !is.na(df$Repo)
+        df$Repo <- hwrite(df$Repo, link = gh_repo_path(df$User, df$Repo, file.path('tree', df$Branch)), table=FALSE)
+        df$Repo[!i_gh] <- NA
+        
+        .make_link <- function(x){
+            if( !length(x) ) return(NA)
+            i_gh <- grepl("^http", x)
+            l <- character()
+            if( sum(i_gh) )
+                l <- hwrite(sprintf('[%s]', tools::file_path_sans_ext(basename(x[i_gh]))), link = x[i_gh], table = FALSE)
+            if( length(x <- x[!i_gh]) )
+                l <- c(l, hwrite(sprintf('[%s]', .contrib_ext[package_type(x)]), link = x, table = FALSE))
+            paste0(l, collapse = " | ")
+            
+        }
+        df$Downloads <- sapply(dlinks, .make_link)
 	    df
     }
     # maintainer email
