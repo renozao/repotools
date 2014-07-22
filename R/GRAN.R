@@ -201,12 +201,19 @@ GRAN.update <- function(src, outdir = dirname(normalizePath(src)), clean = FALSE
             nb <- sapply(pkg_srcdir, function(srcd){
                     cf <- list.files(srcd, pattern = "commit-[^/]+$", full.names = TRUE)
                     if( !length(cf) ) return(0L)
+                    
+                    # load description file to extract some GitHub data 
+                    desc <- read.dcf(file.path(srcd, 'DESCRIPTION'))
+                    ghUser <- desc[1L, 'GithubUsername']
+                    ghRepo <- desc[1L, 'GithubRepo']
+                    
+                    # build commit message
                     msg <- sapply(cf, function(f){
                         l <- readLines(f)
                         sha <- gsub(".*commit-", "", f)
-                        paste0(c(paste0('Commit: ', sha), l), collapse = "\n")
+                        paste0(c(sprintf('%s: %s/%s@%s', basename(srcd), ghUser, ghRepo, sha), l), collapse = "\n")
                     })
-                    sha_sid <- substr(gsub("commit-", "", basename(cf), fixed = TRUE), 1, 8)
+                    sha_sid <- substr(gsub("commit-", "", basename(cf), fixed = TRUE), 1, 7)
                     message("\n  - ", basename(srcd), ": ", str_out(sha_sid, total = TRUE, quote = FALSE), appendLF = FALSE)
                     tmp <- tempfile(paste0("commit-", basename(srcd)), fileext=".log")
                     on.exit( unlink(tmp) )

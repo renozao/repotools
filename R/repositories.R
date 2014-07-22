@@ -177,7 +177,7 @@ write_PACKAGES_index <- function(path = '.', output = 'index.html', pattern = NU
 	    df$Package <- hwrite(as.character(df$Package), link = NA, table=FALSE)
         i_gh <- !is.na(df$Repo)
         # SHA1
-        sha1 <- hwrite_ghlink(substr(df$SHA1, 1, 8), link = gh_repo_path(df$User, df$Repo, file.path('tree', df$SHA1)), table = FALSE)
+        sha1 <- hwrite_ghlink(substr(df$SHA1, 1, 7), link = gh_repo_path(df$User, df$Repo, file.path('tree', df$SHA1)), table = FALSE)
         sha1[is.na(df$SHA1)] <- NA
         df$SHA1 <- sha1
         # branch
