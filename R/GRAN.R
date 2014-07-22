@@ -217,11 +217,12 @@ GRAN.update <- function(src, outdir = dirname(normalizePath(src)), clean = FALSE
     
     # update PACKAGES files
     if( 'PACKAGES' %in% actions ){
-        # update from built packages
+        
+        # make PACKAGES in output repos for built packages
         create_repo(outdir, verbose = TRUE)
         
         ## add Github packages to source PACKAGES
-        # write PACKAGES file from Github directories 
+        # write PACKAGES file from Github source directories 
         write_PACKAGES(src, type = 'source', unpacked = TRUE, fields = fields, latestOnly = FALSE)
         P <- available.packages(file.path('file:/', normalizePath(src)), fields = fields, filters = .PACKAGES_filters_all_versions)
         # fix for migration of field names
