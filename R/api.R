@@ -186,7 +186,6 @@ OS_type <- function(){
 #' 
 #' @import devtools
 #' @importFrom tools md5sum
-#' @rdname api
 #' @export
 install.pkgs <- function(pkgs, lib = NULL, repos = getOption('repos'), type = getOption('pkgType'), dependencies = NA, available = NULL, ..., quick = FALSE, dry.run = NULL, devel = FALSE, verbose = TRUE){
     
@@ -633,6 +632,9 @@ install.pkgs <- function(pkgs, lib = NULL, repos = getOption('repos'), type = ge
     invisible(to_install0)
 }
 
+#' Working with Packages
+#' 
+#' 
 #' \code{available.pkgs} returns a matrix of the packages available in given repositories.
 #' @rdname api
 #' @export
@@ -736,21 +738,55 @@ old.pkgs <- function(lib.loc = NULL, repos = getOption("repos"), available = NUL
     cbind(extra[rownames(old), , drop = FALSE], old) 
 }
 
+#' @inheritParams base::update.packages
+#' @param ask logical that specifies if the user should be asked before installling the available updates, 
+#' or if these should be directly installed.
+#'  
 #' @rdname api
 #' @export
-update.pkgs <- function(lib.loc = NULL, repos = getOption("repos"), available = NULL, ..., type = getOption("pkgType"), verbose = TRUE){
+update.pkgs <- function(lib.loc = NULL, repos = getOption("repos"), instlib = NULL, ask = TRUE, available = NULL, oldPkgs = NULL, ..., type = getOption("pkgType"), dry.run = NULL, verbose = TRUE){
     
     # load installed packages
     inst <- installed.packages(lib.loc)
+    if( !is.null(oldPkgs) ){
+        old <- oldPkgs
+        if( is.matrix(oldPkgs) ) old <- oldPkgs[, 'Package']
+        inst <- inst[inst[, 'Package'] %in% old, ]
+        
+        if( !nrow(inst) ){
+            warning("No installed package could be found in the set provided in argument `oldPkgs` [", str_out(old, total = TRUE), ']')
+            return()
+        }
+    }
+    
     # build query: request optional installation of package with version higher than the one installed
     query <- sprintf("?%s (> %s)", inst[, 'Package'], inst[, 'Version'])
     
+    # force stopping if dry.run
+    if( isTRUE(dry.run) ) ask <- TRUE
+    
+    if( !is.null(instlib) ){
+        olib <- .libPaths()
+        on.exit( .libPaths(olib) )
+        .libPaths(c(instlib, olib))
+    }
     if( is.null(available) ){
         # installation available packages
-        install.pkgs(query, repos = repos, type = type, ..., verbose = verbose)
+        up <- install.pkgs(query, repos = repos, type = type, ..., verbose = verbose, dry.run = ask)
         
-    }else install.pkgs(query, available = as.matrix(available), ..., verbose = verbose) 
+    }else up <- install.pkgs(query, available = as.matrix(available), ..., verbose = verbose, dry.run = ask) 
+    
+    new_pkg <- rownames(up)[!is.na(up[, 'Hit'])]
+    if( length(new_pkg) && !isTRUE(dry.run) && ask ){
+        if( askUser(paste0("Do you want to proceed to the installation of the ", length(new_pkg), " package(s) as above specified?"), idefault = 'y') == 'n' ){
+            message('Aborting...')
+            return(invisible(up))
+        }
         
+        up <- install.pkgs(new_pkg, available = up, verbose = verbose)
+    }
+    
+    invisible(up)
 }
 
 
