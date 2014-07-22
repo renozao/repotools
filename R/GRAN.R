@@ -211,7 +211,7 @@ GRAN.update <- function(src, outdir = dirname(normalizePath(src)), clean = FALSE
                     tmp <- tempfile(paste0("commit-", basename(srcd)), fileext=".log")
                     on.exit( unlink(tmp) )
                     cat(msg, file = tmp, sep = "\n\n")
-                    git_cmd <- sprintf("git add %s/DESCRIPTION %s/src && git commit -F %s;", srcd, srcd, tmp)
+                    git_cmd <- sprintf("git add %s && git commit -F %s;", srcd, tmp)
                     print(git_cmd)
 #                    cat(readLines(tmp), sep = "\n")
                 system(git_cmd)
