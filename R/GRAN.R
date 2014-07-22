@@ -235,6 +235,7 @@ GRAN.update <- function(src, outdir = dirname(normalizePath(src)), clean = FALSE
                 # load description file to extract some GitHub data 
                 desc <- read.dcf(file.path(srcd, 'DESCRIPTION'))
                 print(desc)
+                if( !'GithubRepo' %in% colnames(desc) ) return(0)
                 ghUser <- desc[1L, 'GithubUsername']
                 ghRepo <- desc[1L, 'GithubRepo']
                 ghSHA1 <- desc[1L, 'GithubSHA1']
@@ -254,7 +255,6 @@ GRAN.update <- function(src, outdir = dirname(normalizePath(src)), clean = FALSE
                 owd <- setwd(srcd)
                 on.exit( setwd(owd), add = TRUE)
                 system(git_cmd)
-                unlink(cf)
                 length(msg)
             })
             if( all(nb == 0) ) message('OK [none]')
