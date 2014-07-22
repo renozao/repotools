@@ -230,15 +230,21 @@ GRAN.update <- function(src, outdir = dirname(normalizePath(src)), clean = FALSE
         if( within_git ){
             pkg_srcdir <- list.dirs(src, recursive = FALSE, full.names = TRUE)
             nb <- sapply(pkg_srcdir, function(srcd){
+                        
+                message("\n  - ", basename(srcd), " ... " , appendLF = FALSE)
                 # load description file to extract some GitHub data 
                 desc <- read.dcf(file.path(srcd, 'DESCRIPTION'))
+                print(desc)
                 ghUser <- desc[1L, 'GithubUsername']
                 ghRepo <- desc[1L, 'GithubRepo']
                 ghSHA1 <- desc[1L, 'GithubSHA1']
                 
                 # build commit message
-                msg <- sprintf('%s: %s/%s@%s', basename(srcd), ghUser, ghRepo, ghSHA1)
-                message("\n  - ", msg)
+                ref <- sprintf('%s/%s@%s', ghUser, ghRepo, ghSHA1)
+                msg <- sprintf('%s: %s', basename(srcd), ref) 
+                message("[", ref, ']')
+                
+                # commit
                 tmp <- tempfile(paste0("commit-", basename(srcd)), fileext=".log")
                 on.exit( unlink(tmp), add = TRUE)
                 cat(msg, file = tmp, sep = "\n\n")
