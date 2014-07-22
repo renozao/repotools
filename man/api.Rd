@@ -23,7 +23,7 @@
     oldPkgs = NULL, ..., type = getOption("pkgType"),
     dry.run = NULL, verbose = TRUE)
 
-  Library(package, lib = NULL, ...)
+  Library(package, lib.loc = NULL, ...)
 }
 \arguments{
   \item{fixed}{logical that indicates if the elements of
@@ -62,14 +62,28 @@
   \item{type}{ character string, indicate which type of
   packages: see \code{\link{install.packages}}.  }
 
-  \item{lib.loc}{a character vector describing the location
-  of \R library trees to search through, or \code{NULL}.
-  The default value of \code{NULL} corresponds to all
-  libraries currently known to \code{\link{.libPaths}()}.
-  Non-existent library trees are silently ignored.}
+  \item{verbose}{verbosity level (logical or numeric)}
 
-  \item{verbose}{a logical.  If \code{TRUE}, additional
-  diagnostics are printed.}
+  \item{dry.run}{logical that indicates if one should only
+  return the computed set of packages and dependencies to
+  install. If \code{NULL}, then it is internally set to
+  \code{TRUE} only when there is a mismatch between the
+  requested and the OS binary package types (e.g., if
+  \code{type = 'win.both'} on a Unix/Mac host).}
+
+  \item{lib.loc}{character vector describing the location
+  of R library trees to search through (and update packages
+  therein), or \code{NULL} for all known trees (see
+  \code{\link{.libPaths}}).}
+
+  \item{instlib}{character string giving the library
+  directory where to install the packages.}
+
+  \item{oldPkgs}{ if specified as non-NULL,
+  \code{update.packages()} only considers these packages
+  for updating. This may be a character vector of package
+  names or a matrix as returned by \code{old.packages()}.
+  }
 
   \item{package}{the name of a package, given as a
   \link{name} or literal character string, or a character

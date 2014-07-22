@@ -738,7 +738,8 @@ old.pkgs <- function(lib.loc = NULL, repos = getOption("repos"), available = NUL
     cbind(extra[rownames(old), , drop = FALSE], old) 
 }
 
-#' @inheritParams base::update.packages
+#' @inheritParams install.pkgs
+#' @inheritParams utils::update.packages
 #' @param ask logical that specifies if the user should be asked before installling the available updates, 
 #' or if these should be directly installed.
 #'  
@@ -796,17 +797,17 @@ update.pkgs <- function(lib.loc = NULL, repos = getOption("repos"), instlib = NU
 #' 
 #' @rdname api
 #' @export
-Library <- function(package, lib = NULL, ...){
+Library <- function(package, lib.loc = NULL, ...){
     
       x <- package
       # load/install packages
       ol <- .libPaths()
       on.exit( .libPaths(ol) )
-      .libPaths( c(lib, ol) )
-      if( length(miss <- which(!sapply(x, require.quiet, lib = lib, character.only = TRUE))) ){
+      .libPaths( c(lib.loc, ol) )
+      if( length(miss <- which(!sapply(x, require.quiet, lib = lib.loc, character.only = TRUE))) ){
         pkgs <- x[miss]
-        if( !is.null(lib) && !file.exists(lib) ) dir.create(lib, recursive = TRUE)
-        install.pkgs(pkgs, lib = lib, ...)
+        if( !is.null(lib.loc) && !file.exists(lib.loc) ) dir.create(lib.loc, recursive = TRUE)
+        install.pkgs(pkgs, lib = lib.loc, ...)
         sapply(pkgs, library, character.only = TRUE, lib = lib)
       }
       invisible(x)
