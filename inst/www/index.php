@@ -26,11 +26,11 @@ function flag_update($dir, $data){
 	global $GRAN_github;
 	global $PushUpdates;
 	file_put_contents($GRAN_github."/do-update", $data->head_commit->timestamp);
-	// push flag
-	$push_file = $dir."/commit-".$data->head_commit->id;
-	file_put_contents($push_file, $data->head_commit->message
+	//// push flag
+	//$push_file = $dir."/commit-".$data->head_commit->id;
+	//file_put_contents($push_file, $data->head_commit->message
 									//."\n\nlink:".$data->compare
-									."\n");
+		//							."\n");
 }
 
 function add_fields($file, $fields){
