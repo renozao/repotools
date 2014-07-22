@@ -230,11 +230,9 @@ GRAN.update <- function(src, outdir = dirname(normalizePath(src)), clean = FALSE
         message("* Pushing changes ... ", appendLF = FALSE)
         if( within_git ){
             pkg_srcd <- file.path(list.dirs(src, recursive = FALSE, full.names = TRUE), 'DESCRIPTION')
-            print(pkg_srcd)
             # filter those that changed
             if( !is.null(CHANGES$Changed) )
                 pkg_srcd <- pkg_srcd[pkg_srcd %in% file.path(src, CHANGES$Changed)]
-            print(pkg_srcd)
             if( !length(pkg_srcd) ) message('OK [none]')
             else{
                 sapply(pkg_srcd, function(desc_file){
