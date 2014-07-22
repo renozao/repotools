@@ -234,14 +234,12 @@ GRAN.update <- function(src, outdir = dirname(normalizePath(src)), clean = FALSE
                 message("\n  - ", basename(srcd), " ... " , appendLF = FALSE)
                 # load description file to extract some GitHub data 
                 desc <- read.dcf(file.path(srcd, 'DESCRIPTION'))
-                print(desc)
-                if( !'GithubRepo' %in% colnames(desc) ) return(0)
+                ghRepo <- if( 'GithubRepo' %in% colnames(desc) ) desc[1L, 'GithubRepo'] else desc[, 'Package']
                 ghUser <- desc[1L, 'GithubUsername']
-                ghRepo <- desc[1L, 'GithubRepo']
-                ghSHA1 <- desc[1L, 'GithubSHA1']
+                ghSHA1 <- if( 'GithubSHA1' %in% colnames(desc) ) desc[1L, 'GithubSHA1']
                 
                 # build commit message
-                ref <- sprintf('%s/%s@%s', ghUser, ghRepo, ghSHA1)
+                ref <- paste0(sprintf('%s/%s', ghUser, ghRepo), if( length(ghSHA1) ) paste0('@', ghSHA1))
                 msg <- sprintf('%s: %s', basename(srcd), ref) 
                 message("[", ref, ']')
                 
