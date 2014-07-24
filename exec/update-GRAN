@@ -30,9 +30,9 @@ if( !devel ){
 	dump <- suppressMessages(l('repotools', quiet = TRUE))
 }
 
-# genererate repository from source github/ directory
-src <- normalizePath(getArg('--src', 'github'))
-out <- getArg('--out', dirname(src))
+# genererate repository from source github/src/contib directory
+src <- normalizePath(getArg('--src', 'github/src/contrib'))
+out <- getArg('--out', '.')
 
 updated_repo_path <- repotools:::GRAN.update(src, out, force = force, verbose = TRUE)
 cat(updated_repo_path)
