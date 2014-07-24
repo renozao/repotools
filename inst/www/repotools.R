@@ -65,7 +65,7 @@ if( !require2('repotools', version = '1.6') ){
     
     # install repotools
     if( WINDOWS ){
-        install.packages('repotools', repos = c(getOption('repos'), 'http://tx.technion.ac.il/~renaud/GRAN'))
+        install.packages('repotools', repos = c(getOption('repos'), 'http://renozao.github.io/GRAN'))
         
     }else{
         # add BiocInstaller if needed
