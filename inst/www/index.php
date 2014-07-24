@@ -33,11 +33,17 @@ function flag_update($dir, $data){
 		//							."\n");
 }
 
-function add_fields($file, $fields){
+function add_fields($x, $fields){
+	// ensure last line is empty
+	if( substr($x, -1) != "\n" ) $x .= "\n";
+	
+	// add fields
 	foreach($fields as $f => $v){
 		echo "  - Add $f: $v\n";
-		file_put_contents($file, "$f: $v\n", FILE_APPEND);
+		//file_put_contents($file, "$f: $v\n", FILE_APPEND);
+		$x .= "$f: $v\n";
 	}
+	return $x;
 }
 
 function api_get_contents($user, $repo, $ref, $path){
@@ -112,6 +118,17 @@ if( isset($_POST['payload']) ){
 		}
 	}
 	echo "[OK]\n";
+	
+	// add Github-specific fields (including the ones added by devtools::install_github on installation)
+	echo "* Adding Github fields ... ";
+	$desc = add_fields($desc, array('GithubRepo' => $repo_name
+										, 'GithubUsername' => $user
+										, 'GithubRef' => $ref
+										, 'GithubSHA1' => $data->head_commit->id
+										, 'GithubFork' => ($data->repository->fork ? 'yes' : 'no')
+									));
+	echo "[OK]\n";
+	
 	// update local DECRIPTION file (if necessary)
 	echo "* Checking DESCRIPTION file ... ";
 	$hash_desc = md5($desc);
@@ -125,13 +142,6 @@ if( isset($_POST['payload']) ){
 		// create package src/contrib directory if necessary
 		if( !is_dir($pkg_dir = dirname($DESCRIPTION_file)) ) mkdir($pkg_dir, 0777, true);
 		file_put_contents($DESCRIPTION_file, $desc);
-		// add Github-specific fields (including the ones added by devtools::install_github on installation)
-		add_fields($DESCRIPTION_file, array('GithubRepo' => $repo_name
-											, 'GithubUsername' => $user
-											, 'GithubRef' => $ref
-											, 'GithubSHA1' => $data->head_commit->id
-											, 'GithubFork' => ($data->repository->fork ? 'yes' : 'no')
-										));
 		echo "[OK]\n";
 		
 		// flag for update
