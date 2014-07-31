@@ -171,8 +171,8 @@
   entry in file \code{'.netrc'} in the user's home
   directory -- as returned by \code{Sys.getenv('HOME')}. It
   is internally substituted into a full repository base URL
-  using by \code{repos.url} (see details in
-  \code{\link{read_netrc}} and \code{\link{repos.url}} for
+  using by \code{repos_url} (see details in
+  \code{\link{read_netrc}} and \code{\link{repos_url}} for
   details on how repository entries are defined and
   substituted respectively. }
 }

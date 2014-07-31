@@ -2,8 +2,8 @@
 \alias{read_netrc}
 \title{Parsing netrc files}
 \usage{
-  read_netrc(x = file.path(Sys.getenv("HOME"), ".netrc"),
-    std = TRUE, quiet = FALSE)
+  read_netrc(x = .netrc_path(), std = TRUE,
+    line.number = FALSE, quiet = FALSE)
 }
 \arguments{
   \item{x}{path or connection to an netrc file. Default is
@@ -15,6 +15,10 @@
   repository specifications (see \emph{Details})
   (\code{FALSE}), or if entries associated with R
   repositories should be skipped (\code{NA}).}
+
+  \item{line.number}{logical that indicates if the starting
+  and ending line number of each credential definition
+  should also be returned.}
 
   \item{quiet}{logical that indicates if the function
   should return \code{NULL} if the file is not found, or
@@ -34,7 +38,7 @@
 \details{
   Entries in the netrc file can be associated to R
   repositories, which are looked up by \code{install.pkgs}
-  via \code{\link{repos.url}}, by adding a comment line to
+  via \code{\link{repos_url}}, by adding a comment line to
   a standard entry the following format:
 
   \preformatted{ # standard host credential entry machine
@@ -73,6 +77,7 @@ if( interactive() ) file.show(f) else cat(readLines(f), sep = "\\n")
 
 # standard parsing
 read_netrc(f)
+read_netrc(f, line.number = TRUE)
 # parse repo information
 read_netrc(f, std = FALSE)
 # skip repo entries
