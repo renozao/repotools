@@ -2,7 +2,7 @@
 <html lang="en">
   <head>
     <meta charset="utf-8">
-<title>read_netrc. repotools 1.6</title>
+<title>read_netrc. repotools 1.6.1</title>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <meta name="author" content="">
 
@@ -51,7 +51,7 @@
     </form>--> 
     <ul class="nav navbar-nav navbar-right">
       <li><p class="navbar-text">
-      <span style="font-size:14px" class="label label-primary">Version&nbsp;1.6</span>
+      <span style="font-size:14px" class="label label-primary">Version&nbsp;1.6.1</span>
       &nbsp;</p></li>
     </ul>
   </div><!-- /.navbar-collapse -->
@@ -75,7 +75,7 @@
     </div>
     
     <h2>Usage</h2>
-    <pre>read_netrc(x = file.path(Sys.getenv("HOME"), ".netrc"), std = TRUE, quiet = FALSE)</pre>
+    <pre>read_netrc(x = .netrc_path(), std = TRUE, line.number = FALSE, quiet = FALSE)</pre>
     
     <h2>Arguments</h2>
     <dl>
@@ -89,6 +89,10 @@
   repository specifications (see <em>Details</em>)
   (<code>FALSE</code>), or if entries associated with R
   repositories should be skipped (<code>NA</code>).</dd>
+      <dt>line.number</dt>
+      <dd>logical that indicates if the starting
+  and ending line number of each credential definition
+  should also be returned.</dd>
       <dt>quiet</dt>
       <dd>logical that indicates if the function
   should return <code>NULL</code> if the file is not found, or
@@ -111,7 +115,7 @@
       
       <p>Entries in the netrc file can be associated to R
   repositories, which are looked up by <code>install.pkgs</code>
-  via <code><a href='repos.url.html'>repos.url</a></code>, by adding a comment line to
+  via <code><a href='repos_url.html'>repos_url</a></code>, by adding a comment line to
   a standard entry the following format:</p>
   
       <p></p>
@@ -172,33 +176,50 @@ if( interactive() ) file.show(f) else cat(readLines(f), sep = &quot;\n&quot;)
 read_netrc(f)
 </code></pre>
 
-<pre><code>##      machine               login      password
-## [1,] &quot;www.domain.com&quot;      &quot;somebody&quot; &quot;abcd&quot;  
-## [2,] &quot;www.privatehost.org&quot; &quot;tata&quot;     &quot;toto&quot;  
-## [3,] &quot;www.myrepo.org&quot;      &quot;user&quot;     &quot;1234&quot;
+<pre><code>##                     machine               login      password
+## www.domain.com      &quot;www.domain.com&quot;      &quot;somebody&quot; &quot;abcd&quot;  
+## www.privatehost.org &quot;www.privatehost.org&quot; &quot;tata&quot;     &quot;toto&quot;  
+## www.myrepo.org      &quot;www.myrepo.org&quot;      &quot;user&quot;     &quot;1234&quot;  
+## attr(,&quot;.netrc&quot;)
+## [1] &quot;/tmp/RtmpqcWa5w/file598534d8ff1/repotools/netrc&quot;
+</code></pre>
+
+<pre><code class="r">read_netrc(f, line.number = TRUE)
+</code></pre>
+
+<pre><code>##                     machine               login      password start end 
+## www.domain.com      &quot;www.domain.com&quot;      &quot;somebody&quot; &quot;abcd&quot;   &quot;1&quot;   &quot;3&quot; 
+## www.privatehost.org &quot;www.privatehost.org&quot; &quot;tata&quot;     &quot;toto&quot;   &quot;5&quot;   &quot;8&quot; 
+## www.myrepo.org      &quot;www.myrepo.org&quot;      &quot;user&quot;     &quot;1234&quot;   &quot;10&quot;  &quot;13&quot;
+## attr(,&quot;.netrc&quot;)
+## [1] &quot;/tmp/RtmpqcWa5w/file598534d8ff1/repotools/netrc&quot;
 </code></pre>
 
 <pre><code class="r"># parse repo information
 read_netrc(f, std = FALSE)
 </code></pre>
 
-<pre><code>##      machine               login      password repos                
-## [1,] &quot;www.domain.com&quot;      &quot;somebody&quot; &quot;abcd&quot;   &quot;www.domain.com&quot;     
-## [2,] &quot;www.privatehost.org&quot; &quot;tata&quot;     &quot;toto&quot;   &quot;www.privatehost.org&quot;
-## [3,] &quot;www.myrepo.org&quot;      &quot;user&quot;     &quot;1234&quot;   &quot;@myRepo&quot;            
-##      path    
-## [1,] &quot;&quot;      
-## [2,] &quot;&quot;      
-## [3,] &quot;/a/b/c&quot;
+<pre><code>##                     machine               login      password repos   
+## www.domain.com      &quot;www.domain.com&quot;      &quot;somebody&quot; &quot;abcd&quot;   NA      
+## www.privatehost.org &quot;www.privatehost.org&quot; &quot;tata&quot;     &quot;toto&quot;   NA      
+## www.myrepo.org      &quot;www.myrepo.org&quot;      &quot;user&quot;     &quot;1234&quot;   &quot;myRepo&quot;
+##                     path    
+## www.domain.com      &quot;&quot;      
+## www.privatehost.org &quot;&quot;      
+## www.myrepo.org      &quot;/a/b/c&quot;
+## attr(,&quot;.netrc&quot;)
+## [1] &quot;/tmp/RtmpqcWa5w/file598534d8ff1/repotools/netrc&quot;
 </code></pre>
 
 <pre><code class="r"># skip repo entries
 read_netrc(f, std = NA)
 </code></pre>
 
-<pre><code>##      machine               login      password
-## [1,] &quot;www.domain.com&quot;      &quot;somebody&quot; &quot;abcd&quot;  
-## [2,] &quot;www.privatehost.org&quot; &quot;tata&quot;     &quot;toto&quot;
+<pre><code>##                     machine               login      password
+## www.domain.com      &quot;www.domain.com&quot;      &quot;somebody&quot; &quot;abcd&quot;  
+## www.privatehost.org &quot;www.privatehost.org&quot; &quot;tata&quot;     &quot;toto&quot;  
+## attr(,&quot;.netrc&quot;)
+## [1] &quot;/tmp/RtmpqcWa5w/file598534d8ff1/repotools/netrc&quot;
 </code></pre>
 
   </div>

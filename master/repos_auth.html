@@ -2,7 +2,7 @@
 <html lang="en">
   <head>
     <meta charset="utf-8">
-<title>packageDependencies. repotools 1.6.1</title>
+<title>repos_auth. repotools 1.6.1</title>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <meta name="author" content="">
 
@@ -62,56 +62,79 @@
         
       </header>
       
-      <h1>List Package Dependencies</h1>
+      <h1>CRAN-style Repository Authentication Credentials</h1>
 
 <div class="row">
   <div class="span8">
     <div class="description">
       <h2>Description</h2>
       
-      <p><p>List Package Dependencies</p></p>
+      <p><p>Gets/sets authentication credentials for CRAN-style.</p></p>
   
     </div>
     
     <h2>Usage</h2>
-    <pre>packageDependencies(x, all = FALSE, available = NULL, missing.only = FALSE, recursive = FALSE, 
-  as.list = FALSE, names.only = TRUE, rm.base = TRUE)</pre>
+    <pre>repos_auth(..., save = FALSE, cache = NULL, exact = FALSE, .netrc = NULL)</pre>
     
     <h2>Arguments</h2>
     <dl>
-      <dt>x</dt>
-      <dd>path to package source directory or file.</dd>
-      <dt>all</dt>
-      <dd>logical that indicates if all dependencies
-  should be returned, or only the required ones.</dd>
-      <dt>available</dt>
-      <dd>a matrix of available packages (as
-  returned by <code><a href='http://www.inside-r.org/r-doc/utils/available.packages'>available.packages</a></code>), from which
-  the dependencies are retrieved. This means that there
-  must be a row for the package <code>x</code>.</dd>
-      <dt>missing.only</dt>
-      <dd>logical that indicates if only
-  non-installed dependencies should be included in the
-  result</dd>
-      <dt>recursive</dt>
-      <dd>logical that indicates if indirect
-  dependencies should also be included.</dd>
-      <dt>as.list</dt>
-      <dd>logical that indicates if the result
-  should be a list with one element per type of
-  dependency.</dd>
-      <dt>names.only</dt>
-      <dd>logical that indicates if the result
-  should only include the dependencies package names</dd>
-      <dt>rm.base</dt>
-      <dd>logical that indicates if base packages --
-  that come installed with any R installation -- should be
-  exlcuded from the result.</dd>
+      <dt>...</dt>
+      <dd>repository keys or credential specifications</dd>
+      <dt>save</dt>
+      <dd>indicates if the new credentials are to be
+  saved on disk, by updating in the <code>.netrc</code> file, or
+  in a cache -- which expires at the end of the <span class = "pkg">R</span>
+  session. It can also be a character string, which then
+  specifies the path where to save the result (cached
+  entries are not written to disk).
+
+  Use <code>save=""</code> to print to the console.</dd>
+      <dt>cache</dt>
+      <dd>specifies how the temporary cached
+  credentials should be loaded:
+
+  <ul>
+<li> <code>NULL</code> loads both the cache and
+  netrc data, with cache override matching netrc
+  credentials; </li>
+<li> <code>TRUE</code> loads only the cache data;
+  </li>
+<li> <code>FALSE</code> loads only the netrc data. </li>
+</ul>
+
+
+  The special value <code>cache = NA</code> will delete the
+  cache, prior to any other operation.</dd>
+      <dt>exact</dt>
+      <dd>logical that indicates if the the repository
+  keys should be matched exactly. If <code>FALSE</code>, then
+  keys are matched independently of possible trailing path
+  specification.</dd>
+      <dt>.netrc</dt>
+      <dd>path or connection to a <em>netrc</em> file,
+  which is looked up for matching repository/host entries.
+  Default is to look for file <code>'.netrc'</code> in the user's
+  home directory.
+
+  Repository and host credential entries are defined in an
+  <em>netrc</em> file format (see <code><a href='read_netrc.html'>read_netrc</a></code>
+  for more details).
+
+  Repository shortcut keys start a <code>'@'</code>, e.g.,
+  <code>'@myRepo/path/to/repo'</code> and are substituted by the
+  URL
+  <code>'http://<login>:<password>@<machine><path>/path/to/repo'</code>,
+  where <em><machine></em>, <em><path></em>, <em><login></em> and
+  <code><password></code> are taken from the matched <em>netrc</em>
+  specification.
+
+  Regular hosts are also matched against the <em>netrc</em>
+  specification to add credentials if necessary.</dd>
     </dl>
           </div>
   <div class="span4">
     <!-- <ul>
-      <li>packageDependencies</li>
+      <li>repos_auth</li>
     </ul>
     <ul>
       
