@@ -9,30 +9,6 @@
 #' @include url.R
 NULL
 
-repo_auth <- function(...){
-    
-    auth <- repos.getOption('auth')
-    # list of auths
-    if( !nargs() ) return(auth)
-    
-    x <- list(...)
-    if( length(x) == 1L && is.null(names(x)) ) x <- x[[1L]]
-    
-    # reset to default value
-    if( is.null(x) ){
-        repos.options(auth = NULL)
-        return(auth)
-    }
-    
-    # read access
-    if( is.null(names(x)) ) return(auth[x])
-    
-    # write access
-    old <- repos.options(auth = x)
-    # return old value
-    invisible(old[[1L]])
-}
-
 .biocinstallRepos <- function(siteRepos = NULL, lib = NULL){
     if( !qrequire('BiocInstaller', character.only = TRUE, lib.loc = lib) ){
         sourceURL('http://www.bioconductor.org/biocLite.R')
@@ -83,7 +59,7 @@ contrib.url2 <- function(repos = getOption('repos'), type = getOption('pkgType')
         }
         # TODO: remove this (for debug)
 #        res <- gsub("3.1", "3.0", res, fixed = TRUE)
-        repos.url(res)
+        repos_url(res)
     }))
 }
 
@@ -179,8 +155,8 @@ OS_type <- function(){
 #' \item Repo URL shortcut key [+ path], defined as a string prefixed with \code{'@@'}, e.g., \code{'@@myRepo/path/to/repo'}, 
 #' that matches a repository entry in file \code{'.netrc'} in the user's home directory -- as returned by 
 #' \code{Sys.getenv('HOME')}.
-#' It is internally substituted into a full repository base URL using by \code{repos.url} (see details in  
-#' \code{\link{read_netrc}} and \code{\link{repos.url}} for details on how repository entries are defined 
+#' It is internally substituted into a full repository base URL using by \code{repos_url} (see details in  
+#' \code{\link{read_netrc}} and \code{\link{repos_url}} for details on how repository entries are defined 
 #' and substituted respectively.
 #' }
 #' 
@@ -189,13 +165,27 @@ OS_type <- function(){
 #' @export
 install.pkgs <- function(pkgs, lib = NULL, repos = getOption('repos'), type = getOption('pkgType'), dependencies = NA, available = NULL, ..., quick = FALSE, dry.run = NULL, devel = FALSE, verbose = TRUE){
     
+    mode <- 'install'
+
+    # special evaluation for pkgs: NULL or .
+    pkgs_symb <- substitute(pkgs)
+    if( identical(pkgs_symb, as.symbol('.')) ) pkgs <- NULL
+    if( is.null(pkgs) || is_NA(pkgs) ){ # all packages in available
+        # dry.run shortcut
+        if( is_NA(pkgs) ) dry.run <- TRUE 
+
+        if( 'Package' %in% colnames(available) ){
+            pkgs <- as.character(available[, 'Package'])
+        }else stop("Could not find package names in `available` [", class(available), "]: must be a matrix or data.frame with a column 'Package'.")
+    }
+    
     substitute_q <- function(x, env) {
           call <- substitute(substitute(y, env), list(y = x))
           eval(call)
     }
     
     if( is.null(repos) ) repos <- getOption('repos')
-    repos <- repos.url(repos)
+    repos <- repos_url(repos)
     
     # detect situation where the package type(s) should be decided based on pkgs
     auto_type <- missing(type)
@@ -277,9 +267,8 @@ install.pkgs <- function(pkgs, lib = NULL, repos = getOption('repos'), type = ge
     }
     
     # show details of some options
-    opts <- c(mode = ifelse(quick, 'quick', 'standard'), version = ifelse(devel, ifelse(devel>1, 'development', 'stable'), 'release'))
-    message("* Installation options: ", str_out(opts, Inf, quote = FALSE, sep = " | "))
-    
+    opts <- c(mode = mode, type = ifelse(quick, 'quick', 'full'), version = ifelse(devel, ifelse(devel>1, 'development', 'stable'), 'release'))
+    message("* Options: ", str_out(opts, Inf, quote = FALSE, sep = " | ", use.names = verbose > 1L))
     
     .fields <- GRAN.fields()
     
@@ -287,10 +276,10 @@ install.pkgs <- function(pkgs, lib = NULL, repos = getOption('repos'), type = ge
     check_repo <- local({
         pkgs <- x
         .all_available <- NULL
-        f <- c('parent', 'query', 'name', 'compare', 'version', 'depLevel', 'depth', 'Source', 'idx', 'Hit')
+        f <- c('query', 'parent', 'name', 'compare', 'version', 'depLevel', 'depth', 'Source', 'idx', 'Hit')
         cNA <- as.character(NA)
         
-        .pkgs <- data.frame(parent = pkgs, query = pkgs, name = pkgs, cNA, cNA, cNA, 0, cNA, as.integer(NA), cNA, stringsAsFactors = FALSE)
+        .pkgs <- data.frame(query = pkgs, parent = pkgs, name = pkgs, cNA, cNA, cNA, 0, cNA, as.integer(NA), cNA, stringsAsFactors = FALSE)
         colnames(.pkgs) <- f
         # add initial target version requirement if any
         if( length(iv <- grep("[? (]", pkgs)) ){
@@ -399,6 +388,7 @@ install.pkgs <- function(pkgs, lib = NULL, repos = getOption('repos'), type = ge
         to_install <- x
         
     }else if( !is.null(available) ){
+        available <- as.matrix(available)
         check_repo(available, 'AVAIL', latest = devel > 0)
         to_install <- check_repo()
         repos <- unique(as.character(to_install$Repository))
@@ -408,7 +398,7 @@ install.pkgs <- function(pkgs, lib = NULL, repos = getOption('repos'), type = ge
         # check availability using plain repos list
         p <- available.pkgs(contrib.url2(repos, type = type), fields = .fields, type = type)
         # update repos list with chosen CRAN mirror
-        repos <- repos.url(repos)
+        repos <- repos_url(repos)
         siteRepos <- setdiff(repos, getOption('repos'))
         default_repos <- setdiff(repos, siteRepos)
         
@@ -418,7 +408,7 @@ install.pkgs <- function(pkgs, lib = NULL, repos = getOption('repos'), type = ge
             repo_type <- 'extended'
             message('  - Extra repos: ', str_repos(siteRepos))
         }
-        repos <- repos.url(repos)
+        repos <- repos_url(repos)
         
         message("* Looking up available packages in ", repo_type, " repositories ... ", appendLF = FALSE)
         check_res <- check_repo(p, paste0('REPOS', if( length(siteRepos) ) '*'), latest = devel > 0)
@@ -648,7 +638,7 @@ available.pkgs <- function(...){
         if( is.null(contriburl) ) contriburl <- contrib.url(getOption("repos"), type_std)
         
         # complete urls for user:passwd
-        contriburl <- repos.url(contriburl)
+        contriburl <- repos_url(contriburl)
         
         # setup custom rcurl only if necessary
         if( .setup_rcurl(contriburl) ) on.exit( .setup_rcurl(TRUE) )
@@ -748,7 +738,11 @@ old.pkgs <- function(lib.loc = NULL, repos = getOption("repos"), available = NUL
 update.pkgs <- function(lib.loc = NULL, repos = getOption("repos"), instlib = NULL, ask = TRUE, available = NULL, oldPkgs = NULL, ..., type = getOption("pkgType"), dry.run = NULL, verbose = TRUE){
     
     # load installed packages
-    inst <- installed.packages(lib.loc)
+    inst <- installed.packages(lib.loc, fields = GRAN.fields())
+    # filter based on version
+    inst <- inst[orderVersion(inst[, 'Version'], decreasing = TRUE), , drop = FALSE]
+    inst <- inst[!duplicated(inst[, 'Package']), , drop = FALSE]
+    
     if( !is.null(oldPkgs) ){
         old <- oldPkgs
         if( is.matrix(oldPkgs) ) old <- oldPkgs[, 'Package']
@@ -777,14 +771,16 @@ update.pkgs <- function(lib.loc = NULL, repos = getOption("repos"), instlib = NU
         
     }else up <- install.pkgs(query, available = as.matrix(available), ..., verbose = verbose, dry.run = ask) 
     
-    new_pkg <- rownames(up)[!is.na(up[, 'Hit'])]
-    if( length(new_pkg) && !isTRUE(dry.run) && ask ){
-        if( askUser(paste0("Do you want to proceed to the installation of the ", length(new_pkg), " package(s) as above specified?"), idefault = 'y') == 'n' ){
+    # only keep packages with a hit
+    up <- up[!is.na(up[, 'Package']), , drop = FALSE]
+        
+    if( nrow(up) && !isTRUE(dry.run) && ask ){
+        if( askUser(paste0("Do you want to proceed to the installation of the ", nrow(up), " package(s) as above specified?"), idefault = 'y') == 'n' ){
             message('Aborting...')
             return(invisible(up))
         }
         
-        up <- install.pkgs(new_pkg, available = up, verbose = verbose)
+        up <- install.pkgs(., lib = lib.loc, available = up, verbose = verbose)
     }
     
     invisible(up)
@@ -808,7 +804,7 @@ Library <- function(package, lib.loc = NULL, ...){
         pkgs <- x[miss]
         if( !is.null(lib.loc) && !file.exists(lib.loc) ) dir.create(lib.loc, recursive = TRUE)
         install.pkgs(pkgs, lib = lib.loc, ...)
-        sapply(pkgs, library, character.only = TRUE, lib = lib)
+        sapply(pkgs, library, character.only = TRUE, lib = lib.loc)
       }
       invisible(x)
 }
