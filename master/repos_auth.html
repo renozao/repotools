@@ -2,7 +2,7 @@
 <html lang="en">
   <head>
     <meta charset="utf-8">
-<title>repos_auth. repotools 1.6.1</title>
+<title>repos_auth. repotools 1.7</title>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <meta name="author" content="">
 
@@ -51,7 +51,7 @@
     </form>--> 
     <ul class="nav navbar-nav navbar-right">
       <li><p class="navbar-text">
-      <span style="font-size:14px" class="label label-primary">Version&nbsp;1.6.1</span>
+      <span style="font-size:14px" class="label label-primary">Version&nbsp;1.7</span>
       &nbsp;</p></li>
     </ul>
   </div><!-- /.navbar-collapse -->
@@ -81,55 +81,45 @@
       <dt>...</dt>
       <dd>repository keys or credential specifications</dd>
       <dt>save</dt>
-      <dd>indicates if the new credentials are to be
-  saved on disk, by updating in the <code>.netrc</code> file, or
-  in a cache -- which expires at the end of the <span class = "pkg">R</span>
-  session. It can also be a character string, which then
-  specifies the path where to save the result (cached
-  entries are not written to disk).
+      <dd>indicates if the new credentials are to be saved on disk,
+by updating in the <code>.netrc</code> file, or in a cache -- which expires at the end of
+the <span class = "pkg">R</span> session.
+It can also be a character string, which then specifies the path where to save the
+result (cached entries are not written to disk).
 
-  Use <code>save=""</code> to print to the console.</dd>
+Use <code>save=""</code> to print to the console.</dd>
       <dt>cache</dt>
-      <dd>specifies how the temporary cached
-  credentials should be loaded:
+      <dd>specifies how the temporary cached credentials should be
+loaded:
 
-  <ul>
-<li> <code>NULL</code> loads both the cache and
-  netrc data, with cache override matching netrc
-  credentials; </li>
+<ul>
+<li> <code>NULL</code> loads both the cache and netrc data, with cache override matching
+netrc credentials;
+</li>
 <li> <code>TRUE</code> loads only the cache data;
-  </li>
-<li> <code>FALSE</code> loads only the netrc data. </li>
+</li>
+<li> <code>FALSE</code> loads only the netrc data.
+</li>
 </ul>
 
 
-  The special value <code>cache = NA</code> will delete the
-  cache, prior to any other operation.</dd>
+The special value <code>cache = NA</code> will delete the cache, prior to any other operation.</dd>
       <dt>exact</dt>
-      <dd>logical that indicates if the the repository
-  keys should be matched exactly. If <code>FALSE</code>, then
-  keys are matched independently of possible trailing path
-  specification.</dd>
+      <dd>logical that indicates if the the repository keys should be matched
+exactly. If <code>FALSE</code>, then keys are matched independently of possible trailing
+path specification.</dd>
       <dt>.netrc</dt>
-      <dd>path or connection to a <em>netrc</em> file,
-  which is looked up for matching repository/host entries.
-  Default is to look for file <code>'.netrc'</code> in the user's
-  home directory.
+      <dd>path or connection to a <em>netrc</em> file, which is looked up for
+matching repository/host entries.
+Default is to look for file <code>'.netrc'</code> in the user's home directory.
 
-  Repository and host credential entries are defined in an
-  <em>netrc</em> file format (see <code><a href='read_netrc.html'>read_netrc</a></code>
-  for more details).
+Repository and host credential entries are defined in an <em>netrc</em> file format (see <code><a href='read_netrc.html'>read_netrc</a></code> for more details).
 
-  Repository shortcut keys start a <code>'@'</code>, e.g.,
-  <code>'@myRepo/path/to/repo'</code> and are substituted by the
-  URL
-  <code>'http://<login>:<password>@<machine><path>/path/to/repo'</code>,
-  where <em><machine></em>, <em><path></em>, <em><login></em> and
-  <code><password></code> are taken from the matched <em>netrc</em>
-  specification.
+Repository shortcut keys start a <code>'@'</code>, e.g., <code>'@myRepo/path/to/repo'</code> and are substituted by the URL
+<code>'http://<login>:<password>@<machine><path>/path/to/repo'</code>, where <em><machine></em>, <em><path></em>,
+<em><login></em> and <code><password></code> are taken from the matched <em>netrc</em> specification.
 
-  Regular hosts are also matched against the <em>netrc</em>
-  specification to add credentials if necessary.</dd>
+Regular hosts are also matched against the <em>netrc</em> specification to add credentials if necessary.</dd>
     </dl>
           </div>
   <div class="span4">

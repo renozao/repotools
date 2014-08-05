@@ -2,7 +2,7 @@
 <html lang="en">
   <head>
     <meta charset="utf-8">
-<title>read_netrc. repotools 1.6.1</title>
+<title>read_netrc. repotools 1.7</title>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <meta name="author" content="">
 
@@ -51,7 +51,7 @@
     </form>--> 
     <ul class="nav navbar-nav navbar-right">
       <li><p class="navbar-text">
-      <span style="font-size:14px" class="label label-primary">Version&nbsp;1.6.1</span>
+      <span style="font-size:14px" class="label label-primary">Version&nbsp;1.7</span>
       &nbsp;</p></li>
     </ul>
   </div><!-- /.navbar-collapse -->
@@ -69,8 +69,7 @@
     <div class="description">
       <h2>Description</h2>
       
-      <p><p>Parses an netrc file in different ways and return the
-  credential specifications it contains.</p></p>
+      <p><p>Parses an netrc file in different ways and return the credential specifications it contains.</p></p>
   
     </div>
     
@@ -80,67 +79,60 @@
     <h2>Arguments</h2>
     <dl>
       <dt>x</dt>
-      <dd>path or connection to an netrc file. Default is
-  to look for file <code>'.netrc'</code> into the user's home
-  directory.</dd>
+      <dd>path or connection to an netrc file.
+Default is to look for file <code>'.netrc'</code> into the user's home directory.</dd>
       <dt>std</dt>
-      <dd>indicates if the file should be parsed as a
-  standard netrc file (<code>TRUE</code>), searched for R
-  repository specifications (see <em>Details</em>)
-  (<code>FALSE</code>), or if entries associated with R
-  repositories should be skipped (<code>NA</code>).</dd>
+      <dd>indicates if the file should be parsed as a standard netrc file (<code>TRUE</code>),
+searched for R repository specifications (see <em>Details</em>) (<code>FALSE</code>),
+or if entries associated with R repositories should be skipped (<code>NA</code>).</dd>
       <dt>line.number</dt>
-      <dd>logical that indicates if the starting
-  and ending line number of each credential definition
-  should also be returned.</dd>
+      <dd>logical that indicates if the starting and ending line number of each
+credential definition should also be returned.</dd>
       <dt>quiet</dt>
-      <dd>logical that indicates if the function
-  should return <code>NULL</code> if the file is not found, or
-  throw an error.</dd>
+      <dd>logical that indicates if the function should return <code>NULL</code> if the file is not found,
+or throw an error.</dd>
     </dl>
     
     <div class="Value">
       <h2>Value</h2>
       
-      <p>a character matrix with one row per credential and
-  columns <code>'machine'</code>, <code>'login'</code> and
-  <code>'password'</code> if <code>std</code> is <code>TRUE</code> or
-  <code>NA</code>, and additional columns <code>'repos'</code> and
-  <code>'path'</code> if <code>std = FALSE</code>.</p>
+      <p>a character matrix with one row per credential and columns <code>'machine'</code>, <code>'login'</code>
+and <code>'password'</code> if <code>std</code> is <code>TRUE</code> or <code>NA</code>, and additional columns
+<code>'repos'</code> and <code>'path'</code> if <code>std = FALSE</code>.</p>
   
     </div>
 
     <div class="Details">
       <h2>Details</h2>
       
-      <p>Entries in the netrc file can be associated to R
-  repositories, which are looked up by <code>install.pkgs</code>
-  via <code><a href='repos_url.html'>repos_url</a></code>, by adding a comment line to
-  a standard entry the following format:</p>
+      <p>Entries in the netrc file can be associated to R repositories, which are looked up
+by <code>install.pkgs</code> via <code><a href='repos_url.html'>repos_url</a></code>, by adding a comment line
+to a standard entry the following format:</p>
   
       <p></p>
   
-      <p><pre> # standard host credential entry machine
-  www.somehost.org login tata password toto
+      <p><pre>
+# standard host credential entry
+machine www.somehost.org
+login tata
+password toto
 
-  #repos @myRepo/a/b/c machine www.myrepo.org login user
-  password 1234 </pre></p>
+#repos @myRepo/a/b/c
+machine www.myrepo.org
+login user
+password 1234
+</pre></p>
   
       <p></p>
   
-      <p>The first entry is standard and provide credentials for a
-  named host.</p>
+      <p>The first entry is standard and provide credentials for a named host.</p>
   
-      <p>The second entry starts with <code>'#repos '</code>, which
-  indicates it is an entry for an R repository with
-  shortcut key (<code>'@myRepo'</code>) and an -- optional --
-  path to the actual repository on the host machine
-  <code>'www.myrepo.org'</code>.</p>
+      <p>The second entry starts with <code>'#repos '</code>, which indicates it is an entry for an R repository
+with shortcut key (<code>'@myRepo'</code>) and an -- optional -- path
+to the actual repository on the host machine <code>'www.myrepo.org'</code>.</p>
   
-      <p>Note that it is not mandatory to start the repository
-  entry key with a <code>'@'</code>, but it makes it clearer that
-  the first part of the path is a key to be substituted
-  rather than being part of the path.</p>
+      <p>Note that it is not mandatory to start the repository entry key with a <code>'@'</code>, but it makes it clearer
+that the first part of the path is a key to be substituted rather than being part of the path.</p>
   
     </div>
     
@@ -181,7 +173,7 @@ read_netrc(f)
 ## www.privatehost.org &quot;www.privatehost.org&quot; &quot;tata&quot;     &quot;toto&quot;  
 ## www.myrepo.org      &quot;www.myrepo.org&quot;      &quot;user&quot;     &quot;1234&quot;  
 ## attr(,&quot;.netrc&quot;)
-## [1] &quot;/tmp/RtmpqcWa5w/file598534d8ff1/repotools/netrc&quot;
+## [1] &quot;/tmp/Rtmp35YjZz/file5f6c6780fa96/repotools/netrc&quot;
 </code></pre>
 
 <pre><code class="r">read_netrc(f, line.number = TRUE)
@@ -192,7 +184,7 @@ read_netrc(f)
 ## www.privatehost.org &quot;www.privatehost.org&quot; &quot;tata&quot;     &quot;toto&quot;   &quot;5&quot;   &quot;8&quot; 
 ## www.myrepo.org      &quot;www.myrepo.org&quot;      &quot;user&quot;     &quot;1234&quot;   &quot;10&quot;  &quot;13&quot;
 ## attr(,&quot;.netrc&quot;)
-## [1] &quot;/tmp/RtmpqcWa5w/file598534d8ff1/repotools/netrc&quot;
+## [1] &quot;/tmp/Rtmp35YjZz/file5f6c6780fa96/repotools/netrc&quot;
 </code></pre>
 
 <pre><code class="r"># parse repo information
@@ -208,7 +200,7 @@ read_netrc(f, std = FALSE)
 ## www.privatehost.org &quot;&quot;      
 ## www.myrepo.org      &quot;/a/b/c&quot;
 ## attr(,&quot;.netrc&quot;)
-## [1] &quot;/tmp/RtmpqcWa5w/file598534d8ff1/repotools/netrc&quot;
+## [1] &quot;/tmp/Rtmp35YjZz/file5f6c6780fa96/repotools/netrc&quot;
 </code></pre>
 
 <pre><code class="r"># skip repo entries
@@ -219,7 +211,7 @@ read_netrc(f, std = NA)
 ## www.domain.com      &quot;www.domain.com&quot;      &quot;somebody&quot; &quot;abcd&quot;  
 ## www.privatehost.org &quot;www.privatehost.org&quot; &quot;tata&quot;     &quot;toto&quot;  
 ## attr(,&quot;.netrc&quot;)
-## [1] &quot;/tmp/RtmpqcWa5w/file598534d8ff1/repotools/netrc&quot;
+## [1] &quot;/tmp/Rtmp35YjZz/file5f6c6780fa96/repotools/netrc&quot;
 </code></pre>
 
   </div>

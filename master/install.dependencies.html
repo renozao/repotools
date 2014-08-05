@@ -2,7 +2,7 @@
 <html lang="en">
   <head>
     <meta charset="utf-8">
-<title>install.dependencies. repotools 1.6.1</title>
+<title>install.dependencies. repotools 1.7</title>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <meta name="author" content="">
 
@@ -51,7 +51,7 @@
     </form>--> 
     <ul class="nav navbar-nav navbar-right">
       <li><p class="navbar-text">
-      <span style="font-size:14px" class="label label-primary">Version&nbsp;1.6.1</span>
+      <span style="font-size:14px" class="label label-primary">Version&nbsp;1.7</span>
       &nbsp;</p></li>
     </ul>
   </div><!-- /.navbar-collapse -->
@@ -69,8 +69,8 @@
     <div class="description">
       <h2>Description</h2>
       
-      <p><p>Install all dependencies from a package source directory
-  or package source file.</p></p>
+      <p><p>Install all dependencies from a package source directory or
+package source file.</p></p>
   
     </div>
     
@@ -82,42 +82,38 @@
       <dt>pkg</dt>
       <dd>package name, path or source file</dd>
       <dt>...</dt>
-      <dd>extra arguments passed to
-  <code><a href='install.pkgs.html'>install.pkgs</a></code>.</dd>
+      <dd>extra arguments passed to <code><a href='install.pkgs.html'>install.pkgs</a></code>.</dd>
       <dt>dependencies</dt>
-      <dd>logical indicating to also install
-  uninstalled packages which these packages depend on/link
-  to/import/suggest (and so on recursively).  Not used if
-  <code>repos = NULL</code>.  Can also be a character vector, a
-  subset of <code>c("Depends", "Imports", "LinkingTo",
-  "Suggests", "Enhances")</code>.
+      <dd>logical indicating to also install uninstalled
+    packages which these packages depend on/link to/import/suggest
+    (and so on recursively).  Not used if <code>repos = NULL</code>.
+    Can also be a character vector, a subset of
+    <code>c("Depends", "Imports", "LinkingTo", "Suggests", "Enhances")</code>.
 
-  Only supported if <code>lib</code> is of length one (or
-  missing), so it is unambiguous where to install the
-  dependent packages.  If this is not the case it is
-  ignored, with a warning.
+    Only supported if <code>lib</code> is of length one (or missing),
+    so it is unambiguous where to install the dependent packages.  If
+    this is not the case it is ignored, with a warning.
 
-  The default, <code>NA</code>, means <code>c("Depends",
-  "Imports", "LinkingTo")</code>.
+    The default, <code>NA</code>, means
+    <code>c("Depends", "Imports", "LinkingTo")</code>.
 
-  <code>TRUE</code> means to use <code>c("Depends", "Imports",
-  "LinkingTo", "Suggests")</code> for <code>pkgs</code> and
-  <code>c("Depends", "Imports", "LinkingTo")</code> for added
-  dependencies: this installs all the packages needed to
-  run <code>pkgs</code>, their examples, tests and vignettes (if
-  the package author specified them correctly).
+    <code>TRUE</code> means to use
+    <code>c("Depends", "Imports", "LinkingTo", "Suggests")</code> for
+    <code>pkgs</code> and
+    <code>c("Depends", "Imports", "LinkingTo")</code> for added dependencies:
+    this installs all the packages needed to run <code>pkgs</code>, their
+    examples, tests and vignettes (if the package author specified them
+    correctly).
 
-  In all of these, <code>"LinkingTo"</code> is omitted for binary
-  packages.  </dd>
+    In all of these, <code>"LinkingTo"</code> is omitted for binary packages.
+  </dd>
       <dt>verbose</dt>
       <dd>verbosity level (logical or numeric)</dd>
       <dt>dry.run</dt>
-      <dd>logical that indicates if one should only
-  return the computed set of packages and dependencies to
-  install. If <code>NULL</code>, then it is internally set to
-  <code>TRUE</code> only when there is a mismatch between the
-  requested and the OS binary package types (e.g., if
-  <code>type = 'win.both'</code> on a Unix/Mac host).</dd>
+      <dd>logical that indicates if one should only return the computed set of
+packages and dependencies to install.
+If <code>NULL</code>, then it is internally set to <code>TRUE</code> only when there is a mismatch between
+the requested and the OS binary package types (e.g., if <code>type = 'win.both'</code> on a Unix/Mac host).</dd>
     </dl>
         
     <h2 id="examples">Examples</h2>

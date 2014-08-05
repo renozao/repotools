@@ -2,7 +2,7 @@
 <html lang="en">
   <head>
     <meta charset="utf-8">
-<title>available.pkgs. repotools 1.6.1</title>
+<title>available.pkgs. repotools 1.7</title>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <meta name="author" content="">
 
@@ -51,7 +51,7 @@
     </form>--> 
     <ul class="nav navbar-nav navbar-right">
       <li><p class="navbar-text">
-      <span style="font-size:14px" class="label label-primary">Version&nbsp;1.6.1</span>
+      <span style="font-size:14px" class="label label-primary">Version&nbsp;1.7</span>
       &nbsp;</p></li>
     </ul>
   </div><!-- /.navbar-collapse -->
@@ -69,13 +69,10 @@
     <div class="description">
       <h2>Description</h2>
       
-      <p><p><code>available.pkgs</code> returns a matrix of the packages
-  available in given repositories.</p>
+      <p><p><code>available.pkgs</code> returns a matrix of the packages available in given repositories.</p>
 <p><code>download.pkgs</code> downloads packages.</p>
-<p><code>exists.pkgs</code> tells if packages are available from
-  repositories.</p>
-<p><code>Library</code> tries loading packages and install them if
-  needed.</p></p>
+<p><code>exists.pkgs</code> tells if packages are available from repositories.</p>
+<p><code>Library</code> tries loading packages and install them if needed.</p></p>
   
     </div>
     
@@ -98,69 +95,72 @@ Library(package, lib.loc = NULL, ...)</pre>
     <h2>Arguments</h2>
     <dl>
       <dt>fixed</dt>
-      <dd>logical that indicates if the elements of
-  <code>x</code> should match exactly (<code>TRUE</code>) or
-  interpreted and matched as regular expressions.</dd>
+      <dd>logical that indicates if the elements of <code>x</code> should match
+exactly (<code>TRUE</code>) or interpreted and matched as regular expressions.</dd>
       <dt>value</dt>
-      <dd>logical, used only when <code>fixed=FALSE</code>,
-  that indicates if the name of the matched packages should
-  be returned (instead of a <code>TRUE/FALSE</code> logical
-  value.</dd>
+      <dd>logical, used only when <code>fixed=FALSE</code>, that indicates if the
+name of the matched packages should be returned (instead of a <code>TRUE/FALSE</code>
+logical value.</dd>
       <dt>ask</dt>
-      <dd>logical that specifies if the user should be
-  asked before installling the available updates, or if
-  these should be directly installed.</dd>
+      <dd>logical that specifies if the user should be asked before installling the available updates,
+or if these should be directly installed.</dd>
       <dt>...</dt>
-      <dd> additional arguments to be passed to
-  <code><a href='http://www.inside-r.org/r-doc/utils/download.file'>download.file</a></code>.  </dd>
+      <dd>
+    additional arguments to be passed to
+    <code><a href='http://www.inside-r.org/r-doc/utils/download.file'>download.file</a></code>.
+  </dd>
       <dt>pkgs</dt>
-      <dd> character vector of the names of packages
-  whose latest available versions should be downloaded from
-  the repositories.  </dd>
+      <dd>
+    character vector of the names of packages whose latest available
+    versions should be downloaded from the repositories.
+  </dd>
       <dt>destdir</dt>
-      <dd> directory where downloaded packages are
-  to be stored.  </dd>
+      <dd>
+    directory where downloaded packages are to be stored.
+  </dd>
       <dt>available</dt>
-      <dd> an object as returned by
-  <code><a href='http://www.inside-r.org/r-doc/utils/available.packages'>available.packages</a></code> listing packages
-  available at the repositories, or <code>NULL</code> which makes
-  an internal call to <code>available.packages</code>.  </dd>
+      <dd>
+    an object as returned by <code><a href='http://www.inside-r.org/r-doc/utils/available.packages'>available.packages</a></code>
+    listing packages available at the repositories, or <code>NULL</code> which
+    makes an internal call to <code>available.packages</code>.
+  </dd>
       <dt>repos</dt>
-      <dd> character vector, the base URL(s) of the
-  repositories to use, i.e., the URL of the CRAN master
-  such as <code>"http://cran.r-project.org"</code> or its Statlib
-  mirror, <code>"http://lib.stat.cmu.edu/R/CRAN"</code>.  </dd>
+      <dd>
+    character vector, the base URL(s) of the repositories
+    to use, i.e., the URL of the CRAN master such as
+    <code>"http://cran.r-project.org"</code> or its Statlib mirror,
+    <code>"http://lib.stat.cmu.edu/R/CRAN"</code>.
+  </dd>
       <dt>type</dt>
-      <dd> character string, indicate which type of
-  packages: see <code><a href='http://www.inside-r.org/r-doc/utils/install.packages'>install.packages</a></code>.  </dd>
+      <dd>
+    character string, indicate which type of packages: see
+    <code><a href='http://www.inside-r.org/r-doc/utils/install.packages'>install.packages</a></code>.
+  </dd>
       <dt>verbose</dt>
       <dd>verbosity level (logical or numeric)</dd>
       <dt>dry.run</dt>
-      <dd>logical that indicates if one should only
-  return the computed set of packages and dependencies to
-  install. If <code>NULL</code>, then it is internally set to
-  <code>TRUE</code> only when there is a mismatch between the
-  requested and the OS binary package types (e.g., if
-  <code>type = 'win.both'</code> on a Unix/Mac host).</dd>
+      <dd>logical that indicates if one should only return the computed set of
+packages and dependencies to install.
+If <code>NULL</code>, then it is internally set to <code>TRUE</code> only when there is a mismatch between
+the requested and the OS binary package types (e.g., if <code>type = 'win.both'</code> on a Unix/Mac host).</dd>
       <dt>lib.loc</dt>
-      <dd>character vector describing the location
-  of R library trees to search through (and update packages
-  therein), or <code>NULL</code> for all known trees (see
-  <code><a href='http://www.inside-r.org/r-doc/base/libPaths'>.libPaths</a></code>).</dd>
+      <dd>character vector describing the location of R
+    library trees to search through (and update packages therein), or
+    <code>NULL</code> for all known trees (see <code><a href='http://www.inside-r.org/r-doc/base/libPaths'>.libPaths</a></code>).</dd>
       <dt>instlib</dt>
-      <dd>character string giving the library
-  directory where to install the packages.</dd>
+      <dd>character string giving the library directory where to
+    install the packages.</dd>
       <dt>oldPkgs</dt>
-      <dd> if specified as non-NULL,
-  <code>update.packages()</code> only considers these packages
-  for updating. This may be a character vector of package
-  names or a matrix as returned by <code>old.packages()</code>.
+      <dd>
+    if specified as non-NULL, <code>update.packages()</code> only considers
+    these packages for updating. This may be a character vector
+    of package names or a matrix as returned by <code>old.packages()</code>.
   </dd>
       <dt>package</dt>
-      <dd>the name of a package, given as a
-  <a href='http://www.inside-r.org/r-doc/base/name'>name</a> or literal character string, or a character
-  string, depending on whether <code>character.only</code> is
-  <code>FALSE</code> (default) or <code>TRUE</code>).</dd>
+      <dd>the name of a package, given as a <a href='http://www.inside-r.org/r-doc/base/name'>name</a> or
+    literal character string, or a character string, depending on
+    whether <code>character.only</code> is <code>FALSE</code> (default) or
+    <code>TRUE</code>).</dd>
     </dl>
           </div>
   <div class="span4">

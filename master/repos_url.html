@@ -2,7 +2,7 @@
 <html lang="en">
   <head>
     <meta charset="utf-8">
-<title>repos_url. repotools 1.6.1</title>
+<title>repos_url. repotools 1.7</title>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <meta name="author" content="">
 
@@ -51,7 +51,7 @@
     </form>--> 
     <ul class="nav navbar-nav navbar-right">
       <li><p class="navbar-text">
-      <span style="font-size:14px" class="label label-primary">Version&nbsp;1.6.1</span>
+      <span style="font-size:14px" class="label label-primary">Version&nbsp;1.7</span>
       &nbsp;</p></li>
     </ul>
   </div><!-- /.navbar-collapse -->
@@ -69,8 +69,7 @@
     <div class="description">
       <h2>Description</h2>
       
-      <p><p>Builds full repository URLs based on shortcut repository
-  keys and host names, adding credentials if necessary.</p></p>
+      <p><p>Builds full repository URLs based on shortcut repository keys and host names, adding credentials if necessary.</p></p>
   
     </div>
     
@@ -80,36 +79,24 @@
     <h2>Arguments</h2>
     <dl>
       <dt>repos</dt>
-      <dd>character vector of repository
-  specifications, either a full URLs, e.g.,
-  <code>'http://repo.host.org'</code> or
-  <code>'file:///path/to/local/repo'</code>, or using repository
-  shortcut keys, e.g., <code>'@myRepo/path/to/repo/root'</code>,
-  which is substituted based on the entries in <code>netrc</code>
-  file.</dd>
+      <dd>character vector of repository specifications, either a full URLs,
+e.g., <code>'http://repo.host.org'</code> or <code>'file:///path/to/local/repo'</code>, or
+using repository shortcut keys, e.g., <code>'@myRepo/path/to/repo/root'</code>, which is
+substituted based on the entries in <code>netrc</code> file.</dd>
       <dt>...</dt>
-      <dd>other repository specification appended to
-  <code>repos</code>.</dd>
+      <dd>other repository specification appended to <code>repos</code>.</dd>
       <dt>.netrc</dt>
-      <dd>path or connection to a <em>netrc</em> file,
-  which is looked up for matching repository/host entries.
-  Default is to look for file <code>'.netrc'</code> in the user's
-  home directory.
+      <dd>path or connection to a <em>netrc</em> file, which is looked up for
+matching repository/host entries.
+Default is to look for file <code>'.netrc'</code> in the user's home directory.
 
-  Repository and host credential entries are defined in an
-  <em>netrc</em> file format (see <code><a href='read_netrc.html'>read_netrc</a></code>
-  for more details).
+Repository and host credential entries are defined in an <em>netrc</em> file format (see <code><a href='read_netrc.html'>read_netrc</a></code> for more details).
 
-  Repository shortcut keys start a <code>'@'</code>, e.g.,
-  <code>'@myRepo/path/to/repo'</code> and are substituted by the
-  URL
-  <code>'http://<login>:<password>@<machine><path>/path/to/repo'</code>,
-  where <em><machine></em>, <em><path></em>, <em><login></em> and
-  <code><password></code> are taken from the matched <em>netrc</em>
-  specification.
+Repository shortcut keys start a <code>'@'</code>, e.g., <code>'@myRepo/path/to/repo'</code> and are substituted by the URL
+<code>'http://<login>:<password>@<machine><path>/path/to/repo'</code>, where <em><machine></em>, <em><path></em>,
+<em><login></em> and <code><password></code> are taken from the matched <em>netrc</em> specification.
 
-  Regular hosts are also matched against the <em>netrc</em>
-  specification to add credentials if necessary.</dd>
+Regular hosts are also matched against the <em>netrc</em> specification to add credentials if necessary.</dd>
     </dl>
         
     <h2 id="examples">Examples</h2>
