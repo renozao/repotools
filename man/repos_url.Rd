@@ -2,43 +2,30 @@
 \alias{repos_url}
 \title{Repository URLs}
 \usage{
-  repos_url(repos = getOption("repos"), ..., .netrc = NULL)
+repos_url(repos = getOption("repos"), ..., .netrc = NULL)
 }
 \arguments{
-  \item{repos}{character vector of repository
-  specifications, either a full URLs, e.g.,
-  \code{'http://repo.host.org'} or
-  \code{'file:///path/to/local/repo'}, or using repository
-  shortcut keys, e.g., \code{'@myRepo/path/to/repo/root'},
-  which is substituted based on the entries in \code{netrc}
-  file.}
+\item{repos}{character vector of repository specifications, either a full URLs,
+e.g., \code{'http://repo.host.org'} or \code{'file:///path/to/local/repo'}, or
+using repository shortcut keys, e.g., \code{'@myRepo/path/to/repo/root'}, which is
+substituted based on the entries in \code{netrc} file.}
 
-  \item{...}{other repository specification appended to
-  \code{repos}.}
+\item{...}{other repository specification appended to \code{repos}.}
 
-  \item{.netrc}{path or connection to a \emph{netrc} file,
-  which is looked up for matching repository/host entries.
-  Default is to look for file \code{'.netrc'} in the user's
-  home directory.
+\item{.netrc}{path or connection to a \emph{netrc} file, which is looked up for
+matching repository/host entries.
+Default is to look for file \code{'.netrc'} in the user's home directory.
 
-  Repository and host credential entries are defined in an
-  \emph{netrc} file format (see \code{\link{read_netrc}}
-  for more details).
+Repository and host credential entries are defined in an \emph{netrc} file format (see \code{\link{read_netrc}} for more details).
 
-  Repository shortcut keys start a \code{'@'}, e.g.,
-  \code{'@myRepo/path/to/repo'} and are substituted by the
-  URL
-  \code{'http://<login>:<password>@<machine><path>/path/to/repo'},
-  where \emph{<machine>}, \emph{<path>}, \emph{<login>} and
-  \code{<password>} are taken from the matched \emph{netrc}
-  specification.
+Repository shortcut keys start a \code{'@'}, e.g., \code{'@myRepo/path/to/repo'} and are substituted by the URL
+\code{'http://<login>:<password>@<machine><path>/path/to/repo'}, where \emph{<machine>}, \emph{<path>},
+\emph{<login>} and \code{<password>} are taken from the matched \emph{netrc} specification.
 
-  Regular hosts are also matched against the \emph{netrc}
-  specification to add credentials if necessary.}
+Regular hosts are also matched against the \emph{netrc} specification to add credentials if necessary.}
 }
 \description{
-  Builds full repository URLs based on shortcut repository
-  keys and host names, adding credentials if necessary.
+Builds full repository URLs based on shortcut repository keys and host names, adding credentials if necessary.
 }
 \examples{
 \dontshow{# roxygen generated flag
