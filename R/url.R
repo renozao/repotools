@@ -83,12 +83,12 @@ read_netrc <- function(x = .netrc_path(), std = TRUE, line.number = FALSE, quiet
     if( !length(l) ) return()
     
     chunk <- grep("^\\s*$", l)
-    if( tail(chunk, 1L) != length(l) ){
+    if( !length(chunk) || tail(chunk, 1L) != length(l) ){
         chunk <- c(chunk, length(l)+1)
     }
     chunk <- c(0L, chunk)
     chunk <- chunk[!chunk %in% (chunk+1)]
-    if( identical(chunk, 0L) ) return()
+    if( identical(chunk, 0L) ) return()    
     
     fields <- std_fields <- c('machine', 'login', 'password')
     comment_pattern <- ''
@@ -377,7 +377,7 @@ repos_auth <- local({
         
         flag_delete <- digest(tempfile())
         fields <- c('machine', 'login', 'password')
-        l <- readLines(netrc_file) 
+        l <- if( !is.null(netrc_file) ) readLines(netrc_file) 
         sapply(rownames(new_auth), function(r){
             
             # new entry
@@ -389,25 +389,36 @@ repos_auth <- local({
                 idx <- seq(as.integer(net[i,'start']), as.integer(net[i,'end']))
                 if( to_delete ){ # delete
                     l[idx] <<- flag_delete
-                    if( !nzchar(l[idx[1L] - 1L]) ) l[idx[1L] - 1L] <<- flag_delete
+                    if( idx[1L] > 1L && !nzchar(l[idx[1L] - 1L]) ) l[idx[1L] - 1L] <<- flag_delete
                 }else{ # modify
                     l[idx] <<- flag_delete
                     l[idx[1L]] <<- new_entry
                 }
                 
             }else if( !to_delete ){ # add
-                if( nzchar(tail(l, 1L)) ) new_entry <- c("", new_entry) 
+                if( length(l) && nzchar(tail(l, 1L)) ) new_entry <- c("", new_entry) 
                 l <<- c(l, new_entry)
             }
         })
         
         # remove flagged lines
         l <- l[l != flag_delete]
+        # add last empty line
+        if( length(l) && nzchar(tail(l, 1L)) ) l <- c(l, "")
         
         # update file
         if( is.character(save) ) netrc_file <- save
+        else if( is.null(netrc_file) || !file.exists(netrc_file) ){
+            netrc_file <- netrc_file %||% .netrc_path()
+            if( askUser(paste0("Default .netrc file [", netrc_file, "] does not exist. Do you want to create it? "), idefault = 'y') != 'y' ){
+                stop('Aborted saving repository credentials: user did not allowed creation of file ', netrc_file)
+            }
+        }
+        action <- if( file.exists(netrc_file) ) 'Updating' else 'Saving'
+        message(sprintf("%s %s repos credentials in file %s ... ", action, nrow(new_auth), netrc_file), appendLF = FALSE)
         cat(l, file = netrc_file, sep = "\n")
-        message(sprintf("Updated %s repos credentials in %s", nrow(new_auth), netrc_file))
+        message('OK')
+        
     
         # return old value
         invisible(old_auth)
