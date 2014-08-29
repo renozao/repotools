@@ -69,7 +69,8 @@
     <div class="description">
       <h2>Description</h2>
       
-      <p><p>Builds full repository URLs based on shortcut repository keys and host names, adding credentials if necessary.</p></p>
+      <p><p>Builds full repository URLs based on shortcut repository
+  keys and host names, adding credentials if necessary.</p></p>
   
     </div>
     
@@ -138,7 +139,8 @@ if( interactive() ) file.show(f) else cat(readLines(f), sep = &quot;\n&quot;)
 </code></pre>
 
 <pre><code class="r"># test different substitutions
-spec &lt;- c(&#39;@myRepo&#39;, &#39;@myRepo/extra/path&#39;, &#39;http://www.public.org&#39;, &#39;http://www.privatehost.org/repo/dir&#39;, &#39;@CRAN@&#39;)
+spec &lt;- c(&#39;@myRepo&#39;, &#39;@myRepo/extra/path&#39;, &#39;http://www.public.org&#39;
+                , &#39;http://www.privatehost.org/repo/dir&#39;, &#39;@CRAN@&#39;)
 cbind(Specification = spec, URL = repos_url(spec, .netrc = f))
 </code></pre>
 

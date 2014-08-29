@@ -69,7 +69,8 @@
     <div class="description">
       <h2>Description</h2>
       
-      <p><p>Parses an netrc file in different ways and return the credential specifications it contains.</p></p>
+      <p><p>Parses an netrc file in different ways and return the
+  credential specifications it contains.</p></p>
   
     </div>
     
@@ -105,34 +106,34 @@ and <code>'password'</code> if <code>std</code> is <code>TRUE</code> or <code>NA
     <div class="Details">
       <h2>Details</h2>
       
-      <p>Entries in the netrc file can be associated to R repositories, which are looked up
-by <code>install.pkgs</code> via <code><a href='repos_url.html'>repos_url</a></code>, by adding a comment line
-to a standard entry the following format:</p>
+      <p>Entries in the netrc file can be associated to R
+  repositories, which are looked up by <code>install.pkgs</code>
+  via <code><a href='repos_url.html'>repos_url</a></code>, by adding a comment line to
+  a standard entry the following format:</p>
   
       <p></p>
   
-      <p><pre>
-# standard host credential entry
-machine www.somehost.org
-login tata
-password toto
+      <p><pre> # standard host credential entry machine
+  www.somehost.org login tata password toto
 
-#repos @myRepo/a/b/c
-machine www.myrepo.org
-login user
-password 1234
-</pre></p>
+  #repos @myRepo/a/b/c machine www.myrepo.org login user
+  password 1234 </pre></p>
   
       <p></p>
   
-      <p>The first entry is standard and provide credentials for a named host.</p>
+      <p>The first entry is standard and provide credentials for a
+  named host.</p>
   
-      <p>The second entry starts with <code>'#repos '</code>, which indicates it is an entry for an R repository
-with shortcut key (<code>'@myRepo'</code>) and an -- optional -- path
-to the actual repository on the host machine <code>'www.myrepo.org'</code>.</p>
+      <p>The second entry starts with <code>'#repos '</code>, which
+  indicates it is an entry for an R repository with
+  shortcut key (<code>'@myRepo'</code>) and an -- optional --
+  path to the actual repository on the host machine
+  <code>'www.myrepo.org'</code>.</p>
   
-      <p>Note that it is not mandatory to start the repository entry key with a <code>'@'</code>, but it makes it clearer
-that the first part of the path is a key to be substituted rather than being part of the path.</p>
+      <p>Note that it is not mandatory to start the repository
+  entry key with a <code>'@'</code>, but it makes it clearer that
+  the first part of the path is a key to be substituted
+  rather than being part of the path.</p>
   
     </div>
     
@@ -173,7 +174,7 @@ read_netrc(f)
 ## www.privatehost.org &quot;www.privatehost.org&quot; &quot;tata&quot;     &quot;toto&quot;  
 ## www.myrepo.org      &quot;www.myrepo.org&quot;      &quot;user&quot;     &quot;1234&quot;  
 ## attr(,&quot;.netrc&quot;)
-## [1] &quot;/tmp/Rtmp35YjZz/file5f6c6780fa96/repotools/netrc&quot;
+## [1] &quot;/tmp/Rtmp3flyCh/file18c157f07820/repotools/netrc&quot;
 </code></pre>
 
 <pre><code class="r">read_netrc(f, line.number = TRUE)
@@ -184,7 +185,7 @@ read_netrc(f)
 ## www.privatehost.org &quot;www.privatehost.org&quot; &quot;tata&quot;     &quot;toto&quot;   &quot;5&quot;   &quot;8&quot; 
 ## www.myrepo.org      &quot;www.myrepo.org&quot;      &quot;user&quot;     &quot;1234&quot;   &quot;10&quot;  &quot;13&quot;
 ## attr(,&quot;.netrc&quot;)
-## [1] &quot;/tmp/Rtmp35YjZz/file5f6c6780fa96/repotools/netrc&quot;
+## [1] &quot;/tmp/Rtmp3flyCh/file18c157f07820/repotools/netrc&quot;
 </code></pre>
 
 <pre><code class="r"># parse repo information
@@ -200,7 +201,7 @@ read_netrc(f, std = FALSE)
 ## www.privatehost.org &quot;&quot;      
 ## www.myrepo.org      &quot;/a/b/c&quot;
 ## attr(,&quot;.netrc&quot;)
-## [1] &quot;/tmp/Rtmp35YjZz/file5f6c6780fa96/repotools/netrc&quot;
+## [1] &quot;/tmp/Rtmp3flyCh/file18c157f07820/repotools/netrc&quot;
 </code></pre>
 
 <pre><code class="r"># skip repo entries
@@ -211,7 +212,7 @@ read_netrc(f, std = NA)
 ## www.domain.com      &quot;www.domain.com&quot;      &quot;somebody&quot; &quot;abcd&quot;  
 ## www.privatehost.org &quot;www.privatehost.org&quot; &quot;tata&quot;     &quot;toto&quot;  
 ## attr(,&quot;.netrc&quot;)
-## [1] &quot;/tmp/Rtmp35YjZz/file5f6c6780fa96/repotools/netrc&quot;
+## [1] &quot;/tmp/Rtmp3flyCh/file18c157f07820/repotools/netrc&quot;
 </code></pre>
 
   </div>
