@@ -182,7 +182,8 @@ url_credential_split <- function(x){
 #' if( interactive() ) file.show(f) else cat(readLines(f), sep = "\n")
 #' 
 #' # test different substitutions
-#' spec <- c('@@myRepo', '@@myRepo/extra/path', 'http://www.public.org', 'http://www.privatehost.org/repo/dir', '@@CRAN@@')
+#' spec <- c('@@myRepo', '@@myRepo/extra/path', 'http://www.public.org'
+#' 				, 'http://www.privatehost.org/repo/dir', '@@CRAN@@')
 #' cbind(Specification = spec, URL = repos_url(spec, .netrc = f))
 #' 
 repos_url <- function(repos = getOption('repos'), ..., .netrc = NULL){

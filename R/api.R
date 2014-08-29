@@ -115,6 +115,8 @@ OS_type <- function(){
 #' repositories if needed.
 #' 
 #' @inheritParams utils::install.packages
+#' @param pkgs character vector of the names of packages whose current versions should be downloaded 
+#' from the repositories or of path to source/binary package files (or a mixed of both).
 #' @param repos URL or specification of CRAN-like package repository (see section \emph{Repositories}).
 #' Use \code{repos = '+http://myrepo.org'} to append repositories to the default ones.
 #' @param ... extra parameters eventually passed to the corresponding base function.
