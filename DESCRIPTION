@@ -11,11 +11,11 @@ Description: Provides utilities to facilitate the creation and usage of
 License: GPL (>=2)
 SCM: github+gran:renozao
 Depends:
-    R (>= 3.0),
-    pkgmaker (>= 0.25.6)
+    R (>= 3.0)
 Imports:
     digest,
     tools,
+    pkgmaker (>= 0.25.7),
     devtools,
     RCurl,
     stringr

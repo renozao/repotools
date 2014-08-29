@@ -54,7 +54,7 @@ if( !require2('repotools', version = '1.7') ){
     }
     
     # install required version of pkgmaker
-    if( !require2('pkgmaker', version = '0.25.6') ){    
+    if( !require2('pkgmaker', version = '0.25.7') ){    
         install_github('pkgmaker', 'renozao', 'develop', quick = QUICK)
     }
     
