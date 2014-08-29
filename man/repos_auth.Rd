@@ -2,12 +2,13 @@
 \alias{repos_auth}
 \title{CRAN-style Repository Authentication Credentials}
 \usage{
-repos_auth(..., save = FALSE, cache = NULL, exact = FALSE, .netrc = NULL)
+  repos_auth(..., save = FALSE, cache = NULL,
+    exact = FALSE, .netrc = NULL)
 }
 \arguments{
-\item{...}{repository keys or credential specifications}
+  \item{...}{repository keys or credential specifications}
 
-\item{save}{indicates if the new credentials are to be saved on disk,
+  \item{save}{indicates if the new credentials are to be saved on disk,
 by updating in the \code{.netrc} file, or in a cache -- which expires at the end of
 the \pkg{R} session.
 It can also be a character string, which then specifies the path where to save the
@@ -15,7 +16,7 @@ result (cached entries are not written to disk).
 
 Use \code{save=""} to print to the console.}
 
-\item{cache}{specifies how the temporary cached credentials should be
+  \item{cache}{specifies how the temporary cached credentials should be
 loaded:
 
 \itemize{
@@ -27,11 +28,11 @@ netrc credentials;
 
 The special value \code{cache = NA} will delete the cache, prior to any other operation.}
 
-\item{exact}{logical that indicates if the the repository keys should be matched
+  \item{exact}{logical that indicates if the the repository keys should be matched
 exactly. If \code{FALSE}, then keys are matched independently of possible trailing
 path specification.}
 
-\item{.netrc}{path or connection to a \emph{netrc} file, which is looked up for
+  \item{.netrc}{path or connection to a \emph{netrc} file, which is looked up for
 matching repository/host entries.
 Default is to look for file \code{'.netrc'} in the user's home directory.
 
@@ -44,6 +45,6 @@ Repository shortcut keys start a \code{'@'}, e.g., \code{'@myRepo/path/to/repo'}
 Regular hosts are also matched against the \emph{netrc} specification to add credentials if necessary.}
 }
 \description{
-Gets/sets authentication credentials for CRAN-style.
+  Gets/sets authentication credentials for CRAN-style.
 }
 

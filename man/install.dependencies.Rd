@@ -2,14 +2,15 @@
 \alias{install.dependencies}
 \title{Installing All Package Dependencies}
 \usage{
-install.dependencies(pkg, dependencies = NA, ..., verbose = TRUE, dry.run = FALSE)
+  install.dependencies(pkg, dependencies = NA, ...,
+    verbose = TRUE, dry.run = FALSE)
 }
 \arguments{
-\item{pkg}{package name, path or source file}
+  \item{pkg}{package name, path or source file}
 
-\item{...}{extra arguments passed to \code{\link{install.pkgs}}.}
+  \item{...}{extra arguments passed to \code{\link{install.pkgs}}.}
 
-\item{dependencies}{logical indicating to also install uninstalled
+  \item{dependencies}{logical indicating to also install uninstalled
     packages which these packages depend on/link to/import/suggest
     (and so on recursively).  Not used if \code{repos = NULL}.
     Can also be a character vector, a subset of
@@ -33,16 +34,16 @@ install.dependencies(pkg, dependencies = NA, ..., verbose = TRUE, dry.run = FALS
     In all of these, \code{"LinkingTo"} is omitted for binary packages.
   }
 
-\item{verbose}{verbosity level (logical or numeric)}
+  \item{verbose}{verbosity level (logical or numeric)}
 
-\item{dry.run}{logical that indicates if one should only return the computed set of
+  \item{dry.run}{logical that indicates if one should only return the computed set of
 packages and dependencies to install.
 If \code{NULL}, then it is internally set to \code{TRUE} only when there is a mismatch between
 the requested and the OS binary package types (e.g., if \code{type = 'win.both'} on a Unix/Mac host).}
 }
 \description{
-Install all dependencies from a package source directory or
-package source file.
+  Install all dependencies from a package source directory
+  or package source file.
 }
 \examples{
 \dontshow{# roxygen generated flag

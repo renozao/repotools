@@ -2,20 +2,27 @@
 \alias{install.pkgs}
 \title{Enhanced Package Installation}
 \usage{
-install.pkgs(pkgs, lib = NULL, repos = getOption("repos"), type = getOption("pkgType"), dependencies = NA, available = NULL, ..., quick = FALSE, dry.run = NULL, devel = FALSE, verbose = TRUE)
+  install.pkgs(pkgs, lib = NULL,
+    repos = getOption("repos"),
+    type = getOption("pkgType"), dependencies = NA,
+    available = NULL, ..., quick = FALSE, dry.run = NULL,
+    devel = FALSE, verbose = TRUE)
 }
 \arguments{
-\item{repos}{URL or specification of CRAN-like package repository (see section \emph{Repositories}).
+  \item{pkgs}{character vector of the names of packages whose current versions should be downloaded
+from the repositories or of path to source/binary package files (or a mixed of both).}
+
+  \item{repos}{URL or specification of CRAN-like package repository (see section \emph{Repositories}).
 Use \code{repos = '+http://myrepo.org'} to append repositories to the default ones.}
 
-\item{...}{extra parameters eventually passed to the corresponding base function.}
+  \item{...}{extra parameters eventually passed to the corresponding base function.}
 
-\item{dry.run}{logical that indicates if one should only return the computed set of
+  \item{dry.run}{logical that indicates if one should only return the computed set of
 packages and dependencies to install.
 If \code{NULL}, then it is internally set to \code{TRUE} only when there is a mismatch between
 the requested and the OS binary package types (e.g., if \code{type = 'win.both'} on a Unix/Mac host).}
 
-\item{devel}{indicates if development packages hosted on GRAN (GitHub) should be preferred to
+  \item{devel}{indicates if development packages hosted on GRAN (GitHub) should be preferred to
 versions available in regular repositories.
 The following values are allowed:
 \itemize{
@@ -29,32 +36,15 @@ are preferred to versions on regular repositories (if their version is number is
 In any case, packages not found in regular repositories are looked up on GRAN release, then GRAN devel
 if still not found.}
 
-\item{verbose}{verbosity level (logical or numeric)}
+  \item{verbose}{verbosity level (logical or numeric)}
 
-\item{pkgs}{character vector of the names of packages whose
-    current versions should be downloaded from the repositories.
-
-    If \code{repos = NULL}, a character vector of
-#ifdef windows not active    file paths.  These can be source directories or archives
-    or binary package archive files (as created by \command{R CMD build
-      --binary}).  (\code{http://} and \code{file://} URLs are also
-    accepted and the files will be downloaded and installed from local
-    copies.)  On a CRAN build of \R for OS X these can be \file{.tgz}
-    files containing binary package archives.
-    Tilde-expansion will be done on file paths.
-
-    If this is missing or a zero-length character vector, a listbox of
-    available packages is presented where possible in an interactive \R
-    session.
-  }
-
-\item{lib}{
+  \item{lib}{
     character vector giving the library directories where to
     install the packages.  Recycled as needed.  If missing, defaults to
     the first element of \code{\link{.libPaths}()}.
   }
 
-\item{type}{character, indicating the type of package to download and
+  \item{type}{character, indicating the type of package to download and
     install.
 
     Possible values are (currently) \code{"source"},
@@ -72,7 +62,7 @@ if still not found.}
     packages.)
   }
 
-\item{dependencies}{logical indicating to also install uninstalled
+  \item{dependencies}{logical indicating to also install uninstalled
     packages which these packages depend on/link to/import/suggest
     (and so on recursively).  Not used if \code{repos = NULL}.
     Can also be a character vector, a subset of
@@ -96,37 +86,42 @@ if still not found.}
     In all of these, \code{"LinkingTo"} is omitted for binary packages.
   }
 
-\item{available}{
+  \item{available}{
     an object as returned by \code{\link{available.packages}}
     listing packages available at the repositories, or \code{NULL} when
     the function makes an internal call to \code{available.packages}.
   }
 
-\item{quick}{if \code{TRUE} skips docs, multiple-architectures,
+  \item{quick}{if \code{TRUE} skips docs, multiple-architectures,
 demos, and vignettes, to make installation as fast as possible.}
 }
 \description{
-These functions are enhanced versions of the base functions \code{\link{install.packages}},
-\code{\link{available.packages}} and \code{link{download.packages}} (see \emph{Details}).
+  These functions are enhanced versions of the base
+  functions \code{\link{install.packages}},
+  \code{\link{available.packages}} and
+  \code{link{download.packages}} (see \emph{Details}).
 }
 \details{
-The main differences with the base functions are that:
-\itemize{
-\item Bioconductor (soft, data/annotation, etc..) and Omegahat dependencies
-are automatically resolved, without the need to enable these repositories;
-\item if necessary, they use an enhanced \emph{curl} binary that internally uses the \pkg{RCurl}
-package, which is configured to support authentication for password protected repositories.
-Credentials can either passed embbedded within the URL or transparently taken from the
-user's \emph{.netrc} file;
-\item it supports the mixed-type installation, of binary and source packages;
-\item it can install packages and recursive dependencies hosted on GitHub,
-if these have been hooked to the GRAN repository.
-}
+  The main differences with the base functions are that:
+  \itemize{ \item Bioconductor (soft, data/annotation,
+  etc..) and Omegahat dependencies are automatically
+  resolved, without the need to enable these repositories;
+  \item if necessary, they use an enhanced \emph{curl}
+  binary that internally uses the \pkg{RCurl} package,
+  which is configured to support authentication for
+  password protected repositories. Credentials can either
+  passed embbedded within the URL or transparently taken
+  from the user's \emph{.netrc} file; \item it supports the
+  mixed-type installation, of binary and source packages;
+  \item it can install packages and recursive dependencies
+  hosted on GitHub, if these have been hooked to the GRAN
+  repository. }
 
-\code{install.pkgs} installs packages, which can be local, remote or in a CRAN-like repository,
-possibly password protected.
-Packages and their dependencies are automatically search in Bioconductor, Omegahat and GRAN
-repositories if needed.
+  \code{install.pkgs} installs packages, which can be
+  local, remote or in a CRAN-like repository, possibly
+  password protected. Packages and their dependencies are
+  automatically search in Bioconductor, Omegahat and GRAN
+  repositories if needed.
 }
 \section{Repositories}{
 
