@@ -257,6 +257,12 @@ install.pkgs <- function(pkgs, lib = NULL, repos = getOption('repos'), type = ge
         else if( is_NA(dependencies) ) dependencies <- 'required'
         stopifnot( isString(dependencies) )
         
+        # specify devel versions with '+' 
+        dev.flag <- gregexpr('+', x, fixed = TRUE)[[1L]]
+        if( !all(dev.flag == -1L) ){
+            dependencies <- paste0(dependencies, paste0(rep('+', length(dev.flag)), collapse = ''))
+        }
+        
         spec <- dependencies
         dependencies <- ifelse(grepl('^all', spec), TRUE, NA)
         missing.only <- !grepl('!', spec, fixed = TRUE)
