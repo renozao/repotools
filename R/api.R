@@ -225,7 +225,7 @@ install.pkgs <- function(pkgs, lib = NULL, repos = getOption('repos'), type = ge
     
     # handle local source/binary packages
     loc_install <- NULL
-    if( is.character(x) && length(i_src <- grep("_", x)) ){
+    if( is.character(x) && length(i_src <- grep("((\\.tar\\.gz)|(\\.zip)|(\\.tgz))$", x)) ){
         # create temporary local repo to install from
         sx <- x[i_src]
         lrepo_path <- tempfile("tmprepo_")
@@ -260,6 +260,7 @@ install.pkgs <- function(pkgs, lib = NULL, repos = getOption('repos'), type = ge
         # specify devel versions with '+' 
         dev.flag <- gregexpr('+', x, fixed = TRUE)[[1L]]
         if( !all(dev.flag == -1L) ){
+            x <- gsub("+", "", x)
             dependencies <- paste0(dependencies, paste0(rep('+', length(dev.flag)), collapse = ''))
         }
         
