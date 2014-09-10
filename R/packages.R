@@ -143,7 +143,11 @@ list.dependencies <- function(pkg, available, all = NA, missing.only = FALSE, re
         
         # resolve direct dependencies
         n <- nrow(deps)
-        deps <- rbind(deps, .list_dep(pkg_list, isTRUE(all), depth))
+        new_deps <- .list_dep(pkg_list, isTRUE(all), depth)
+        # update depth of previously looked-up dependencies
+        deps$depth[deps$name %in% new_deps$parent] <- depth
+        
+        deps <- rbind(deps, new_deps)
         all <- all_rec
         depth <- depth + 1L
         # remove duplicated (keep larger depth)
@@ -152,7 +156,7 @@ list.dependencies <- function(pkg, available, all = NA, missing.only = FALSE, re
         if( n == nrow(deps) ) break;
         # resolve indirect dependencies
         if( !recursive ) break;
-        
+
         pkg_list <- setdiff(deps$name, deps$parent)
         if( !length(pkg_list) ) break;
     }

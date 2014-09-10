@@ -487,6 +487,9 @@ install.pkgs <- function(pkgs, lib = NULL, repos = getOption('repos'), type = ge
         to_install <- check_repo()
     }
     
+    # reorder with deepest dependencies first
+    to_install <- to_install[order(to_install$depth, decreasing = TRUE), , drop = FALSE]
+    
     to_install0 <- to_install
     # attache relevant repo list
     attr(to_install0, 'repos') <- repos
@@ -545,9 +548,6 @@ install.pkgs <- function(pkgs, lib = NULL, repos = getOption('repos'), type = ge
         # setup repos
         op <- options(repos = repos)
         on.exit( options(op), add = TRUE)
-        
-        # reorder with deepest dependencies first
-        to_install <- to_install[order(to_install$depth, decreasing = TRUE), , drop = FALSE]
         
         # compute installation groups (source/binary/GRAN)
         # - on non-unix host, default install.packages does not handle mixed source/binary packages installed
