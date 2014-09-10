@@ -260,7 +260,7 @@ install.pkgs <- function(pkgs, lib = NULL, repos = getOption('repos'), type = ge
         # specify devel versions with '+' 
         dev.flag <- gregexpr('+', x, fixed = TRUE)[[1L]]
         if( !all(dev.flag == -1L) ){
-            x <- gsub("+", "", x)
+            x <- gsub("+", "", x, fixed = TRUE)
             dependencies <- paste0(dependencies, paste0(rep('+', length(dev.flag)), collapse = ''))
         }
         
