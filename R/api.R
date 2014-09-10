@@ -18,7 +18,7 @@ NULL
 }
 
 package_name <- function(x){
-    basename(gsub("_[0-9.]+\\.((tar\\.gz)|(zip)|(tgz))?$", "", x))
+    basename(gsub("_[-0-9.]+\\.((tar\\.gz)|(zip)|(tgz))?$", "", x))
 }
 
 is_package_dir <- function(x, check = FALSE){
