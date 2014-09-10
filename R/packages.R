@@ -216,11 +216,8 @@ list.dependencies <- function(pkg, available, all = NA, missing.only = FALSE, re
 #' 
 packageDependencies <- function(x, all = FALSE, available = NULL, missing.only = FALSE, recursive = FALSE, as.list = FALSE, names.only = TRUE, rm.base = TRUE){
     
-    if( is_NA(available) ){
-        x <- as_package(x, extract = TRUE)
-        names(x) <- capwords(names(x))
-        x <- t(as.matrix(unlist(x)))
-        rownames(x) <- x[, 'Package']
+    if( is_package_dir(x, check = TRUE) || is_NA(available) ){
+        x <- available <- read.dcf(file.path(x, 'DESCRIPTION'))
     }else{
         if( is.null(available) ) available <- available.pkgs()
         p <- available[, 'Package']
@@ -258,6 +255,13 @@ parse_deps <- function (string)
 }
 
 pkg.dependencies <- function(pkg, dependencies = NA, ..., verbose = FALSE){
+    
+    if( length(pkg) == 1L && is_package_dir(pkg, check = TRUE) ){
+        deps <- packageDependencies(pkg, available = NA, missing.only = FALSE, recursive = FALSE, names.only = FALSE)
+        deps <- deps[deps$name != 'R', , drop = FALSE]
+        pkg <- sprintf("%s (%s %s)", as.character(deps$name), deps$compare, deps$version)
+        pkg[is.na(deps$compare)] <- as.character(deps$name)[is.na(deps$compare)]
+    }
     deps <- install.pkgs(pkg, dependencies = dependencies, ..., dry.run = TRUE, verbose = verbose)
     deps
 }
@@ -336,7 +340,7 @@ install.dependencies <- function(pkg, dependencies = NA, ..., verbose = TRUE, dr
     deps <- pkg.dependencies(pkg, dependencies = dependencies, ..., verbose = (miss_verb && dry.run) || verbose > 1L)
     pkg_names <- deps$name[deps$depth == 0]
     deps <- deps[deps$depth > 0, , drop = FALSE]
-    message("Package dependencies to install ", pkg_names, ": ", str_deps(deps, Inf))
+    message("Package dependencies to install : ", str_deps(deps, Inf))
 	if( !dry.run ){
         message("Installing ", nrow(deps), " dependencies")
 		install.pkgs(deps, ...)

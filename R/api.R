@@ -21,12 +21,18 @@ package_name <- function(x){
     basename(gsub("_[0-9.]+\\.((tar\\.gz)|(zip)|(tgz))?$", "", x))
 }
 
+is_package_dir <- function(x, check = FALSE){
+    res <- is.na(package_type(x)) & grepl("((^\\.)|([/]))", x)
+    if( check ) res <- res & is.dir(x) & is.file(file.path(x, 'DESCRIPTION'))
+    res
+}
+
 .package_type.reg <- c("\\.tar\\.gz", "\\.zip", "\\.tgz")
 package_type <- function(x){
     t <- sapply(paste0(.package_type.reg, "$"), grepl, x)
-    if( !is.matrix(t) ) it <- which(t) 
-    else it <- apply(t, 1L, which)
-    .contrib_types[it]
+    if( !is.matrix(t) ) t <- t(t) 
+    setNames(apply(t, 1L, function(x) if( length(i <- which(x)) ) .contrib_types[i] else NA), x)
+    
 }
  
 .contrib_types <- c('source', 'win.binary', 'mac.binary')
@@ -226,21 +232,21 @@ install.pkgs <- function(pkgs, lib = NULL, repos = getOption('repos'), type = ge
     # handle local source/binary packages
     loc_install <- NULL
     if( is.character(x) && length(i_src <- grep("((\\.tar\\.gz)|(\\.zip)|(\\.tgz))$", x)) ){
-        # create temporary local repo to install from
-        sx <- x[i_src]
-        lrepo_path <- tempfile("tmprepo_")
-        lrepo <- create_repo(lrepo_path, pkgs = sx)
-        on.exit( unlink(lrepo_path, recursive = TRUE), add = TRUE)
-        # check for source files and adapt type if necessary
-        if( OS_type() != 'unix' && auto_type && any(grepl("\\.tar\\.gz$", sx)) ){
-            type <- 'both'
-        }
-        # install including local repo in repos list
-        loc_install <- install.pkgs(package_name(sx), repos = c(lrepo, repos), type = type
-                                    , dependencies = dependencies, available = available, ...
-                                    , devel = devel, verbose = verbose, dry.run = dry.run)
-        # remove installed packages from query
-        x <- x[-i_src]
+            # create temporary local repo to install from
+            sx <- x[i_src]
+            lrepo_path <- tempfile("tmprepo_")
+            lrepo <- create_repo(lrepo_path, pkgs = sx)
+            on.exit( unlink(lrepo_path, recursive = TRUE), add = TRUE)
+            # check for source files and adapt type if necessary
+            if( OS_type() != 'unix' && auto_type && any(grepl("\\.tar\\.gz$", sx)) ){
+                type <- 'both'
+            }
+            # install including local repo in repos list
+            loc_install <- install.pkgs(package_name(sx), repos = c(lrepo, repos), type = type
+                                        , dependencies = dependencies, available = available, ...
+                                        , devel = devel, verbose = verbose, dry.run = dry.run)
+            # remove installed packages from query
+            x <- x[-i_src]
         
         # early exit if everything is done
         if( !length(x) ) return(invisible(loc_install))
@@ -291,8 +297,9 @@ install.pkgs <- function(pkgs, lib = NULL, repos = getOption('repos'), type = ge
         .pkgs <- data.frame(query = pkgs, parent = pkgs, name = pkgs, cNA, cNA, cNA, 0, cNA, as.integer(NA), cNA, stringsAsFactors = FALSE)
         colnames(.pkgs) <- f
         # add initial target version requirement if any
-        if( length(iv <- grep("[? (]", pkgs)) ){
-            m <- str_match(pkgs, "^[?]?([^ (]+)\\s*(\\(?\\s*([<>=]=?)\\s*([0-9.-]+).*)?")
+        if( length(iv <- grep("[?(><]", pkgs)) ){
+            m <- str_match(pkgs, "^[?]?([^ (><]+)\\s*(\\(?\\s*([<>=]=?)\\s*([0-9.-]+).*)?")
+            m <- matrix(ifelse(!nzchar(m), NA, m), nrow(m), ncol(m))
             .pkgs[, c('parent', 'name', 'compare', 'version')] <- m[, c(2L, 2, 4:5)]
             pkgs <- m[, 2L]
         }
