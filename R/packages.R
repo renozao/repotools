@@ -64,9 +64,9 @@ match_available <- function(deps, available, latest = FALSE){
                 }else NA
             }
         }
-        i <- unlist(Map(i_available, deps$name, deps$compare, deps$version))
+        i <- as.integer(unlist(Map(i_available, deps$name, deps$compare, deps$version)))
     }
-    
+
     # remap
     setNames(ia[ov[i]], dep_name)
 }
@@ -229,7 +229,7 @@ packageDependencies <- function(x, all = FALSE, available = NULL, missing.only =
         x <- available[inp, , drop = FALSE]
     }
     
-    deps <- list.dependencies(x[, 'Package'], available, all = all, missing.only = missing.only, recursive = recursive, rm.base = rm.base)
+    deps <- list.dependencies(unique(x[, 'Package']), available, all = all, missing.only = missing.only, recursive = recursive, rm.base = rm.base)
     
     if( as.list ){
         
