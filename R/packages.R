@@ -262,8 +262,7 @@ pkg.dependencies <- function(pkg, dependencies = NA, ..., verbose = FALSE){
         pkg <- sprintf("%s (%s %s)", as.character(deps$name), deps$compare, deps$version)
         pkg[is.na(deps$compare)] <- as.character(deps$name)[is.na(deps$compare)]
     }
-    deps <- install.pkgs(pkg, dependencies = dependencies, ..., dry.run = TRUE, verbose = verbose)
-    deps
+    install.pkgs(pkg, dependencies = dependencies, ..., dry.run = TRUE, verbose = verbose)
 }
 
 # utils to list dependencies
@@ -338,12 +337,14 @@ install.dependencies <- function(pkg, dependencies = NA, ..., verbose = TRUE, dr
     
     # list dependencies
     deps <- pkg.dependencies(pkg, dependencies = dependencies, ..., verbose = (miss_verb && dry.run) || verbose > 1L)
+    # remove R depends
+    deps <- deps[deps$name != 'R', ]
     pkg_names <- deps$name[deps$depth == 0]
     deps <- deps[deps$depth > 0, , drop = FALSE]
     message("Package dependencies to install : ", str_deps(deps, Inf))
 	if( !dry.run ){
         message("Installing ", nrow(deps), " dependencies")
-		install.pkgs(deps, ...)
+		install.pkgs(., ..., available = deps, verbose = verbose)
 	}
 	invisible(deps)
 }
