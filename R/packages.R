@@ -114,15 +114,18 @@ list.dependencies <- function(pkg, available, all = NA, missing.only = FALSE, re
         #deps <- deps[deps$name != 'R', ]
         # filter already installed packages
         if( missing.only ){
+            
+            # NB: the lookup of the package location must use .libPaths otherwise loaded packages are used first
+            # and obsolete packages may be installed in the first hit path but not be the one currently loaded
             needs_install <- function(pkg, compare, version) {
                 if( pkg == 'R' ){
                     compare <- match.fun(compare)
                     !compare(Rversion(), version)
-                }else if (length(find.package(pkg, quiet = TRUE)) == 0) TRUE
-                else if (is.na(compare)) FALSE 
+                }else if (length(pkg.loc <- find.package(pkg, lib.loc = .libPaths(), quiet = TRUE)) == 0) TRUE
+                else if (is.na(compare)) FALSE
                 else{
                     compare <- match.fun(compare)
-                    !compare(packageVersion(pkg), version)
+                    !compare(packageVersion(pkg, lib.loc = dirname(pkg.loc)), version)
                 }
             }
             needed <- as.logical(Map(needs_install, deps$name, deps$compare, deps$version))

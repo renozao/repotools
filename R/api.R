@@ -228,7 +228,7 @@ install.pkgs <- function(pkgs, lib = NULL, repos = getOption('repos'), type = ge
         .libPaths(c(lib, .libPaths()))
         on.exit( .libPaths(ol), add = TRUE)
     }
-    
+    message("* libPath:\n", paste0("  - ", .libPaths(), collapse = "\n"))
     # handle local source/binary packages
     loc_install <- NULL
     if( is.character(x) && length(i_src <- grep("((\\.tar\\.gz)|(\\.zip)|(\\.tgz))$", x)) ){
