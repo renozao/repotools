@@ -308,14 +308,16 @@ install.pkgs <- function(pkgs, lib = NULL, repos = getOption('repos'), type = ge
         function(available, source, disjoint = FALSE, latest = FALSE){
                 if( !nargs() ){
                         
-                    if( all(is.na(.pkgs$idx)) ) res <- .pkgs
-                    else{
+                    if( all(is.na(.pkgs$idx)) ){ # fill package data with NA
+                        .all_available <- .all_available[1:nrow(.pkgs), , drop = FALSE]
+                        .all_available[,] <- NA
+                    }else{ # add hit data
                         .all_available <- .all_available[.pkgs$idx, , drop = FALSE]
-                        if( all(is.na(.all_available[, .fields])) ) .fields <- NULL
-                        #df <- as.data.frame(.all_available[, c('Package', 'Version', 'NeedsCompilation', .fields), drop = FALSE], stringsAsFactors = FALSE)
-                        df <- as.data.frame(.all_available[, setdiff(unique(c(colnames(.all_available), .fields)), 'Source'), drop = FALSE], stringsAsFactors = FALSE)
-                        res <- cbind(.pkgs, df) 	
                     }
+                    if( all(is.na(.all_available[, .fields])) ) .fields <- NULL
+                    #df <- as.data.frame(.all_available[, c('Package', 'Version', 'NeedsCompilation', .fields), drop = FALSE], stringsAsFactors = FALSE)
+                    df <- as.data.frame(.all_available[, setdiff(unique(c(colnames(.all_available), .fields)), 'Source'), drop = FALSE], stringsAsFactors = FALSE)
+                    res <- cbind(.pkgs, df)
                     
                     # order by depth 
                     res <- res[order(res[, 'depth'], decreasing = TRUE), , drop = FALSE]
@@ -491,6 +493,7 @@ install.pkgs <- function(pkgs, lib = NULL, repos = getOption('repos'), type = ge
     to_install <- to_install[order(to_install$depth, decreasing = TRUE), , drop = FALSE]
     
     to_install0 <- to_install
+    
     # attache relevant repo list
     attr(to_install0, 'repos') <- repos
     
@@ -635,6 +638,7 @@ install.pkgs <- function(pkgs, lib = NULL, repos = getOption('repos'), type = ge
     if( !is.null(loc_install) ){
         to_install0 <- rbind(loc_install, to_install0)
     }
+    
     invisible(to_install0)
 }
 
@@ -788,7 +792,7 @@ update.pkgs <- function(lib.loc = NULL, repos = getOption("repos"), instlib = NU
     }else up <- install.pkgs(query, available = as.matrix(available), ..., verbose = verbose, dry.run = ask) 
     
     # only keep packages with a hit
-    up <- up[!is.na(up[, 'Package']), , drop = FALSE]
+    up <- up[!is.na(up[, 'Hit']), , drop = FALSE]
         
     if( nrow(up) && !isTRUE(dry.run) && ask ){
         if( askUser(paste0("Do you want to proceed to the installation of the ", nrow(up), " package(s) as above specified?"), idefault = 'y') == 'n' ){
