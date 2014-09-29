@@ -766,7 +766,7 @@ update.pkgs <- function(lib.loc = NULL, repos = getOption("repos"), instlib = NU
     if( !is.null(oldPkgs) ){
         old <- oldPkgs
         if( is.matrix(oldPkgs) ) old <- oldPkgs[, 'Package']
-        inst <- inst[inst[, 'Package'] %in% old, ]
+        inst <- inst[inst[, 'Package'] %in% old, , drop = FALSE]
         
         if( !nrow(inst) ){
             warning("No installed package could be found in the set provided in argument `oldPkgs` [", str_out(old, total = TRUE), ']')
