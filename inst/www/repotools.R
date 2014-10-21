@@ -46,7 +46,7 @@ require2 <- function(x, lib.loc = NULL, version = NULL, cmp = ">="){
 
 # install required version of pkgmaker
 if( !require2('pkgmaker', version = '0.25.8') ){    
-    install_github('pkgmaker', 'renozao', 'develop', quick = TRUE)
+    install_github('renozao/pkgmaker', ref = 'develop', quick = TRUE)
 }
 
 # load devtools
@@ -70,7 +70,7 @@ if( !require2('repotools', version = '1.7.3') ){
         # add BiocInstaller if needed
         # NB: do not setup repos tom make sure ReportingTools CANNOT be found (too big)
             if( !QUICK ) .biocinstallRepos()
-            install_github('repotools', 'renozao', quick = QUICK)
+            install_github('renozao/repotools', quick = QUICK)
         
     }
     library(repotools)
