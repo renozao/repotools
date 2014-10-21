@@ -69,8 +69,8 @@
     <div class="description">
       <h2>Description</h2>
       
-      <p><p>Install all dependencies from a package source directory
-  or package source file.</p></p>
+      <p><p>Install all dependencies from a package source directory or
+package source file.</p></p>
   
     </div>
     
@@ -122,7 +122,13 @@ the requested and the OS binary package types (e.g., if <code>type = 'win.both'<
 try( install.dependencies(&#39;Matrix&#39;, dep = &quot;!&quot;, dry.run = TRUE) )
 </code></pre>
 
-<pre><code>## *** DRY RUN ***
+<pre><code>## * libPath:
+##   - /tmp/RtmpaiySXg/file654f518001e
+##   - /home/renaud/R/x86_64-pc-linux-gnu-library/3.1
+##   - /usr/local/lib/R/site-library
+##   - /usr/lib/R/site-library
+##   - /usr/lib/R/library
+## *** DRY RUN ***
 ## * Dependency scope: required [re-install - shallow]
 ## * Options: install | full | release
 ## * Initial lookup:
@@ -133,7 +139,7 @@ try( install.dependencies(&#39;Matrix&#39;, dep = &quot;!&quot;, dry.run = TRUE)
 ##   - source package(s): &#39;lattice-0.20-29&#39;, &#39;Matrix-1.1-4&#39; (2 total)
 ## * Using repositories: 
 ##   - http://cran.rstudio.com  [src] (2 total)
-## Package dependencies to install Matrix: &#39;lattice-0.20-29&#39;, &#39;R&#39; (2 total)
+## Package dependencies to install : &#39;lattice-0.20-29&#39; (1 total)
 </code></pre>
 
 <pre><code class="r">## Not run: 

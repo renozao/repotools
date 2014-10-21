@@ -69,10 +69,8 @@
     <div class="description">
       <h2>Description</h2>
       
-      <p><p>These functions are enhanced versions of the base
-  functions <code><a href='http://www.inside-r.org/r-doc/utils/install.packages'>install.packages</a></code>,
-  <code><a href='http://www.inside-r.org/r-doc/utils/available.packages'>available.packages</a></code> and
-  <code>link{download.packages}</code> (see <em>Details</em>).</p></p>
+      <p><p>These functions are enhanced versions of the base functions <code><a href='http://www.inside-r.org/r-doc/utils/install.packages'>install.packages</a></code>,
+<code><a href='http://www.inside-r.org/r-doc/utils/available.packages'>available.packages</a></code> and <code>link{download.packages}</code> (see <em>Details</em>).</p></p>
   
     </div>
     
@@ -179,30 +177,26 @@ demos, and vignettes, to make installation as fast as possible.</dd>
       <h2>Details</h2>
       
       <p>The main differences with the base functions are that:
-  <ul>
-<li> Bioconductor (soft, data/annotation,
-  etc..) and Omegahat dependencies are automatically
-  resolved, without the need to enable these repositories;
-  </li>
-<li> if necessary, they use an enhanced <em>curl</em>
-  binary that internally uses the <span class = "pkg">RCurl</span> package,
-  which is configured to support authentication for
-  password protected repositories. Credentials can either
-  passed embbedded within the URL or transparently taken
-  from the user's <em>.netrc</em> file; </li>
-<li> it supports the
-  mixed-type installation, of binary and source packages;
-  </li>
-<li> it can install packages and recursive dependencies
-  hosted on GitHub, if these have been hooked to the GRAN
-  repository. </li>
+<ul>
+<li> Bioconductor (soft, data/annotation, etc..) and Omegahat dependencies
+are automatically resolved, without the need to enable these repositories;
+</li>
+<li> if necessary, they use an enhanced <em>curl</em> binary that internally uses the <span class = "pkg">RCurl</span>
+package, which is configured to support authentication for password protected repositories.
+Credentials can either passed embbedded within the URL or transparently taken from the
+user's <em>.netrc</em> file;
+</li>
+<li> it supports the mixed-type installation, of binary and source packages;
+</li>
+<li> it can install packages and recursive dependencies hosted on GitHub,
+if these have been hooked to the GRAN repository.
+</li>
 </ul></p>
   
-      <p><code>install.pkgs</code> installs packages, which can be
-  local, remote or in a CRAN-like repository, possibly
-  password protected. Packages and their dependencies are
-  automatically search in Bioconductor, Omegahat and GRAN
-  repositories if needed.</p>
+      <p><code>install.pkgs</code> installs packages, which can be local, remote or in a CRAN-like repository,
+possibly password protected.
+Packages and their dependencies are automatically search in Bioconductor, Omegahat and GRAN
+repositories if needed.</p>
   
     </div>
 
