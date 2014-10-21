@@ -619,7 +619,7 @@ install.pkgs <- function(pkgs, lib = NULL, repos = getOption('repos'), type = ge
                         op <- options(repos = repos)
                         on.exit( options(op) )
                         # install from GitHub
-                        install_github(pkg['GithubRepo'], pkg['GithubUsername'], pkg['GithubRef'], quick = quick)
+                        install_github(file.path(pkg['GithubUsername'], pkg['GithubRepo']), ref = pkg['GithubRef'], quick = quick)
                     })   
                 }else{
                     opts <- "--with-keep.source"
