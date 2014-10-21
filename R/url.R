@@ -47,6 +47,7 @@
 #' and \code{'password'} if \code{std} is \code{TRUE} or \code{NA}, and additional columns 
 #' \code{'repos'} and \code{'path'} if \code{std = FALSE}.
 #' 
+#' @family auth
 #' @export
 #' @examples
 #' 
@@ -170,6 +171,7 @@ url_credential_split <- function(x){
 #' 
 #' Regular hosts are also matched against the \emph{netrc} specification to add credentials if necessary.
 #'  
+#' @family auth
 #' @export
 #' @examples
 #' 
@@ -273,6 +275,7 @@ override_matrix <- function(x, y){
 #' path specification.
 #' @inheritParams repos_url
 #' 
+#' @family auth
 #' @export
 repos_auth <- local({
     

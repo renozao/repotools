@@ -25,8 +25,7 @@ Repository shortcut keys start a \code{'@'}, e.g., \code{'@myRepo/path/to/repo'}
 Regular hosts are also matched against the \emph{netrc} specification to add credentials if necessary.}
 }
 \description{
-  Builds full repository URLs based on shortcut repository
-  keys and host names, adding credentials if necessary.
+  Builds full repository URLs based on shortcut repository keys and host names, adding credentials if necessary.
 }
 \examples{
 \dontshow{# roxygen generated flag
@@ -45,5 +44,8 @@ if( interactive() ) file.show(f) else cat(readLines(f), sep = "\\n")
 spec <- c('@myRepo', '@myRepo/extra/path', 'http://www.public.org'
 				, 'http://www.privatehost.org/repo/dir', '@CRAN@')
 cbind(Specification = spec, URL = repos_url(spec, .netrc = f))
+}
+\seealso{
+  Other auth: \code{\link{read_netrc}}, \code{\link{repos_auth}}
 }
 

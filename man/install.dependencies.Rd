@@ -42,8 +42,8 @@ If \code{NULL}, then it is internally set to \code{TRUE} only when there is a mi
 the requested and the OS binary package types (e.g., if \code{type = 'win.both'} on a Unix/Mac host).}
 }
 \description{
-  Install all dependencies from a package source directory
-  or package source file.
+  Install all dependencies from a package source directory or
+package source file.
 }
 \examples{
 \dontshow{# roxygen generated flag

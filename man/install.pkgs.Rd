@@ -96,32 +96,27 @@ if still not found.}
 demos, and vignettes, to make installation as fast as possible.}
 }
 \description{
-  These functions are enhanced versions of the base
-  functions \code{\link{install.packages}},
-  \code{\link{available.packages}} and
-  \code{link{download.packages}} (see \emph{Details}).
+  These functions are enhanced versions of the base functions \code{\link{install.packages}},
+\code{\link{available.packages}} and \code{link{download.packages}} (see \emph{Details}).
 }
 \details{
   The main differences with the base functions are that:
-  \itemize{ \item Bioconductor (soft, data/annotation,
-  etc..) and Omegahat dependencies are automatically
-  resolved, without the need to enable these repositories;
-  \item if necessary, they use an enhanced \emph{curl}
-  binary that internally uses the \pkg{RCurl} package,
-  which is configured to support authentication for
-  password protected repositories. Credentials can either
-  passed embbedded within the URL or transparently taken
-  from the user's \emph{.netrc} file; \item it supports the
-  mixed-type installation, of binary and source packages;
-  \item it can install packages and recursive dependencies
-  hosted on GitHub, if these have been hooked to the GRAN
-  repository. }
+\itemize{
+\item Bioconductor (soft, data/annotation, etc..) and Omegahat dependencies
+are automatically resolved, without the need to enable these repositories;
+\item if necessary, they use an enhanced \emph{curl} binary that internally uses the \pkg{RCurl}
+package, which is configured to support authentication for password protected repositories.
+Credentials can either passed embbedded within the URL or transparently taken from the
+user's \emph{.netrc} file;
+\item it supports the mixed-type installation, of binary and source packages;
+\item it can install packages and recursive dependencies hosted on GitHub,
+if these have been hooked to the GRAN repository.
+}
 
-  \code{install.pkgs} installs packages, which can be
-  local, remote or in a CRAN-like repository, possibly
-  password protected. Packages and their dependencies are
-  automatically search in Bioconductor, Omegahat and GRAN
-  repositories if needed.
+\code{install.pkgs} installs packages, which can be local, remote or in a CRAN-like repository,
+possibly password protected.
+Packages and their dependencies are automatically search in Bioconductor, Omegahat and GRAN
+repositories if needed.
 }
 \section{Repositories}{
 

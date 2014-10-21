@@ -47,4 +47,7 @@ Regular hosts are also matched against the \emph{netrc} specification to add cre
 \description{
   Gets/sets authentication credentials for CRAN-style.
 }
+\seealso{
+  Other auth: \code{\link{read_netrc}}, \code{\link{repos_url}}
+}
 

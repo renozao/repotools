@@ -14,8 +14,8 @@
     file is saved.  Tilde-expansion is performed.}
 }
 \description{
-  Downloads files using a custom \code{curl} binary that
-  uses \pkg{RCurl} and is able to download files from
-  password protected directories.
+  Downloads files using a custom \code{curl} binary that uses
+\pkg{RCurl} and is able to download files from password protected
+directories.
 }
 

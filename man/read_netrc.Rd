@@ -25,34 +25,33 @@ and \code{'password'} if \code{std} is \code{TRUE} or \code{NA}, and additional 
 \code{'repos'} and \code{'path'} if \code{std = FALSE}.
 }
 \description{
-  Parses an netrc file in different ways and return the
-  credential specifications it contains.
+  Parses an netrc file in different ways and return the credential specifications it contains.
 }
 \details{
-  Entries in the netrc file can be associated to R
-  repositories, which are looked up by \code{install.pkgs}
-  via \code{\link{repos_url}}, by adding a comment line to
-  a standard entry the following format:
+  Entries in the netrc file can be associated to R repositories, which are looked up
+by \code{install.pkgs} via \code{\link{repos_url}}, by adding a comment line
+to a standard entry the following format:
 
-  \preformatted{ # standard host credential entry machine
-  www.somehost.org login tata password toto
+\preformatted{
+# standard host credential entry
+machine www.somehost.org
+login tata
+password toto
 
-  #repos @myRepo/a/b/c machine www.myrepo.org login user
-  password 1234 }
+#repos @myRepo/a/b/c
+machine www.myrepo.org
+login user
+password 1234
+}
 
-  The first entry is standard and provide credentials for a
-  named host.
+The first entry is standard and provide credentials for a named host.
 
-  The second entry starts with \code{'#repos '}, which
-  indicates it is an entry for an R repository with
-  shortcut key (\code{'@myRepo'}) and an -- optional --
-  path to the actual repository on the host machine
-  \code{'www.myrepo.org'}.
+The second entry starts with \code{'#repos '}, which indicates it is an entry for an R repository
+with shortcut key (\code{'@myRepo'}) and an -- optional -- path
+to the actual repository on the host machine \code{'www.myrepo.org'}.
 
-  Note that it is not mandatory to start the repository
-  entry key with a \code{'@'}, but it makes it clearer that
-  the first part of the path is a key to be substituted
-  rather than being part of the path.
+Note that it is not mandatory to start the repository entry key with a \code{'@'}, but it makes it clearer
+that the first part of the path is a key to be substituted rather than being part of the path.
 }
 \examples{
 \dontshow{# roxygen generated flag
@@ -75,5 +74,8 @@ read_netrc(f, line.number = TRUE)
 read_netrc(f, std = FALSE)
 # skip repo entries
 read_netrc(f, std = NA)
+}
+\seealso{
+  Other auth: \code{\link{repos_auth}}, \code{\link{repos_url}}
 }
 

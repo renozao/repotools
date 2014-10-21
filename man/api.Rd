@@ -94,15 +94,12 @@ the requested and the OS binary package types (e.g., if \code{type = 'win.both'}
     \code{TRUE}).}
 }
 \description{
-  \code{available.pkgs} returns a matrix of the packages
-  available in given repositories.
+  \code{available.pkgs} returns a matrix of the packages available in given repositories.
 
-  \code{download.pkgs} downloads packages.
+\code{download.pkgs} downloads packages.
 
-  \code{exists.pkgs} tells if packages are available from
-  repositories.
+\code{exists.pkgs} tells if packages are available from repositories.
 
-  \code{Library} tries loading packages and install them if
-  needed.
+\code{Library} tries loading packages and install them if needed.
 }
 
