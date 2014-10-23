@@ -44,16 +44,17 @@ require2 <- function(x, lib.loc = NULL, version = NULL, cmp = ">="){
     }
 }
 
-# install required version of pkgmaker
-if( !require2('pkgmaker', version = '0.25.8') ){    
-    install_github('renozao/pkgmaker', ref = 'develop', quick = TRUE)
-}
-
 # load devtools
 if( !require2('devtools', version = '1.6.1') ){
     install.packages('devtools')
     suppressMessages(library(devtools))
 }
+
+# install required version of pkgmaker
+if( !require2('pkgmaker', version = '0.25.8') ){    
+    install_github('renozao/pkgmaker', ref = 'develop', quick = TRUE)
+}
+
 
 if( !require2('repotools', version = '1.7.3') ){
     
