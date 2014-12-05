@@ -6,7 +6,7 @@
 
 .repotools.setup.url = 'http://renozao.github.io/repotools/install.R'
 
-.PACKAGES_fields <- c('Package', 'Version')
+.PACKAGES_fields <- c('Package', 'Version', 'Date')
 .PACKAGES_filters_all_versions <- c("R_version", "OS_type", "subarch")
 
 #' @importFrom tools write_PACKAGES

@@ -56,7 +56,7 @@ if( !require2('pkgmaker', version = '0.25.8') ){
 }
 
 
-if( !require2('repotools', version = '1.7.3') ){
+if( !require2('repotools', version = '1.7.4') ){
     
     # install BiocInstaller
     if( !require2('BiocInstaller') ){
