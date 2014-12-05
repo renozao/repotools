@@ -276,6 +276,7 @@ GRAN.update <- function(src, outdir = dirname(normalizePath(src)), clean = FALSE
         
         ## add Github packages to source PACKAGES
         # write PACKAGES file from Github source directories 
+        fields <- c('Date', fields)
         write_PACKAGES(src, type = 'source', unpacked = TRUE, fields = fields, latestOnly = FALSE)
         P <- available.packages(file.path('file:/', normalizePath(src)), fields = fields, filters = .PACKAGES_filters_all_versions)
         # fix for migration of field names
