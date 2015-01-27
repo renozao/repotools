@@ -35,8 +35,12 @@ has_userpwd <- function(x){
     }
     
     pkg_file <- function(...){
-        if( isDevNamespace() ) file.path(tempdir(), 'repotools', ...)
-        else system.file(..., package = 'repotools')
+        if( isDevNamespace() ){
+            # this does not work anymore due to changes in devtools
+            # => hardcode dev-compiled executable file instead
+            #file.path(tempdir(), 'repotools', ...)
+            file.path(system.file(package = 'repotools'), '../src/rcurl', exefile)
+        }else system.file(..., package = 'repotools')
     }
     
     # use pre-built binary stored in binaries/ if necessary

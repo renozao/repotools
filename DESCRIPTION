@@ -1,7 +1,7 @@
 Package: repotools
 Type: Package
 Title: Tools for R Package Repositories
-Version: 1.7.4
+Version: 1.7.5
 Date: 2014-06-13
 Authors@R: person('Renaud', 'Gaujoux', email = 'renaud@tx.technion.ac.il', role
     = c('aut', 'cre'))
@@ -25,10 +25,10 @@ Suggests:
     ReportingTools,
     plyr
 Collate:
-    'utils.R'
-    'download.R'
-    'url.R'
-    'api.R'
     'GRAN.R'
+    'utils.R'
+    'url.R'
+    'download.R'
+    'api.R'
     'packages.R'
     'repositories.R'
