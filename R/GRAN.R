@@ -4,11 +4,17 @@
 # Created: May 30, 2014
 ###############################################################################
 
-api.path <- function(..., type = c('raw', 'api')){
+gh_api.path <- function(..., type = c('api', 'raw')){
     type = match.arg(type)
     url <- file.path(sprintf('https://%s.github.com', type), ...)
     #message(url)
     url
+}
+
+gh_io.path <- function(user, repo, ...) file.path(sprintf('http://%s.github.io/%s', user, repo), ...)
+
+gh_rawapi.path <- function(...){
+    gh_api.path(..., type = 'raw')
 }
 
 gh_repo_path <- function(user, repo, branch = 'master'){
@@ -94,8 +100,12 @@ GRAN.available <- function(type = getOption('pkgType'), fields = GRAN.fields(), 
 }
 
 gh_getRaw <- function(user, repo, ..., ref = 'master'){
-    url <- api.path(user, repo, ref, ..., type = 'raw')
-    getURL(url, .opts = list(followlocation = TRUE))
+    url <- gh_rawapi.path(user, repo, ref, ...)
+#    getURL(url, .opts = list(followlocation = TRUE))
+    con <- curl(url)
+    res <- readLines(con)
+    close(con)
+    res
 }
 
 #gh_getLastCommit <- function(){
