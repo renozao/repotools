@@ -30,5 +30,7 @@ Collate:
     'url.R'
     'download.R'
     'api.R'
+    'drat.R'
+    'github.R'
     'packages.R'
     'repositories.R'
