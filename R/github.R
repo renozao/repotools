@@ -78,7 +78,7 @@ gh_context <- local({
 gh_call <- local({
     .rate <- NULL
     
-    function(url, content.only = TRUE, nice = TRUE, ...){
+    function(url, content.only = TRUE, nice = TRUE, ..., per_page = Inf){
         
         library(github)
         .ctx <- gh_context()
@@ -93,7 +93,8 @@ gh_call <- local({
         }
         
         api_req <- gsub(gh_api.path(''), '', url, fixed = TRUE)
-        res <- github:::.api.get.request(.ctx, api_req)
+        per_page <- min(100, per_page)
+        res <- github:::.api.get.request(.ctx, api_req, ..., params = list(per_page = per_page))
         if( content.only ) res <- res$content
         res
     }
@@ -103,10 +104,10 @@ gh_api_call <- function(...) gh_call(..., content.only = TRUE)
 
 gh_api_fetch <- function(...) gh_call(..., content.only = FALSE)
 
-gh_GET <- function(url, verbose = FALSE){
+gh_GET <- function(url, verbose = FALSE, ...){
         
     if( verbose ) message("Fetching: '", paste0(url, collapse = '/'), "'")
-    gh_api_call(url)
+    gh_api_call(url, ...)
     
 }
 
