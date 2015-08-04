@@ -356,6 +356,21 @@ install.dependencies <- function(pkg, dependencies = NA, ..., verbose = TRUE, dr
 	invisible(deps)
 }
 
+write_PACKAGES_files <- function(x, path, ...){
+    
+    write.fun <- if( length(x) ) write.dcf else function(x, file, ...) cat('', file = file)
+    
+    dir.create(path, recursive = TRUE, showWarnings = FALSE)
+    pfile <- file.path(path, 'PACKAGES')
+    write.fun(x, pfile, ...)
+    
+    # create .gz version
+    gzfile <- gzfile(paste0(pfile, '.gz'))
+    write.fun(x, gzfile, ...)
+    close(gzfile)
+    
+}
+
 repotools_gh_rewrite <- function(db){
 
     # early exit if no Repository column
