@@ -65,7 +65,12 @@ has_userpwd <- function(x){
         }
         
         if( isFALSE(reset) ){ # setup
-            .settings$options <<- options(download.file.method = 'curl')
+            # set some default options
+                # default filters for available.packages
+            filters <- list("R_version", "OS_type", "subarch", repotools_gh_rewrite, repotools_reorder, "duplicates")
+                # default download method
+            .settings$options <<- options(download.file.method = 'curl', available_packages_filters = filters)
+            
             # define custom curl executable to handle protected repo
             .settings$curl_exec <<- .setup_rcurl_exec(FALSE)
             rscript <- file.path(R.home('bin'), "Rscript")

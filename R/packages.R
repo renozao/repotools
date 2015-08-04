@@ -356,3 +356,20 @@ install.dependencies <- function(pkg, dependencies = NA, ..., verbose = TRUE, dr
 	invisible(deps)
 }
 
+repotools_gh_rewrite <- function(db){
+
+    # early exit if no Repository column
+    if( !'Repository' %in% colnames(db) ) return(db)
+    # substitute github and github.io URLs
+    repo <- db[, 'Repository']
+    repo <- gsub(".*/(github\\.com/.*)", "https://\\1", repo)
+    repo <- gsub(".*/([^/]+\\.github\\.io/.*)", "http://\\1", repo)
+    db[, 'Repository'] <- repo
+    db
+}
+
+repotools_reorder <- function(db){
+    
+    # compute minimum required version for each GitHub package
+    db
+}
