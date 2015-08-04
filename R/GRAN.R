@@ -211,7 +211,7 @@ GRAN.update <- function(src, outdir = dirname(normalizePath(src)), clean = FALSE
         stopifnot( !anyDuplicated(names(hash0)) && !anyDuplicated(names(hash)) )
         if( identical(hash, hash0) || identical(hash[names(hash0)], hash0) ){
             message('OK [', digest(hash0), ']')
-            return(character())
+            return( invisible(character()) )
         }
         
         f_shared <- intersect(names(hash0), names(hash))
@@ -239,7 +239,7 @@ GRAN.update <- function(src, outdir = dirname(normalizePath(src)), clean = FALSE
         }
         message("* Pushing changes ... ", appendLF = FALSE)
         if( within_git ){
-            pkg_srcd <- file.path(list.dirs(src, recursive = FALSE, full.names = TRUE), 'DESCRIPTION')
+            pkg_srcd <- list.files(src, recursive = TRUE, full.names = TRUE, pattern = '^DESCRIPTION$')
             # filter those that changed
             if( !is.null(CHANGES$Changed) )
                 pkg_srcd <- pkg_srcd[pkg_srcd %in% file.path(src, CHANGES$Changed)]
@@ -253,6 +253,7 @@ GRAN.update <- function(src, outdir = dirname(normalizePath(src)), clean = FALSE
                     desc <- read.dcf(desc_file)
                     ghRepo <- if( 'GithubRepo' %in% colnames(desc) ) desc[1L, 'GithubRepo'] else desc[, 'Package']
                     ghUser <- desc[1L, 'GithubUsername']
+                    ghRef <- desc[1L, 'GithubRef']
                     ghSHA1 <- if( 'GithubSHA1' %in% colnames(desc) ) desc[1L, 'GithubSHA1']
                     
                     # build commit message
@@ -261,7 +262,7 @@ GRAN.update <- function(src, outdir = dirname(normalizePath(src)), clean = FALSE
                     message("[", ref, ']')
                     
                     # commit
-                    tmp <- tempfile(paste0("commit-", basename(srcd)), fileext=".log")
+                    tmp <- tempfile(paste0("commit-", basename(srcd), '-', ghRef), fileext=".log")
                     on.exit( unlink(tmp), add = TRUE)
                     cat(msg, file = tmp, sep = "\n\n")
                     git_cmd <- sprintf("git add . && git commit -F %s;", tmp)
@@ -287,20 +288,16 @@ GRAN.update <- function(src, outdir = dirname(normalizePath(src)), clean = FALSE
         ## add Github packages to source PACKAGES
         # write PACKAGES file from Github source directories 
         fields <- c('Date', fields)
-        write_PACKAGES(src, type = 'source', unpacked = TRUE, fields = fields, latestOnly = FALSE)
-        P <- available.packages(file.path('file:/', normalizePath(src)), fields = fields, filters = .PACKAGES_filters_all_versions)
+        write_PACKAGES(src, type = 'source', unpacked = TRUE, fields = fields, latestOnly = FALSE, subdirs = TRUE)
+        # read all fields and packages
+        P <- read.dcf(file.path(src, 'PACKAGES'))
         # fix for migration of field names
         if( length(no_repo <- is.na(P[, 'GithubRepo'])) ){
             P[no_repo, 'GithubRepo'] <- P[no_repo, 'Package']  
         }
         # merge with PACKAGES in src/contrib
         out_contrib <- contrib.url(outdir, type = 'source');
-        pfile <- file.path(out_contrib, 'PACKAGES')
-        write.dcf(P, file = pfile, append = TRUE)
-        # create .gz version
-        gzfile <- gzfile(paste0(pfile, '.gz'))
-        write.dcf(P, file = gzfile)
-        close(gzfile)
+        write_PACKAGES_files(P, out_contrib, append = TRUE)
     }
     
     # generate index file
