@@ -126,6 +126,20 @@ download_file <- function(url, destfile, ...){
     invisible(res)
 }
 
+#' \code{with_rcurl} executes an expression with the custom \code{curl} binary 
+#' setup as the default download method.
+#' 
+#' @param expr an expression
+#' @rdname download_file
+#' @export
+with_rcurl <- function(expr){
+    
+    if( .setup_rcurl() ) on.exit( .setup_rcurl(TRUE) )
+    e <- parent.frame()
+    eval(expr, env = e)
+}
+
+
 readURL <- function(x){
     tmp <- tempfile()
     on.exit( unlink(tmp) )
