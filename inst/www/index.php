@@ -135,7 +135,7 @@ if( isset($_POST['payload']) ){
 	echo "* Checking DESCRIPTION file ... ";
 	$hash_desc = md5($desc);
 	$suffix = $ref == 'master' ? 'release' : 'devel';
-	$GRAN_pkg_dir = "{$GRAN_github}/{$repo_name}-{$suffix}";
+	$GRAN_pkg_dir = "{$GRAN_github}/github.com/$user/{$repo_name}/tarball/{$ref}/{$repo_name}";
 	$DESCRIPTION_file = "{$GRAN_pkg_dir}/DESCRIPTION";
 	$do_flag = false;
 	if( !is_file($DESCRIPTION_file) || $hash_desc != md5_file($DESCRIPTION_file) ){
@@ -158,13 +158,14 @@ if( isset($_POST['payload']) ){
 		else{
 		
 			if( mkdir($local_src) ){
+				touch($local_src."/README");
 				echo "[CREATED]\n";
 				// flag for update
 				$do_flag = true;
 			}else echo "[ERROR: failed creating src/]\n";
 		}
 	}else if( is_dir($local_src) ){
-		if( rmdir($local_src) ){
+		if( unlink($local_src."/README") && rmdir($local_src) ){
 			echo "[DELETED]\n";
 			// flag for update
 			$do_flag = true;
