@@ -124,7 +124,8 @@ if( isset($_POST['payload']) ){
 	$desc = preg_replace('/Date: *([0-9]+)-([0-9]+)-([0-9]+)/', 'Date: '.date("Y-m-d"), $desc);
 	// add Github-specific fields (including the ones added by devtools::install_github on installation)
 	echo "* Adding Github fields ... ";
-	$desc = add_fields($desc, array('GithubRepo' => $repo_name
+	$desc = add_fields($desc, array('GRANType' => 'github'
+										, 'GithubRepo' => $repo_name
 										, 'GithubUsername' => $user
 										, 'GithubRef' => $ref
 										, 'GithubSHA1' => $data->head_commit->id
