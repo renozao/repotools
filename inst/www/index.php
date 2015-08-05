@@ -1,7 +1,8 @@
 <?php
 
 // default values
-$GithubBase = "github";
+$GithubBase = ".";
+$GithubRepo = "repos/github";
 
 // load local config, which contains either: 
 //   * $secret = 'YOUR_OWN_HOOK_SECRET';
@@ -11,7 +12,7 @@ include("config.php");
 // reload config (to honour modification of $GithubBase in config.php) 
 if( !isset($GRANconfig) ) $GRANconfig = "$GithubBase/config.php";
 include("$GRANconfig");
-$GRAN_github = $GithubBase;
+$GRAN_github = $GithubBase."/$GithubRepo/src/contrib";
 
 //error_reporting(E_ALL);
 ini_set('display_errors', 0);

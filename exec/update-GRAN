@@ -31,7 +31,7 @@ if( !devel ){
 }
 
 # genererate repository from source github/src/contib directory
-src <- normalizePath(getArg('--src', 'github/src/contrib'))
+src <- normalizePath(getArg('--src', 'repos/github/src/contrib'))
 out <- getArg('--out', '.')
 
 updated_repo_path <- repotools:::GRAN.update(src, out, force = force, verbose = TRUE)
