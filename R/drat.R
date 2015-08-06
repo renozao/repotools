@@ -42,12 +42,12 @@ gh_repo_forks <- function(user, repo, ...){
 
 fetch_drat_forks <- function(...) gh_repo_forks('eddelbuettel', 'drat', ...)
 
-load_repos_drat <- function(cache = cachefile('drat'), update = 'all'){
+load_repos_drat <- function(cache = cachefile('drat'), update = 'all', force = FALSE){
     
     DATA <- cache(cache, default = list(repos = NULL, PACKAGES = NULL))
     
     if( !is.na(cache) ) cache <- cachefile(DATA)
-    message("Initial drat repos data ... ", appendLF = FALSE)
+    message("* Initial drat repos data ... ", appendLF = FALSE)
     message(sprintf("OK [%s repos | %s packages]", length(DATA$repos) %||% 0, nrow(DATA$PACKAGES) %||% 0))
     
     update.choice <- c('repos', 'PACKAGES', 'index', 'userdata')
@@ -63,7 +63,7 @@ load_repos_drat <- function(cache = cachefile('drat'), update = 'all'){
     if( is.null(repos) || 'repos' %in% update ){
         
         # get all forks from main drat repo
-        message("Fetching drat repos list from github ... ", appendLF = FALSE)
+        message("* Fetching drat repos list from github ... ", appendLF = FALSE)
         drat_forks <- fetch_drat_forks(verbose = FALSE)
         repos <- drat_forks
         message("OK [", length(repos), ' repositories]')
@@ -71,105 +71,104 @@ load_repos_drat <- function(cache = cachefile('drat'), update = 'all'){
     
     DATA$repos <- repos
     if( !is.na(cache) ){
-        message("Updating drat repos data in '", cache, "' ... ", appendLF =FALSE)
+        message("* Updating cached drat repos data in '", cache, "' ... ", appendLF =FALSE)
         cache(cache, DATA)
         message(" OK")
     }
         
-    # re-shape PACKAGES data
-    new_repos <- setdiff(names(repos), rownames(PACKAGES_str))
-    if( n_new <- length(new_repos) ){
-        addon <- cbind(indexed_at = NA, matrix('', n_new, length(.repo_type), dimnames = list(NULL, .repo_type)))
-        rownames(addon) <- new_repos
-        PACKAGES_str <- rbind(PACKAGES_str, addon)
-        stopifnot( setequal(names(repos), rownames(PACKAGES_str)) )
-        PACKAGES_str <- PACKAGES_str[names(repos), ]
-    }
-    
+    library(plyr)
     # process each repo
     if( 'PACKAGES' %in% update ){
-        PACKAGES_str <- t(sapply(names(repos), function(n){
+        message("* Fetching repos indexes")
+        PACKAGES_str <- sapply(names(repos), function(n){
                             
-            message("Updating index for ", n, " ... ", appendLF = FALSE)
-            r <- repos[[n]]
-            pack <- PACKAGES_str[n, .repo_type]
+            message("  ** ", n, " ... ", appendLF = FALSE)
+            rdata <- repos[[n]]
+            pack <- if( force ) list() else PACKAGES_str[[n]]
             # check last push and skip if not changed and already processed
-            pushed_at <- r[['pushed_at']]
-            gran_at <- PACKAGES_str[n, 'indexed_at']
+            pushed_at <- rdata$pushed_at
+            gran_at <- pack$indexed_at %||% NA
             
             if( !is.na(gran_at) && pushed_at == gran_at ){
                 res <- pack
-                message(" SKIP ", appendLF = FALSE)
-                
+                message(sprintf(" CACHE [%i hit(s)]", nrow(res$PACKAGES) %||% 0L))
             }else{
-                res <- sapply(.repo_type, function(type){                
+                P_df <- ldply(.repo_type, function(type){                
                     # retrieve repo index
-                    P <- drat_PACKAGES(type = type, user = r$owner$login, repo = r$name, verbose = FALSE)
-                    if( is.null(P) ) P <- ''
-                    P
+                    P <- drat_PACKAGES(type = type, user = rdata$owner$login, repo = rdata$name, verbose = FALSE)
+                    if( !is.null(P) ){
+                        data.frame(P, stringsAsFactors = FALSE)
+                    }
                 })
-                message(" OK ", appendLF = FALSE)
+                message(sprintf(" OK [%i hit(s)]", nrow(P_df)))
+                res <- list(indexed_at = pushed_at, PACKAGES = P_df)
             }
             # log content
             #sres <- names(res)[nzchar(res)]
             #message(sprintf('[%s]', paste(sres, collapse = '|')))
-            message()
             
             # update indexing date
-            res <- c(indexed_at = pushed_at, res)
-            
+#            res <- cbind(indexed_at = pushed_at, res)
             res
-        }))    
+        }, simplify = FALSE)
         DATA$PACKAGES_str <- PACKAGES_str
         
         if( !is.na(cache) ){
-            message("Updating PACKAGES files in '", cache, "' ... ", appendLF =FALSE)
+            message("* Updating cached PACKAGES files'", cache, "' ... ", appendLF =FALSE)
             cache(cache, DATA)
             message(" OK")
         }
     }
-        
-    library(plyr)
+    
     # process and check 
     # check validity
     if( 'index' %in% update ){
         message("* Checking validity ")
         USERS <- if( 'userdata' %in% update ) list() else DATA$USERS
-        PACKAGES <- ldply(rownames(PACKAGES_str), function(n){
+        PACKAGES <- ldply(names(PACKAGES_str), function(n){
             rdata <- repos[[n]]
-            pack <- PACKAGES_str[n, ]
+            PACK <- PACKAGES_str[[n]]
             username <- rdata$owner$login
             
-            message("  ** ", n, " ... ", appendLF = FALSE)
-            res <- ldply(names(pack)[-1L], function(type){
-                P <- pack[type]
-                if( !nzchar(P) ) return()
+            message("  ** ", n, " ... ", appendLF = !nrow(PACK$PACKAGES))
+            if( !nrow(PACK$PACKAGES) ) return()
+            
+            res <- ldply(seq(nrow(PACK$PACKAGES)), function(i){
+                pack <- PACK$PACKAGES[i, ]
+                P <- pack[['PACKAGES']]
+                type <- pack[['pkgType']]
+                r_release <- pack[['R_release']]
                 dcf <- try(read.dcf(textConnection(P)), silent = TRUE)
-                if( !is(dcf, 'try-error') ){
-                    
-                    # check all user's repository to flag forked repos
-                    user_repos <- USERS[[username]] %||% gh_user_repo(username)
-                    USERS[[username]] <<- user_repos  
-                    githubrepo <- dcf[, 'Package']
-                    githubrepo[!dcf[, 'Package'] %in% names(user_repos)] <- NA
-                    forked_repos <- names(which(sapply(user_repos, '[[', 'fork')))
-                    forked <- dcf[, 'Package'] %in% forked_repos 
-                    owned <- !forked & dcf[, 'Package'] %in% names(user_repos)
-                    message(sprintf('%s: %i/%i ', type, sum(owned), nrow(dcf)), appendLF = FALSE)
-                     
-                    # extend PACKAGES fields
-                    provider <- paste0(username, '.github.io')
-                    provider_url <- file.path(provider, rdata$name)
-                    relpath <- file.path(provider_url, contrib.path(type))
-                                 
-                    data.frame(GRANProvider = n, GRANType = 'drat', GRANdate = pack[['indexed_at']], Main = owned
-                                , GithubRepo = githubrepo, GithubUsername = username, GithubFork = forked, GithubPushed = rdata$pushed_at
-                                , Type = type
-                                , Path = relpath
-                                , dcf
-                                , stringsAsFactors = FALSE)
-                }
-            })
+                if( is(dcf, 'try-error') ) return()
+                
+                reponame <- rdata$name
+                # check all user's repository to flag forked repos
+                user_repos <- USERS[[username]] %||% gh_user_repo(username)
+                USERS[[username]] <<- user_repos  
+                forked_repos <- names(which(sapply(user_repos, '[[', 'fork')))
+                forked <- dcf[, 'Package'] %in% forked_repos 
+                owned <- !forked & dcf[, 'Package'] %in% names(user_repos)
+                
+                message(sprintf('%s%s: %i/%i ', type
+                                              , if( !is_NA(r_release) ) paste0("-", r_release) else ''
+                                              , sum(owned), nrow(dcf))
+                        , appendLF = FALSE)
+                
+                # extend PACKAGES fields
+                provider <- paste0(username, '.github.io')
+                provider_url <- file.path(provider, rdata$name)
+                relpath <- file.path(provider_url, contrib.path(type, r_release))
+                data.frame(dcf
+                            , Path = relpath
+                            , pkgType = type
+                            , R_release = r_release
+                            , GRANRepo = n, GRANType = 'drat', GRANdate = PACK$indexed_at
+                            , GithubRepo = reponame, GithubUsername = username, GithubRef = 'gh-pages'
+                            , GithubFork = ifelse(forked, 'yes', 'no')
+                            , GithubPushed = rdata$pushed_at
+                            , GithubOwner = ifelse(owned, 'yes', 'no')
+                            , stringsAsFactors = FALSE)
+            }, .id = NULL)
             message()
             res
         })
@@ -179,7 +178,7 @@ load_repos_drat <- function(cache = cachefile('drat'), update = 'all'){
     }
     
     if( !is.na(cache) ){
-        message("Saving complete drat repos data in '", cache, "' ... ", appendLF =FALSE)
+        message("* Updating cache in '", cache, "' ... ", appendLF =FALSE)
         cache(cache, DATA)
         message(" OK")
     }
@@ -187,27 +186,73 @@ load_repos_drat <- function(cache = cachefile('drat'), update = 'all'){
     DATA
 }
 
+#' Fetch the Last N R Versions
+#' 
+#' This function uses \code[rversions]{r_versions} to fetch all the 
+#' R versions from R main SVN server.
+#' 
+#' @param n Number of versions to return
+#' @param digits Number of version digits: 1 = major version number, 
+#' 2 = <major>.<minor1>, 3 = <major>.<minor1>.<minor2>
+#' @param cache logical that indicates if the result should be retrieved from 
+#' cache or (re-)fetched from the SVN server.
+#' 
+#' @importFrom rversions r_versions
+#' @export
+r_versions_n <- local({
+    .versions <- NULL
+    function(n = Inf, digits = 2L, cache = TRUE){
+        # fetch versions if necessary
+        .versions <<- {if( cache ) .versions} %||% r_versions(dots = TRUE)
+        
+        # process and limit
+        vd <- sapply(strsplit(.versions[[1L]], ".", fixed = TRUE)
+                    , function(x) paste0(head(x, digits), collapse = "."))
+        tail(unique(vd), n)
+    }
+})
+
 #' @importFrom RCurl url.exists
 drat_PACKAGES <- function(user, type, repo = 'drat', verbose = TRUE){
     
-    if( !verbose ) message <- function(...) NULL
-     
-    url <- gh_io.path(user, repo, contrib.path(type = type), 'PACKAGES')
-    message("Fetch ", url, " ... ", appendLF = FALSE)
-    if( url.exists(url) ){
-        res <- getURL(url)
-        message('OK')
-        res
-    }else{
-        message('NO')
-        NULL
+    if( !verbose ) message <- function(...) NULL 
+    .local <- function(url){
+        message("Fetch ", url, " ... ", appendLF = FALSE)
+        url_gz <- paste0(url, '.gz')
+        if( url.exists(url) ){
+            url <- url_gz
+        }
+        if( url.exists(url) ){
+            res <- readURL(url, quiet = verbose < 2)
+            message('OK')
+            res
+        }else{
+            message('NO')
+            NULL
+        }
     }
+    
+    # build contrib sub-dir
+    # NB: for binary packages we look back 5 R releases
+    r_release <- NA
+    if( type != 'source' ){
+        r_release <- r_versions_n(5L)
+    }
+    contrib <- contrib.path(type = type, r_release)
+    
+    url <- gh_io.path(user, repo, contrib, 'PACKAGES')
+    res <- lapply(url, .local)
+    i <- which(lengths(res) > 0)
+    if( length(i) ) cbind(pkgType = type, R_release = r_release[i], PACKAGES = as.character(res[i]))
     
 }
 
 .repo_type <- c('source', 'mac.binary', 'win.binary')
-contrib.path <- function(type){
-    gsub('^/', '', contrib.url('', type = type))
+contrib.path <- function(type = getOption('pkgType'), version = NULL){
+    p <- gsub('^/', '', contrib.url('', type = type))
+    if( !is.null(version) && !is_NA(version) ) p <- file.path(dirname(p), version)
+    p
+    
 }
 
 # Adds a field to a DESCRIPTION/PACKAGE data
@@ -231,23 +276,8 @@ add_dcf_field <- function(x, name, value, force = FALSE){
     
 }
 
-write_PACKAGES_files <- function(x, path){
-    
-    write.fun <- if( length(x) ) write.dcf else function(x, file) cat('', file = file)
-    
-    dir.create(path, recursive = TRUE, showWarnings = FALSE)
-    pfile <- file.path(path, 'PACKAGES')
-    write.fun(x, pfile)
-    
-    # create .gz version
-    gzfile <- gzfile(paste0(pfile, '.gz'))
-    write.fun(x, gzfile)
-    close(gzfile)
-    
-}
-
 # adapted from utils:::available_packages_filters_db$R_version
-R_dep_version <- function(depends, use.sign = FALSE){
+R_version_depends <- function(depends, use.sign = FALSE){
     
     res <- rep(NA, length(depends))
     depends[is.na(depends)] <- ""
@@ -265,6 +295,54 @@ R_dep_version <- function(depends, use.sign = FALSE){
     res[pos] <- if( use.sign ) paste0(v_t, ifelse(grepl("<", ops), '-', '+'))
                 else paste0(ops, v_t)
     return(res)
+}
+
+# built repos at all levels
+write_GRAN_repo <- function(var, FUN, ..., PACKAGES, no.dups = TRUE, append = FALSE){
+    
+    PACKAGES$R_version <- R_version_depends(PACKAGES$Depends)
+    
+    paths <- dlply(PACKAGES, c('pkgType', 'R_release'), function(P){
+        type <- unique(P[['pkgType']])
+        r_release <- unique(P[['R_release']])
+        stopifnot( length(type) == length(r_release) && length(r_release) == 1L ) 
+        message("* Setting up ", type, "-", r_release, " packages ... ")
+        dlply(P, var, function(P, ...){
+            # extract top priority packages
+            p <- FUN(P, ...)
+            message(p$msg, ' ', appendLF = FALSE)
+            
+            .sort <- function(P){
+                P[order(P[, 'Package'], package_version(P[, 'Version'])), ]
+            }
+            # add packages from other source, to honour top-priority
+            # order by: package name, version
+            # only owned packages are added
+            owned <- (PACKAGES[, 'GithubOwner'] %in% c('yes', NA)) & (PACKAGES[, 'GithubFork'] %in% c('no', NA))
+            PACKAGES <- PACKAGES[ owned & PACKAGES[, 'pkgType'] == type, ] 
+            PACK <- rbind.fill(.sort(p$PACKAGES), .sort(PACKAGES))
+            if( no.dups ){
+                key <- apply(PACK[, c('Package', 'R_release', 'R_version', 'Version')], 1L, paste0, collapse = "_")
+                PACK <- PACK[!duplicated(key), ]
+            } 
+            message(sprintf("[%i total]", nrow(PACK)))
+                            
+            # write files
+            write_PACKAGES_files(PACK, file.path(p$path, contrib.path(type, r_release)), append = append)
+            p$path
+        }, ...)
+    }, ...)
+
+    # fix types with missing PACKAGES files
+    paths <- unique(unlist(paths))
+    l_ply(.repo_type, function(type){
+        lapply(paths, function(p){
+            tpath <- file.path(p, contrib.path(type))
+            if( !file.exists(file.path(tpath, 'PACKAGES')) )
+                write_PACKAGES_files(NULL, tpath)
+        })            
+    })
+    
 }
 
 #' Updates Repository Indexes of Built Packages
@@ -287,10 +365,11 @@ R_dep_version <- function(depends, use.sign = FALSE){
 #' 
 #' The top-level repository 
 #' 
-#' @param dir path
-GRAN.update_drat <- function(dir = '.', type = c('all', 'source', 'mac.binary', 'win.binary'), update = FALSE, repos = NULL){
+#' @param outdir path to output directory
+GRAN.update_drat <- function(outdir = '.', type = c('all', 'source', 'mac.binary', 'win.binary'), update = FALSE, repos = NULL){
      
     
+    library(plyr)
     # load drat repos data
     DATA <- repos
     if( is.null(DATA) ) DATA <- load_repos_drat(update = update)
@@ -305,68 +384,30 @@ GRAN.update_drat <- function(dir = '.', type = c('all', 'source', 'mac.binary', 
     PACKAGES <- DATA$PACKAGES
     message(sprintf("* Repositories with PACAKGES data: %i repos", nrow(PACKAGES)))
     
-    PACKAGES$R_version <- R_dep_version(PACKAGES$Depends)
-    # built repos at all levels
-    write_GRAN_repo <- function(var, FUN, ...){
-        
-        paths <- dlply(PACKAGES, 'Type', function(P){
-            type <- unique(P[, 'Type'])
-            message("* Setting up ", type, " packages ... ")
-            dlply(P, var, function(P, ...){
-                # extract top priority packages
-                p <- FUN(P, ...)
-                
-                .sort <- function(P){
-                    P[order(P[, 'Package'], package_version(P[, 'Version'])), ]
-                }
-                # add packages from other source, to honour top-priority
-                # order by: package name, version
-                PACKAGES <- PACKAGES[PACKAGES[, 'Main'], ] # only owned packages are addes
-                PACK <- rbind(.sort(p$PACKAGES), .sort(PACKAGES))
-                key <- apply(PACK[, c('Package', 'R_version')], 1L, paste0, collapse = "_")
-                PACK <- PACK[!duplicated(key), ] 
-                                
-                # write files
-                write_PACKAGES_files(PACK, file.path(p$path, contrib.path(type)))
-                p$path
-            }, ...)
-        }, ...)
-
-        # fix types with missing PACKAGES files
-        paths <- unique(unlist(paths))
-        l_ply(.repo_type, function(type){
-            lapply(paths, function(p){
-                tpath <- file.path(p, contrib.path(type))
-                if( !file.exists(file.path(tpath, 'PACKAGES')) )
-                    write_PACKAGES_files(NULL, tpath)
-            })            
-        })
-        
-    }
-    
-    basedir <- normalizePath(dir)
+    basedir <- normalizePath(outdir)
     # user-specific individual drat repos
-    write_GRAN_repo('GRANProvider', function(P){
-                reponame <- unique(P[, 'GRANProvider'])
+    write_GRAN_repo('GRANRepo', function(P){
+                reponame <- unique(P[, 'GRANRepo'])
                 rdata <- repos[[reponame]]
-                message(sprintf('  * Repo %s:%i ', reponame, nrow(P)))
+                msg <- sprintf('  * Repo %s:%i ', reponame, nrow(P))
                 path <- file.path(basedir, rdata$owner$login, rdata$name)
-                list(PACKAGES = P, path = path)
-            })
+                list(PACKAGES = P, path = path, msg = msg)
+            }, PACKAGES = PACKAGES)
     
     # user-specific repos
     write_GRAN_repo('GithubUsername', function(P){
                 username <- unique(P[, 'GithubUsername'])
-                message(sprintf('  * Repo %s:%i ', username, nrow(P)))
+                msg <- sprintf('  * Repo %s:%i ', username, nrow(P))
                 path <- file.path(basedir, username)
-                list(PACKAGES = P, path = path)
-            })
+                list(PACKAGES = P, path = path, msg = msg)
+            }, PACKAGES = PACKAGES)
     
     # global drat repos
     write_GRAN_repo('GRANType', function(P){
-                message(sprintf('  * Repo all:%i ', nrow(P)))
-                list(PACKAGES = P, path = basedir)
-            })
+                P <- P[P[, 'GithubOwner'] %in% 'yes', ]
+                msg <- sprintf('  * Repo all:%i ', nrow(P))
+                list(PACKAGES = P, path = basedir, msg = msg)
+            }, PACKAGES = PACKAGES)
     
     invisible()
     
