@@ -94,7 +94,7 @@ gh_call <- local({
         
         api_req <- gsub(gh_api.path(''), '', url, fixed = TRUE)
         per_page <- min(100, per_page)
-        res <- github:::.api.get.request(.ctx, api_req, ..., params = list(per_page = per_page))
+        res <- github:::.api.get.request(.ctx, api_req, params = c(list(...), list(per_page = per_page)))
         if( content.only ) res <- res$content
         res
     }
@@ -120,4 +120,15 @@ gh_user_repo <- function(user, repo, ...){
     res <- gh_GET(c('users', user, 'repos'), ...)
     names(res) <- sapply(res, '[[', 'name')
     res
+}
+
+gh_get_content <- function(user, repo, ..., ref = 'master'){
+    res <- gh_api_call(c('repos', user, repo, 'contents', ...), ref = ref)
+    if( !is.null(res$message) ) return()
+    names(res) <- sapply(res, '[[', 'name')
+    res
+}
+
+gh_search_Rrepos <- function(...){
+    res <- gh_api_fetch(c('search', 'repositories'), ..., q='language:R')
 }
