@@ -145,10 +145,10 @@ with_rcurl <- function(expr){
 }
 
 
-readURL <- function(x){
-    tmp <- tempfile()
+readURL <- function(x, ...){
+    tmp <- tempfile(fileext = paste0('.', tools::file_ext(x)))
     on.exit( unlink(tmp) )
-    if( download_file(x, tmp) ){
+    if( download_file(x, tmp, ...) ){
         paste0(readLines(tmp), collapse = "\n")
     }
 }
