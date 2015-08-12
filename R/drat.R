@@ -390,33 +390,24 @@ GRAN.update_drat <- function(outdir = '.', type = c('all', 'source', 'mac.binary
     
     # skip repos without PACKAGES data
     PACKAGES <- DATA$PACKAGES
-    message(sprintf("* Repositories with PACAKGES data: %i repos", nrow(PACKAGES)))
+    message(sprintf("* Repositories with PACKAGES data: %i repos", nrow(PACKAGES)))
     
     basedir <- normalizePath(outdir)
-    # user-specific individual drat repos
-    write_GRAN_repo('GRANPath', function(P){
-                reponame <- unique(P[, 'GRANPath'])
-                rdata <- repos[[reponame]]
-                msg <- sprintf('  * Repo %s:%i ', reponame, nrow(P))
-                path <- file.path(basedir, rdata$owner$login, rdata$name)
-                list(PACKAGES = P, path = path, msg = msg)
-            }, PACKAGES = PACKAGES)
-    
-    # user-specific repos
-    write_GRAN_repo('GithubUsername', function(P){
-                username <- unique(P[, 'GithubUsername'])
-                msg <- sprintf('  * Repo %s:%i ', username, nrow(P))
-                path <- file.path(basedir, username)
-                list(PACKAGES = P, path = path, msg = msg)
-            }, PACKAGES = PACKAGES)
-    
-    # global drat repos
-    write_GRAN_repo('GRANType', function(P){
-                P <- P[P[, 'GithubOwner'] %in% 'yes', ]
-                msg <- sprintf('  * Repo all:%i ', nrow(P))
-                list(PACKAGES = P, path = basedir, msg = msg)
-            }, PACKAGES = PACKAGES)
-    
-    invisible()
+    d_ply(PACKAGES, c('pkgType', 'R_release'), function(P){
+        basedir <- file.path(contrib.path(basedir, type = P[1L, 'pkgType'], version = P[1L, 'R_release']), 'github.com')
+        a_ply(P, 1L, function(p){
+            pdir <- file.path(basedir, p[['GithubUsername']], p[['GithubRepo']], p[['Package']])
+            dir.create(pdir, recursive = TRUE, showWarnings = FALSE)
+            write.dcf(as.matrix(p), file.path(pdir, 'DESCRIPTION'))
+            
+            if( p[['NeedsCompilation']] %in% 'yes' ){
+                dir.create(file.path(pdir, 'src'), showWarnings = FALSE)
+                cat('', file = file.path(pdir, 'src', 'README'))
+                
+            }
+            
+        })  
+
+    })
     
 }
