@@ -408,20 +408,10 @@ GRAN.update_drat <- function(outdir = '.', type = c('all', 'source', 'mac.binary
     
     basedir <- normalizePath(outdir)
     d_ply(PACKAGES, c('pkgType', 'R_release'), function(P){
-        basedir <- file.path(contrib.path(basedir, type = P[1L, 'pkgType'], version = P[1L, 'R_release']), 'github.com')
-        a_ply(P, 1L, function(p){
-            pdir <- file.path(basedir, p[['GithubUsername']], p[['GithubRepo']], p[['Package']])
-            dir.create(pdir, recursive = TRUE, showWarnings = FALSE)
-            write.dcf(as.matrix(p), file.path(pdir, 'DESCRIPTION'))
-            
-            if( p[['NeedsCompilation']] %in% 'yes' ){
-                dir.create(file.path(pdir, 'src'), showWarnings = FALSE)
-                cat('', file = file.path(pdir, 'src', 'README'))
-                
-            }
-            
+        basedir <- file.path(contrib.path(basedir, type = P[1L, 'pkgType'], version = P[1L, 'R_release']))
+        write_PACKAGES_files(P, basedir)
     })
 
-    })
+    invisible(DATA)
     
 }
