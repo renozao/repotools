@@ -158,6 +158,10 @@ gh_read.dcf <- function(repos, user = NULL, fields = NULL, raw = FALSE){
 }
 
 md5hash <- function(x, strip = x, skip = NULL){
+    x <- x[file.exists(x)]
+    
+    if( !length(x) ) return( character() )
+    
     x <- normalizePath(x)
     # compute hash list of source directory
     hash <- md5sum(dir(x, recursive = TRUE, full.names = TRUE))
@@ -199,19 +203,23 @@ GRAN_key <- function(...){
     
 }
 
-GRAN.update2 <- function(src, outdir = dirname(normalizePath(src)), clean = FALSE, force = FALSE, fields = GRAN.fields(), actions = c('changes', 'PACKAGES', 'index'), verbose = TRUE){
+GRAN.update <- function(src, outdir = dirname(normalizePath(src)), clean = FALSE, force = FALSE, fields = GRAN.fields(), actions = c('changes', 'PACKAGES', 'index'), verbose = TRUE){
      
     # dump messages if non-verbose
     if( !verbose ) message <- function(...) NULL
     
-    message(sprintf("* Updating GRAN GitHub packages in %s [source: %s]", outdir, src))
+    message(sprintf("* Updating GRAN packages in %s [source: %s]", outdir, src))
     
     # initialise complete repository structure if necessary
     if( !is.dir(outdir) || clean ) create_repo(outdir, pkgs = NA)
     
+    # update GitHub source package
+    src_github <- file.path(src, 'github')
+    contrib_github <- contrib.url(src_github, type = 'source')
+    GRAN.update_github(src_github)
     
-    contrib_github <- contrib.url(file.path(src, 'github'), type = 'source')
-    DATA <- load_repos_drat(update = FALSE)
+    # update Drat packages
+    DATA <- GRAN.update_drat(file.path(src, 'drat'), update = TRUE)
     
     # match type of action to perform
     actions <- match.arg(actions, several.ok = TRUE)
@@ -266,7 +274,9 @@ GRAN.update_github <- function(src, force = FALSE, fields = GRAN.fields(), actio
     # dump messages if non-verbose
     if( !verbose ) message <- function(...) NULL
     
-    message("* Updating GRAN GitHub packages in ", src)
+    message("* Updating GitHub source packages in ", src)
+    outdir <- src
+    src <- contrib.url(src, type = 'source')
     
     # match type of action to perform
     actions <- match.arg(actions, several.ok = TRUE)
@@ -278,7 +288,7 @@ GRAN.update_github <- function(src, force = FALSE, fields = GRAN.fields(), actio
     # compute hash list of output repo directory
     .md5hash <- function(...) md5hash(..., skip = "PACKAGES(\\.gz)?$")
     gh_hash <- .md5hash(src)
-    hash <- c(setNames(gh_hash, names(gh_hash)), .md5hash(file.path(outdir, c('src', 'bin')), strip = outdir))
+    hash <- c(setNames(gh_hash, names(gh_hash))) #, .md5hash(file.path(outdir, c('src', 'bin')), strip = outdir))
     CHANGES <- list()
     if( file.exists(MD5_file) && !force ){
         message("* Checking changes based on MD5 file ... ", appendLF = FALSE)
@@ -316,7 +326,7 @@ GRAN.update_github <- function(src, force = FALSE, fields = GRAN.fields(), actio
             else tmp <- tmpd
         }
         message("* Pushing changes ... ", appendLF = FALSE)
-        if( within_git ){
+        if( within_git || !do_commit ){
             pkg_srcd <- list.files(src, recursive = TRUE, full.names = TRUE, pattern = '^DESCRIPTION$')
             # filter those that changed
             if( !is.null(CHANGES$Changed) )
@@ -360,23 +370,13 @@ GRAN.update_github <- function(src, force = FALSE, fields = GRAN.fields(), actio
     
     # update PACKAGES files
     if( 'PACKAGES' %in% actions ){
-        
-        # make PACKAGES in output repos for built packages
-        create_repo(outdir, verbose = TRUE)
-        
+                
         ## add Github packages to source PACKAGES
         # write PACKAGES file from Github source directories 
         fields <- c('Date', fields)
+        message("* Generating PACKAGES files in '", src, "'")
         write_PACKAGES(src, type = 'source', unpacked = TRUE, fields = fields, latestOnly = FALSE, subdirs = TRUE)
-        # read all fields and packages
-        P <- read.dcf(file.path(src, 'PACKAGES'))
-        # fix for migration of field names
-        if( length(no_repo <- is.na(P[, 'GithubRepo'])) ){
-            P[no_repo, 'GithubRepo'] <- P[no_repo, 'Package']  
-        }
-        # merge with PACKAGES in src/contrib
-        out_contrib <- contrib.url(outdir, type = 'source');
-        write_PACKAGES_files(P, out_contrib, append = TRUE)
+        
     }
     
     # generate index file
@@ -390,5 +390,5 @@ GRAN.update_github <- function(src, force = FALSE, fields = GRAN.fields(), actio
     message('OK [', digest(hash), ']')
     
     # return output directory to calling script in non-interactive mode
-    invisible(outdir)
+    invisible(src)
 }
