@@ -133,6 +133,15 @@ load_repos_drat <- function(cache = cachefile('drat'), update = 'all', force = F
             message("  ** ", n, " ... ", appendLF = !nrow(PACK$PACKAGES))
             if( !nrow(PACK$PACKAGES) ) return()
             
+            # look for cached parsed data
+            if( !is.null(res <- PACK$dcf) ){
+                s <- paste0('-', res$R_release)
+                s[is.na(res$R_release)] <- ''
+                s <- summary(factor(paste0(res$pkgType, s)))
+                message(sprintf('CACHE [%s]', paste0(sprintf("%s:%s", names(s), s), collapse = " ")))
+                return(res)
+            }
+                
             res <- ldply(seq(nrow(PACK$PACKAGES)), function(i){
                 pack <- PACK$PACKAGES[i, ]
                 P <- pack[['PACKAGES']]
@@ -171,9 +180,14 @@ load_repos_drat <- function(cache = cachefile('drat'), update = 'all', force = F
                             , stringsAsFactors = FALSE)
             }, .id = NULL)
             message()
+            
+            # cache result
+            PACKAGES_str[[n]]$dcf <<- res
+            
             res
         })
         
+        DATA$PACKAGES_str <- PACKAGES_str
         DATA$PACKAGES <- PACKAGES
         DATA$USERS <- USERS
     }
@@ -406,7 +420,7 @@ GRAN.update_drat <- function(outdir = '.', type = c('all', 'source', 'mac.binary
                 
             }
             
-        })  
+    })
 
     })
     
