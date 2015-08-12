@@ -234,3 +234,33 @@ install.pkgs("<pkgname>", devel = TRUE)
     invisible(normalizePath(output))
 }
 
+#' Repository Indexes
+#' 
+#' \code{contrib_cache} returns the path to the RDS file were a repository index is
+#' stored when first accessed by \code[utils]{available.packages}.
+#' 
+#' @param repos Repository URL
+#' @param type Package type (see \code[utils]{contrib.url})
+#' @export
+contrib_cache <- function(repos, type = getOption('pkgType')){
+    url <- contrib.url(repos, type)
+    file.path(tempdir(), paste0("repos_", URLencode(url, TRUE), ".rds"))
+
+}
+
+#' \code{contrib_cache_clear} deletes the index cache file, 
+#' so that the repository's index is refreshed by the next call to
+#' \code[utils]{available.packages}.
+#'  
+#' @param ... parameters passed to \code{contrib_cache}.
+#' @rdname contrib_cache
+#' @export
+contrib_cache_clear <- function(...){
+    
+    # clear all cache
+    if( !nargs() ){
+        part <- paste0(sprintf("(%s)", sapply(names(.contrib_path2type), URLencode, TRUE)), collapse = "|")
+        f <- list.files(tempdir(), pattern = sprintf("^repos_.*(%s).*\\.rds$", part))
+        unlink(file.path(tempdir(), f))
+    }else unlink(contrib_cache(...))
+}
