@@ -23,20 +23,22 @@ gh_repo_path <- function(user, repo, branch = 'master'){
 
 GRAN.repos <- function(...){
     file.path('http://renozao.github.io/GRAN', ...)
+    file.path('http://localhost/~renaud/projects/repotools/testRepo', ...)
 }
-GRAN.fields <- function(named = FALSE){
+GRAN.fields <- function(named = FALSE, all = FALSE){
     f <- c(Repo = 'GithubRepo', User = "GithubUsername"
             , Branch = "GithubRef", Forked = 'GithubFork'
-            , SHA1 = 'GithubSHA1')
+            , SHA1 = 'GithubSHA1', RepoType = 'GRANType')
+    if( all ) f <- c(f, XDepends = 'XDepends', Key = 'XPath', Type = 'GRANType', Path = 'GRANPath')
     if( !named ) f <- unname(f)
     f
 }
 
-GRAN.available <- function(type = getOption('pkgType'), fields = GRAN.fields(), ..., version = NULL){
+GRAN.available <- function(type = getOption('pkgType'), fields = GRAN.fields(all = TRUE), ..., version = NULL){
     if( is.null(version) ){
         p <- available.pkgs(contrib.url2(GRAN.repos(), type = type), fields = fields, ...)
     }else{
-        p <- available.pkgs(contrib.url(GRAN.repos(), type = type), fields = fields, ..., filters = c("R_version", "OS_type", "subarch"))
+        p <- available.pkgs(contrib.url(GRAN.repos(), type = type), fields = fields, ..., filters = .PACKAGES_filters_keep_all_versions)
         
         invert <- match.fun(ifelse(grepl("^!", version), "!", 'identity'))
         version <- gsub("^!", "", version)   
@@ -179,16 +181,92 @@ md5hash <- function(x, strip = x, skip = NULL){
     hash
 }
 
+GRAN_key <- function(...){
+    
+    
+    .local <- function(...){
+        res <- paste0(..., collapse = "/")
+        gsub("/NA$", "", res)
+    }
+    
+    args <- list(...)
+    if( length(args) == 1L ){
+        x <- args[[1L]]
+        if( !is.null(nrow(x)) ) return( apply(x, 1L, .local) )
+        stopifnot( is.character(x) )
+    }
+    do.call(.local, args)
+    
+}
+
+GRAN.update2 <- function(src, outdir = dirname(normalizePath(src)), clean = FALSE, force = FALSE, fields = GRAN.fields(), actions = c('changes', 'PACKAGES', 'index'), verbose = TRUE){
+     
+    # dump messages if non-verbose
+    if( !verbose ) message <- function(...) NULL
+    
+    message(sprintf("* Updating GRAN GitHub packages in %s [source: %s]", outdir, src))
+    
+    # initialise complete repository structure if necessary
+    if( !is.dir(outdir) || clean ) create_repo(outdir, pkgs = NA)
+    
+    
+    contrib_github <- contrib.url(file.path(src, 'github'), type = 'source')
+    DATA <- load_repos_drat(update = FALSE)
+    
+    # match type of action to perform
+    actions <- match.arg(actions, several.ok = TRUE)
+    
+    # update PACKAGES files
+    if( 'PACKAGES' %in% actions ){
+        
+        # make PACKAGES in output repos for built packages
+        create_repo(outdir, verbose = TRUE)
+        
+        ## add Github packages to those in src/contrib
+        ## Only add non-forked packages
+        gh_P <- read.dcf(file.path(contrib_github, 'PACKAGES'))
+        # fix for migration of field names
+        gh_P <- add_dcf_field(gh_P, 'GithubRepo', gh_P[, 'Package'])
+        gh_P <- add_dcf_field(gh_P, 'GRANType', 'github')
+        gh_P <- cbind(gh_P, pkgType = 'source', R_release = NA)
+        
+        # preprend to drat packages
+        library(plyr)
+        PACKAGES <- rbind.fill(data.frame(gh_P, stringsAsFactors = FALSE), DATA$PACKAGES)
+        PACKAGES <- add_dcf_field(PACKAGES, 'GRANPath', GRAN_key(PACKAGES[, c('GithubUsername', 'GithubRepo', 'GithubRef')]))
+        
+        # combined GitHub + Drat repos
+        write_GRAN_repo('pkgType', function(P){
+            msg <- sprintf('  * Repo all :%i ', nrow(P))
+            list(PACKAGES = P, path = outdir, msg = msg)
+        }, PACKAGES = PACKAGES, append = TRUE, no.dups = FALSE)
+                
+    }
+    
+    # generate index file
+    if( 'index' %in% actions ){
+        message("* Generating index file:")
+        write_PACKAGES_index(outdir, title = 'GRAN: Github R Archive Network')
+    }
+    
+}
+
+#' Updates GitHub Source Package Repository
+#' 
+#' @param src path to the directory that holds the package directory tree 
 #' @importFrom tools md5sum
-GRAN.update <- function(src, outdir = dirname(normalizePath(src)), clean = FALSE, force = FALSE, fields = GRAN.fields(), actions = c('changes', 'PACKAGES', 'index'), verbose = TRUE){
+GRAN.update_github <- function(src, force = FALSE, fields = GRAN.fields(), actions = c('changes', 'PACKAGES', 'index'), test = FALSE, verbose = TRUE){
+    
+    do_commit <- TRUE
+    if( test ){
+        do_commit <- FALSE
+        verbose <- TRUE
+    }
     
     # dump messages if non-verbose
     if( !verbose ) message <- function(...) NULL
     
-    message("* Updating GRAN in ", outdir, ' [source: ', src, ']')
-    
-    # initialise complete repository structure if necessary
-    if( !is.dir(outdir) || clean ) create_repo(outdir, pkgs = NA)
+    message("* Updating GRAN GitHub packages in ", src)
     
     # match type of action to perform
     actions <- match.arg(actions, several.ok = TRUE)
@@ -270,7 +348,8 @@ GRAN.update <- function(src, outdir = dirname(normalizePath(src)), clean = FALSE
     #                cat(readLines(tmp), sep = "\n")
                     owd <- setwd(srcd)
                     on.exit( setwd(owd), add = TRUE)
-                    system(git_cmd)
+                    if( do_commit ) system(git_cmd)
+                    else message(sprintf("skipped [%s]: %s", srcd, git_cmd))
                     length(msg)
                 })
             }

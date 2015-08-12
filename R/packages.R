@@ -16,16 +16,24 @@ package.hash <- Vectorize(package.hash)
 # match minimal/latest compatible version
 match_available <- function(deps, available, latest = FALSE){
     
+    if( is.integer(deps) ){
+        available <- available[deps, , drop = FALSE]
+        deps <- available[, 'Package']
+    }
+
     dep_name <- if( is.character(deps) ) deps else deps$name
-    
+
     # limit to packages in dependencies
     ia <- which(available[, 'Package'] %in% dep_name)
     if( !length(ia) ) return( setNames(rep(NA, length(dep_name)), dep_name))
     
     available <- available[ia, , drop = FALSE]
+    
     # reorder always prioritizing the latest version
-    ov <- orderVersion(available[, 'Version'], decreasing = TRUE)
-    available <- available[ov, , drop = FALSE]
+    if( latest ){
+        ov <- order(package_version(available[, 'Version']), decreasing = TRUE)
+        available <- available[ov, , drop = FALSE]
+    } else ov <- seq(nrow(available))
     
     # case of a package name
     if( is.character(deps) ){
@@ -71,8 +79,127 @@ match_available <- function(deps, available, latest = FALSE){
     setNames(ia[ov[i]], dep_name)
 }
 
-# adapted from devtools::install_deps
 #' @importFrom tools package.dependencies
+list.package.dependencies <- function(db, all = FALSE, depth = 1L, reduce = TRUE){
+    
+    # empty result
+    c0 <- character(0)
+    cnames <- c('parent', 'name', 'compare', 'version', 'depLevel', 'depth', 'parentXDepends')
+    empty <- matrix(NA, 0, length(cnames), dimnames = list(NULL, cnames))
+    
+    # early exit if no package passed
+    if( !nargs() ) return(empty)
+    
+    dtype <- c('Depends', 'Imports')
+    if( all ) dtype <- c(dtype, 'Suggests')
+    deps <- sapply(dtype, function(x){
+        d <- package.dependencies(db, check = FALSE, depLevel = x)
+        d <- sapply(names(d), function(p){
+                d <- d[[p]]
+                if( is_NA(d) ) return()
+                colnames(d) <- c('name', 'compare', 'version')
+                d[, 'name'] <- str_trim(d[, 'name'])
+                cbind(parent = p, d, depLevel = x)
+            }, simplify = FALSE)
+        d <- do.call(rbind, d)
+    }
+    , simplify = FALSE)
+    
+    # stick together
+    deps <- do.call(rbind, deps)
+    
+    # set extra fields
+    if( nrow(deps) ){
+        deps <- add_dcf_field(deps, 'depth', depth, force = TRUE)
+        # extended dependencies
+        db <- add_dcf_field(db, 'XDepends')
+        xdepends <- setNames(db[, 'XDepends'], db[, 'Package'])
+        deps <- add_dcf_field(deps, 'parentXDepends', xdepends[deps[, 'parent']], force = TRUE)    
+        
+    }
+    
+    # only keep dependency with stricter requirement
+    if( reduce ){
+        deps <- reduce.dependencies(deps)
+    }
+    
+    # return
+    deps
+}
+
+reduce.dependencies <- function(deps){
+    
+    if( length(comp_i <- which(!is.na(deps[, 'compare']))) ){
+        cdeps <- deps[comp_i, , drop = FALSE] 
+        cdeps <- cdeps[order(cdeps[, 'compare'], cdeps[, 'name'], -order(package_version(cdeps[ , 'version']))), , drop = FALSE]
+        deps <- rbind(cdeps, deps[-comp_i, , drop = FALSE])
+    }
+    deps <- deps[!duplicated(deps[, 'name']), , drop = FALSE]
+    deps
+}
+
+# Finds dependencies honouring external repos weight 
+match.dependencies <- function(deps, db, xdepends.only = FALSE){
+    
+    # limit lookup to packages whose parents have XDepends (if requested)
+    if( xdepends.only )
+        deps <- deps[!is.na(deps[, 'parentXDepends']), , drop = FALSE]
+     
+    # extract package names
+    pkgs <- unique(deps[, 'name'])
+    
+    # limit db to lookup packages
+    db <- db[db[, 'Package'] %in% pkgs, , drop = FALSE]
+    
+    # packages without XPath (main db) have top priority
+    with.xpath <- which(!is.na(db[, 'XPath']))
+    if( length(with.xpath) ){
+        xdb <- db[with.xpath, , drop = FALSE]
+        priority <- rep(NA, nrow(xdb))            
+        db <- db[-with.xpath, , drop = FALSE]
+    }
+    
+    .f <- c('Package', 'Version', 'XPath', 'XDepends')
+    nomatch <- db[1L, ]
+    nomatch[] <- NA
+    res <- sapply(seq(nrow(deps)), function(i){
+        
+        d <- deps[i, ]
+        # if parent has XDepends, then re-order the xdb accordingly
+        # and append it to the main db
+        if( nrow(xdb) && !is.na(r <- d[['parentXDepends']]) ){
+            r <- gsub("//", "/.*/", strsplit(r, " +")[[1L]])
+            r <- r[nzchar(r)]
+            w <- sapply(r, function(x) grepl(x, xdb[, 'XPath']))
+            hit <- which(rowSums(w) > 0L) # a hit is when at least one XDepends pattern matched
+            if( length(hit) ){
+                xdb <- xdb[hit, , drop = FALSE][order(max.col(w)[hit]), , drop = FALSE]
+                db <- rbind(db, xdb)
+            }
+            
+            
+        }
+        
+        # match package, taking into account version requirements
+        db <- db[db[, 'Package'] %in% d[['name']], , drop = FALSE]
+        if( !is.na(compare <- d[['compare']]) ){
+            compare <- match.fun(compare)
+            db <- db[which(compare(package_version(db[, 'Version']), d[['version']])), , drop = FALSE]
+        }
+        
+        # return first match
+        if( !nrow(db) ) return(nomatch)
+        else db[1L, ]
+                
+    })
+
+    res <- t(res)
+    res <- cbind(deps, res, stringsAsFactors = FALSE)
+#    print(res[, c(colnames(deps), .f)])
+    res
+}
+
+# adapted from devtools::install_deps
 list.dependencies <- function(pkg, available, all = NA, missing.only = FALSE, recursive = FALSE, reduce = TRUE, rm.base = TRUE) 
 {
     
@@ -376,15 +503,261 @@ repotools_gh_rewrite <- function(db){
     # early exit if no Repository column
     if( !'Repository' %in% colnames(db) ) return(db)
     # substitute github and github.io URLs
+#    message("Rewritting GRAN urls ... ", appendLF = FALSE)
     repo <- db[, 'Repository']
     repo <- gsub(".*/(github\\.com/.*)", "https://\\1", repo)
     repo <- gsub(".*/([^/]+\\.github\\.io/.*)", "http://\\1", repo)
+#    message(sprintf("%i/%i", sum(db[, 'Repository'] != repo), nrow(db)))
+    
     db[, 'Repository'] <- repo
     db
 }
 
-repotools_reorder <- function(db){
+available.GRAN <- function(url = contrib.path(GRAN.repos(), type = type, version = release), type = getOption('pkgType'), release = NA
+                            , fields = GRAN.fields(all = TRUE) 
+                            , filters = .PACKAGES_filters_keep_all_versions, ..., drat.first = TRUE){
     
-    # compute minimum required version for each GitHub package
+    # ensure the index is refreshed
+    contrib_cache_clear(url)
+                            
+    gran <- available.packages(url, fields = fields, filters = c(repotools_gh_rewrite, filters), ...)
+    
+    # add internal repos depends
+    gran <- add_dcf_field(gran, 'XDepends')
+    depends_repos <- apply(gran, 1L, function(p){
+            res <- p[['XDepends']]
+            res <- if( !is.na(res) ) res
+            u <- p[['GithubUsername']]
+            if( !is.na(u) ) res <- c(file.path(u, '', '~'), u, res)
+            paste0(unique(res, fromLast = TRUE), collapse = " ")
+        })
+    depends_repos[!nzchar(depends_repos)] <- NA
+    gran <- add_dcf_field(gran, 'XDepends', depends_repos, force = TRUE)
+    
+    # add field XPath
+    gran <- add_dcf_field(gran, 'XPath')
+    gran <- add_dcf_field(gran, 'XPath'
+                    , ifelse(gran[, 'GRANType'] %in% 'drat'
+                            , sprintf("%s/%s/~%s", gran[, 'GithubUsername'], gran[, 'Package'], gran[, 'GithubRepo'])
+                            , gran[, 'GRANPath'])
+                    , force = TRUE)
+    
+    # re-order putting drat repos first if requested
+    if( drat.first ){
+        # original index
+        i0 <- seq(nrow(gran))
+        gran <- gran[order(gran[, 'Package'], -(gran[, 'GRANType'] %in% 'drat'), i0), ]
+    }
+    
+    # add ID fields
+    gran <- cbind(gran, UniqueID = apply(gran, 1L, digest))
+    
+    gran
+}
+
+repotools_gran <- function(db){
+    
+    message("* Checking GRAN packages ... ", appendLF = FALSE)
+    config <- gran_target_config()
+    # do nothing if no GRAN target
+    if( is.null(config$gran) ){
+        message("none")
+        return(db)
+    }
+    targets <- config$gran
+    
+    # remove GRAN targets from db
+    db <- db[!db[, 'Package'] %in% targets[, 'name'], , drop = FALSE]
+    
+    message(sprintf("yes [%s]", str_out(rownames(targets), total = TRUE)))
+        
+    # infer index type from first db entry
+    m <- str_match(db[1L, 'Repository'], "((src/contrib)|(bin/windows)|(bin/macosx))(/contrib/([0-9.]+))?")
+    stopifnot( !is.na(m[, 2L]) )
+    type <- .contrib_path2type[m[, 2L]]
+    r_release <- m[, 7L]
+    
+    # retrieve GRAN index: result is ordered by Package, Drat version first, then original order
+    message(sprintf("* Fetching GRAN index [%s] ... ", type), appendLF = FALSE)
+    gran0 <- gran <- available.GRAN(type = type, release = r_release, drat.first = TRUE)
+    breakdown <- summary(factor(na.omit(gran[, 'GRANType']))) + 0
+    message(sprintf("OK [%i packages - %s]", nrow(gran), paste0(names(breakdown), ': ', breakdown, collapse = " | ")))
+    
+    # lookup for target GRAN packages
+    hit <- sapply(rownames(targets), function(x) grep(x, gran[, 'XPath'])[1L])
+    targets <- cbind(targets, gran[hit, ])
+    
+    if( anyNA(hit) ){
+        miss <- which(is.na(hit))
+        warning(sprintf("Could not find GRAN package%s: %s", ifelse(length(miss) > 1, 's', ''), str_out(names(hit)[miss], Inf)))
+        # remove missing packages from targets
+        targets <- targets[-miss, drop = FALSE]
+        hit <- hit[-miss]
+    }
+    
+    # return main db if no GRAN hit
+    if( !nrow(targets) ) return(db)
+    
+    # remove alternative package versions from GRAN for matched full targets
+    hit_full_packages <- targets[which(rownames(targets) == targets[, 'XPath']), 'Package']
+    if( length(hit_full_packages) && length(alt_gran <- setdiff(which(gran[, 'Package'] %in% hit_full_packages), hit)) ){
+        gran <- gran[-alt_gran, , drop = FALSE]
+    }
+    
+    ## merge with db
+    library(plyr)
+    available <- rbind.fill.matrix(db, gran)
+    # add ID fields
+    available <- add_dcf_field(available, 'UniqueID', apply(available, 1L, digest))
+    
+    # compute GRAN dependencies
+    .f <- c('Package', 'Version', 'XPath', 'XDepends')
+    GRAN_dep <- function(pkgs, available){
+        
+        gdb <- pkgs
+        gdeps <- pkgs
+        while(TRUE){
+            # list dependencies
+            deps <- list.package.dependencies(gdb, all = TRUE, reduce = TRUE)
+            m <- match.dependencies(deps, available)
+            # look for further GRAN dependencies
+            gdb <- m[!is.na(m[, 'Package']) 
+                            & !is.na(m[, 'XDepends']) 
+                            & !m[, 'UniqueID'] %in% gdeps[, 'UniqueID'], , drop = FALSE]
+            
+            # add up but only keep latest version
+            gdeps <- rbind.fill.matrix(gdeps, gdb)
+            gdeps <- reduce.dependencies(gdeps)
+            
+            if( !nrow(gdb) ) break
+        }
+        
+        rownames(gdeps) <- gdeps[, 'Package']
+        gdeps
+    }
+    
+    # force GRAN targets and dependencies into main db
+    gran_pkgs <- GRAN_dep(targets, available)
+#    print(gran_pkgs[, .f])
+    if( nrow(gran_pkgs) ){
+        
+        # remove target GRAN packages from main db
+        db <- db[!db[, 'Package'] %in% gran_pkgs[, 'Package'], , drop = FALSE]
+        # merge
+        db <- rbind(db, gran_pkgs[, colnames(db)])
+    }
+    
     db
+}
+
+# Parse GRAN path from package specification
+as_gran_spec <- function(pkgs){
+    
+    if( !length(pkgs) || is(pkgs, 'gran_spec') ) return(pkgs)
+    
+    stopifnot( is.character(pkgs) &&  is.null(ncol(pkgs)) )
+    
+    # init result
+    pkgs <- unique(pkgs)
+    res <- structure(list(pkgs = pkgs, gran = NULL), class = 'gran_spec')
+    
+    # split GRAN path
+    PKGS <- t(sapply(strsplit(pkgs, "/", fixed = TRUE), function(x) x[1:3] ))
+    colnames(PKGS) <- c('user', 'repo', 'ref')
+    if( length(i_gran <- !is.na(PKGS[, 2L])) ){
+        
+        gran <- PKGS[i_gran, , drop = FALSE]
+        # build GRAN path from specs
+        rownames(gran) <- GRAN_key(gran)
+        gran <- cbind(gran, key = rownames(gran), name = gran[, 'repo'])
+        res$gran <- gran
+        
+        # replace GRAN path with package name
+        pkgs[i_gran] <- gran[, 'name']
+        res$pkgs <- pkgs
+    }
+    
+    # return
+    res
+}
+
+with_gran <- function(expr, pkgs = NULL){
+    
+    # setup installation targets and package filters if necessary
+    pkgs <- as_gran_spec(pkgs)
+    if( length(pkgs$gran) ){
+        gran_target_config(pkgs)
+        on.exit( gran_target_config(NULL) )
+    }
+    
+    # override default package filters
+    filters <- list("R_version", "OS_type", "subarch", repotools_gh_rewrite, repotools_gran, "duplicates")
+    oo <- options(available_packages_filters = filters)
+    on.exit( options(oo), add = TRUE)
+    
+    # setup RCurl custom download.file method
+    if( .setup_rcurl() ) on.exit( .setup_rcurl(TRUE), add = TRUE)
+    
+    e <- parent.frame()
+    eval(expr, env = e)
+}
+
+
+gran_target_config <- sVariable()
+
+install_gran <- function(pkgs, lib, repos = getOption('repos'), ...){
+    
+    # detect gran packages: user/repo/ref
+    specs <- as_gran_spec(pkgs)
+    if( !length(specs$gran) ) 
+        return(install.packages(pkgs, lib = lib, repos = repos, ...))
+    
+    # replace gran key with package name
+    pkgs <- specs$pkgs
+    
+#    # append GRAN repo (not now: index will be fetched in GRAN filter 
+#    repos <- c(repos, GRAN.repos())
+    
+    # ensure GRAN fields are loaded by hooking in
+    # tools:::.get_standard_repository_db_fields
+#    restore <- ns_hook('.get_standard_repository_db_fields', function(...){
+#                res <- c(.object(...), GRAN.fields())
+#                print(res)
+#                res
+#            }, 'tools')
+#    on.exit( restore() ) 
+
+    res <- with_gran({
+        install.packages(pkgs, lib = lib, repos = repos, ...)
+    }, pkgs = specs)
+    
+}
+
+ns_hook <- function(name, value, env, with.object = is.function(value)){
+    
+    # hook wrapper in render environment
+    if( is.character(env) ) env <- asNamespace(env)
+    
+    # unlock
+    locked <- bindingIsLocked(name, env)
+    if( locked ) do.call("unlockBinding", list(name, env))
+    
+    # restoring function
+    .object <- get(name, env)
+    restore <- function(){
+        ns_hook(name, .object, env, with.object = FALSE)
+    }
+    
+    # add old object to function environment if requested
+    if( with.object ){
+        fe <- environment(value)
+        assign(name, .object, fe)
+    }
+    
+    # override function
+    assign(name, value, env)
+    # lock it again
+    if( locked ) lockBinding(name, env)
+    
+    invisible(restore)
 }

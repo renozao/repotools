@@ -66,10 +66,7 @@ has_userpwd <- function(x){
         
         if( isFALSE(reset) ){ # setup
             # set some default options
-                # default filters for available.packages
-            filters <- list("R_version", "OS_type", "subarch", repotools_gh_rewrite, repotools_reorder, "duplicates")
-                # default download method
-            .settings$options <<- options(download.file.method = 'curl', available_packages_filters = filters)
+            .settings$options <<- options(download.file.method = 'curl')
             
             # define custom curl executable to handle protected repo
             .settings$curl_exec <<- .setup_rcurl_exec(FALSE)
@@ -143,7 +140,6 @@ with_rcurl <- function(expr){
     e <- parent.frame()
     eval(expr, env = e)
 }
-
 
 readURL <- function(x, ...){
     tmp <- tempfile(fileext = paste0('.', tools::file_ext(x)))

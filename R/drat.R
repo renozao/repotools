@@ -157,13 +157,14 @@ load_repos_drat <- function(cache = cachefile('drat'), update = 'all', force = F
                 # extend PACKAGES fields
                 provider <- paste0(username, '.github.io')
                 provider_url <- file.path(provider, rdata$name)
-                relpath <- file.path(provider_url, contrib.path(type, r_release))
+                relpath <- file.path(provider_url, contrib.path(type = type, version = r_release))
                 data.frame(dcf
                             , Path = relpath
                             , pkgType = type
                             , R_release = r_release
-                            , GRANRepo = n, GRANType = 'drat', GRANdate = PACK$indexed_at
-                            , GithubRepo = reponame, GithubUsername = username, GithubRef = 'gh-pages'
+                            , GRANPath = file.path(n, dcf[, 'Package']) 
+                            , GRANType = 'drat', GRANdate = PACK$indexed_at
+                            , GithubRepo = reponame, GithubUsername = username, GithubRef = NA
                             , GithubFork = ifelse(forked, 'yes', 'no')
                             , GithubPushed = rdata$pushed_at
                             , GithubOwner = ifelse(owned, 'yes', 'no')
@@ -238,7 +239,7 @@ drat_PACKAGES <- function(user, type, repo = 'drat', verbose = TRUE){
     if( type != 'source' ){
         r_release <- r_versions_n(5L)
     }
-    contrib <- contrib.path(type = type, r_release)
+    contrib <- contrib.path(type = type, version = r_release)
     
     url <- gh_io.path(user, repo, contrib, 'PACKAGES')
     res <- lapply(url, .local)
@@ -248,20 +249,27 @@ drat_PACKAGES <- function(user, type, repo = 'drat', verbose = TRUE){
 }
 
 .repo_type <- c('source', 'mac.binary', 'win.binary')
-contrib.path <- function(type = getOption('pkgType'), version = NULL){
+contrib.path <- function(..., type = getOption('pkgType'), version = NULL){
     p <- gsub('^/', '', contrib.url('', type = type))
     if( !is.null(version) && !is_NA(version) ) p <- file.path(dirname(p), version)
-    p
+    file.path(..., p)
     
 }
 
 # Adds a field to a DESCRIPTION/PACKAGE data
 add_dcf_field <- function(x, name, value, force = FALSE){
     
+    # early exit if no input data
+    if( !nrow(x) %||% FALSE ) return(x)
+    
     if( !name %in% colnames(x) ){
         x <- cbind(x, NA)
         colnames(x)[ncol(x)] <- name
     }
+    
+    if( missing(value) ) return(x)
+    
+    value <- rep(value, length.out = nrow(x))
     
     # set values
     if( force ){
@@ -321,14 +329,14 @@ write_GRAN_repo <- function(var, FUN, ..., PACKAGES, no.dups = TRUE, append = FA
             owned <- (PACKAGES[, 'GithubOwner'] %in% c('yes', NA)) & (PACKAGES[, 'GithubFork'] %in% c('no', NA))
             PACKAGES <- PACKAGES[ owned & PACKAGES[, 'pkgType'] == type, ] 
             PACK <- rbind.fill(.sort(p$PACKAGES), .sort(PACKAGES))
-            if( no.dups ){
-                key <- apply(PACK[, c('Package', 'R_release', 'R_version', 'Version')], 1L, paste0, collapse = "_")
-                PACK <- PACK[!duplicated(key), ]
-            } 
+            # remove duplicated entries
+            id <- apply(PACK[, c('GRANPath', 'MD5sum', 'Path')], 1L, paste0, collapse = "_")
+            PACK <- PACK[!duplicated(id), ]
+            
             message(sprintf("[%i total]", nrow(PACK)))
                             
             # write files
-            write_PACKAGES_files(PACK, file.path(p$path, contrib.path(type, r_release)), append = append)
+            write_PACKAGES_files(PACK, file.path(p$path, contrib.path(type = type, version = r_release)), append = append)
             p$path
         }, ...)
     }, ...)
@@ -337,7 +345,7 @@ write_GRAN_repo <- function(var, FUN, ..., PACKAGES, no.dups = TRUE, append = FA
     paths <- unique(unlist(paths))
     l_ply(.repo_type, function(type){
         lapply(paths, function(p){
-            tpath <- file.path(p, contrib.path(type))
+            tpath <- file.path(p, contrib.path(type = type))
             if( !file.exists(file.path(tpath, 'PACKAGES')) )
                 write_PACKAGES_files(NULL, tpath)
         })            
@@ -386,8 +394,8 @@ GRAN.update_drat <- function(outdir = '.', type = c('all', 'source', 'mac.binary
     
     basedir <- normalizePath(outdir)
     # user-specific individual drat repos
-    write_GRAN_repo('GRANRepo', function(P){
-                reponame <- unique(P[, 'GRANRepo'])
+    write_GRAN_repo('GRANPath', function(P){
+                reponame <- unique(P[, 'GRANPath'])
                 rdata <- repos[[reponame]]
                 msg <- sprintf('  * Repo %s:%i ', reponame, nrow(P))
                 path <- file.path(basedir, rdata$owner$login, rdata$name)

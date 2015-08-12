@@ -39,6 +39,7 @@ package_type <- function(x){
 .contrib_ext <- setNames(c('tar.gz', 'zip', 'tgz'), .contrib_types)
 .contrib_ext_types <- setNames(.contrib_types, c('tar.gz', 'zip', 'tgz'))
 .contrib_url_types <- setNames(c(.contrib_types, 'mac.binary'), c('source', 'win.binary', 'mac.binary', 'mac.binary.mavericks'))
+.contrib_path2type <- setNames(.contrib_types, c('src/contrib', 'bin/windows', 'bin/macosx'))
 .OS_contrib_types <- setNames(.contrib_types, c('unix', 'windows', 'mac'))
 
 contrib.url2 <- function(repos = getOption('repos'), type = getOption('pkgType')){
