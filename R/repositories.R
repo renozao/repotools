@@ -100,7 +100,9 @@ write_PACKAGES_index <- function(path = '.', output = 'index.html', pattern = NU
     }
     smessage('Reading PACKAGES file in ', contrib_path, ' ... ')
     p <- lapply(names(.contrib_url_types), function(t){
-                available.packages(file.path('file:/', normalizePath(contrib.url('.', t))), fields = sel, filters = .PACKAGES_filters_all_versions)
+                url <- contrib.url('.', t)
+                if( !file.exists(url) ) return()
+                available.packages(file.path('file:/', normalizePath(url)), fields = sel, filters = .PACKAGES_filters_all_versions)
             })
     p <- do.call(rbind, p)
     message(sprintf('OK [%s (%s dups)]', nrow(p), sum(duplicated(p[, 'Package']))))
