@@ -74,7 +74,7 @@ rcurl <- function(){
     writeBin(raw, dest)
     if( !quiet ){
         cat(sprintf(" - %s]\n", file.fsize(dest)))
-        cat("Saved in '", dest, "'", sep = '')
+        cat("Saved in '", dest, "'\n", sep = '')
     }
     invisible() 
 }
