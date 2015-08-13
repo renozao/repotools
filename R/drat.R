@@ -9,7 +9,7 @@ cachefile <- function(name){
     
     path <- attr(name, 'cachefile')
     if( is.null(path) ){
-        if( file.exists(name) ) return(name)
+        if( grepl("\\.rds$", name) && file.exists(name) ) return(name)
         
         cache_dir <- userData('cache', create = TRUE)
         dir.create(cache_dir, recursive = TRUE, showWarnings = FALSE)
