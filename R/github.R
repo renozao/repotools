@@ -66,12 +66,20 @@ gh_GET0 <- local({
 
 gh_context <- local({
     .ctx <- NULL
-    function(){
-        if( is.null(.ctx) ){
-            .ctx <<- create.github.context(access_token = '617676d79833944dd3be391e19c120099faf8428')
+    function(reset = FALSE){
+        if( is.null(.ctx) || reset ){
+            # read credentials from .netrc file
+            machines <- read_netrc()
+            auth <- machines[machines[, 'machine'] == 'api.github.com' & machines[, 'login'] == 'app:repotools', , drop = FALSE][1L, ]
+            token <- if( !is.na(auth['password']) ) auth['password']
+            
+            # connect  
+            .ctx <<- create.github.context(access_token = token)
+            
             # load cached etags from disk
-            cached <- cache('github', default = NULL)
-            .ctx$etags <-  cached$etags %||% .ctx$etags
+            gh_cache <- cache('github', default = list(etags = NULL, cache = new.env(parent = emptyenv())))
+            .ctx$etags <-  gh_cache$etags %||% .ctx$etags
+            .ctx$cache <-  gh_cache$cache %||% .ctx$cache
         }
         .ctx
     }
@@ -79,7 +87,19 @@ gh_context <- local({
 
 gh_context_save <- function(){
     ctx <- gh_context()
-    cache('github', ctx$etags)
+    res <- cache('github', list(etags = ctx$etags, cache = ctx$cache))
+}
+
+gh_cache <- function(key, value){
+    ctx <- gh_context()
+    res <- ctx$cache
+    if( !nargs() ) return(res)
+    if( missing(value) ) return( res[[key]] )
+    else{
+        old <- res[[key]]
+        res[[key]] <- value
+        invisible(old)
+    }
 }
 
 gh_call <- local({
@@ -133,8 +153,16 @@ gh_user_repo <- function(user, ...){
     res
 }
 
-gh_repo_head <- function(user, repo, ref = 'master', ...){
-    gh_GET(c('repos', user, repo, 'git/refs/heads', ref), ...)
+gh_repo_head <- function(user, repo, ref = NULL, ...){
+    res <- gh_GET(c('repos', user, repo, 'git/refs/heads'), ...)
+    
+    # early exit if no result
+    if( !is.null(res$message) ) return(list())
+    # use branch names as names
+    names(res) <- sapply(res, function(x) gsub("refs/heads/", "", x$ref))
+    # subset
+    if( !is.null(ref) ) res <- res[[ref]]
+    res
 }
 
 gh_get_content <- function(user, repo, ..., ref = 'master'){
