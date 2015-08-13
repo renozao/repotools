@@ -316,10 +316,10 @@ update_github_user <- function(user, dir, repos = NULL){
     }
     
     if( !length(user_repos) ){
-        message(" ... SKIP [not changed]")
+        message(sprintf(" ... SKIP [not changed - %s repos]", length(user_repos0)))
         return()
     }
-    message(":")
+    message(sprintf(" (%s/%s repos changed):", length(user_repos), length(user_repos0)))
     
     # put priority to requested repos and those flagged as R language
     R_repos <- which(sapply(user_repos, function(x) identical(x$language, 'R')))
