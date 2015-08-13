@@ -70,10 +70,17 @@ gh_context <- local({
         if( is.null(.ctx) ){
             .ctx <<- create.github.context(access_token = '617676d79833944dd3be391e19c120099faf8428')
             # load cached etags from disk
+            cached <- cache('github', default = NULL)
+            .ctx$etags <-  cached$etags %||% .ctx$etags
         }
         .ctx
     }
 })
+
+gh_context_save <- function(){
+    ctx <- gh_context()
+    cache('github', ctx$etags)
+}
 
 gh_call <- local({
     .rate <- NULL
@@ -88,7 +95,11 @@ gh_call <- local({
             .rate <<- gh_rate_limit()
             if( .rate$resources$core$remaining <= 0 ){
                 to_reset <- as.numeric(as.POSIXct(.rate$resources$core$reset, origin="1970-01-01") - as.POSIXct(Sys.time()))
-                if( to_reset > 0 ) Sys.sleep(ceiling(to_reset))
+                if( to_reset > 0 ){
+                    warning(sprintf("Waiting for Github rate limit to reset in %ss", ceiling(to_reset))
+                        , immediate. = TRUE)
+                    Sys.sleep(ceiling(to_reset))
+                }
             }
         }
         
@@ -116,10 +127,14 @@ gh_rate_limit <- function(){
     gh_api_call(gh_api.path('rate_limit'), nice = FALSE)
 }
 
-gh_user_repo <- function(user, repo, ...){
+gh_user_repo <- function(user, ...){
     res <- gh_GET(c('users', user, 'repos'), ...)
     names(res) <- sapply(res, '[[', 'name')
     res
+}
+
+gh_repo_head <- function(user, repo, ref = 'master', ...){
+    gh_GET(c('repos', user, repo, 'git/refs/heads', ref), ...)
 }
 
 gh_get_content <- function(user, repo, ..., ref = 'master'){

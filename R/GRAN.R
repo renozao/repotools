@@ -259,11 +259,79 @@ GRAN.update <- function(src, outdir = dirname(normalizePath(src)), clean = FALSE
     
 }
 
+# Fetch package data from GitHub and update associated unpacked sub-directory
+update_github_src <- function(x, dir){
+    
+    user <- x['GithubUsername']
+    repo <- x['GithubRepo']
+    # fetch content of master branch
+    cnt <- gh_get_content(user, repo)
+    if( is.null(d <- cnt$DESCRIPTION) ) return(NA)
+    
+    ref <- gsub(".*?ref=(.*)", "\\1", d$url)
+    pdir <- file.path(dir, x['GRANPath'], 'tarball', ref, repo)
+    flag <- file.path(pdir, 'SHA1')
+    
+    message("* Processing ", x['GRANPath'], " ... ", appendLF = FALSE)
+    
+    # skip packages processed by the webhook
+    if( file.exists(pdir) && !file.exists(flag) ){
+        message('SKIP')
+        return(0L)
+    }
+    
+    newline <- local({.n <- 0; function(){
+                    if( .n ) return()
+                    .n <<- 1L
+                    message()
+                }})
+    
+    # create unpacked package file structure
+    dir.create(pdir, recursive = TRUE, showWarnings = FALSE)
+    
+    # update DESCRIPTION only if necessary
+    last_commit_sha <- gh_repo_head(user, repo, ref)
+    SHA <- last_commit_sha$object$sha
+    if( !file.exists(flag) || readLines(flag) != SHA ){
+        cat(SHA, '\n', file = flag, sep = '')
+        newline()
+        message(sprintf("  ** Updating DESCRIPTION file [%s]", substr(SHA, 1, 7)))
+        download.file(d$download_url, dest = desc_file <- file.path(pdir, 'DESCRIPTION'), quiet = TRUE)
+        # add fields
+        dcf <- read.dcf(desc_file)
+        dcf <- cbind(dcf, GithubRepo = repo
+                        , GithubUsername = user
+                        , GithubRef = ref
+                        , GithubSHA1 = SHA
+#                        , GithubFork = NA
+                        )
+        # rewrite
+        write.dcf(dcf, desc_file)
+    }
+    
+    # create src/ sub-directory if present
+    src_dir <- file.path(pdir, 'src')
+    if( !is.null(cnt$src) && cnt$src$type == 'dir' ){
+        if( !dir.exists(src_dir) ){
+            newline()
+            message("  ** Creating src/ sub-directory")
+            dir.create(src_dir, recursive = TRUE, showWarnings = FALSE)
+            cat('', file = file.path(pdir, 'src', 'README'))
+        }
+    }else if( dir.exists(src_dir) ){
+        newline()
+        message("  ** Deleting src/ sub-directory")
+        unlink(src_dir, recursive = TRUE, force = TRUE)
+    }
+    
+    return(1L)
+}
+
 #' Updates GitHub Source Package Repository
 #' 
 #' @param src path to the directory that holds the package directory tree 
 #' @importFrom tools md5sum
-GRAN.update_github <- function(src, force = FALSE, fields = GRAN.fields(), actions = c('changes', 'PACKAGES', 'index'), test = FALSE, verbose = TRUE){
+GRAN.update_github <- function(src, force = FALSE, fields = GRAN.fields(), actions = c('repos', 'changes', 'PACKAGES', 'index'), test = FALSE, verbose = TRUE){
     
     do_commit <- TRUE
     if( test ){
@@ -281,6 +349,32 @@ GRAN.update_github <- function(src, force = FALSE, fields = GRAN.fields(), actio
     # match type of action to perform
     actions <- match.arg(actions, several.ok = TRUE)
     
+    # fetch updates for "all" GitHub R repos
+    if( 'repos' %in%  actions ){
+        
+        message("* Fetching package data from CRAN ... ", appendLF = FALSE)
+        tmp <- file.path(tempdir(), 'packages.rds')
+        if( !file.exists(tmp) )
+            download.file("http://cran.r-project.org/web/packages/packages.rds", dest = tmp)
+        CRAN <- readRDS(tmp)
+        message(sprintf("OK [%i]", nrow(CRAN)))
+        # select packages with GitHub BugReports
+        m <- str_match(CRAN[, 'BugReports'], "://(github\\.com/([^/]+)/([^/]+))/issues")
+        i_gh <- which(!is.na(m[, 1L]))
+        # update each unpacked sub-directory
+        if( length(i_gh) ){
+            m <- m[i_gh, -1L, drop = FALSE]
+            colnames(m) <- c('GRANPath', 'GithubUsername', 'GithubRepo')
+            on.exit( gh_context_save(), add = TRUE)
+            library(plyr)
+#            o <- options(download.file.method = 'curl')
+#            on.exit( options(o), add = TRUE)
+            with_rcurl(
+                apply(cbind(CRAN[i_gh, , drop = FALSE], m), 1L, update_github_src, dir = src)
+            )
+        }
+    }
+    
     # check if things have changed based on MD5 file -- unless required to force update
     MD5_file <- file.path(src, 'MD5')
     
@@ -297,7 +391,7 @@ GRAN.update_github <- function(src, force = FALSE, fields = GRAN.fields(), actio
         hash0 <- setNames(m[, 3L], m[, 2L])
         # exit if nothing needs to be done
         stopifnot( !anyDuplicated(names(hash0)) && !anyDuplicated(names(hash)) )
-        if( identical(hash, hash0) || identical(hash[names(hash0)], hash0) ){
+        if( identical(hash, hash0) ){
             message('OK [', digest(hash0), ']')
             return( invisible(character()) )
         }
@@ -329,8 +423,8 @@ GRAN.update_github <- function(src, force = FALSE, fields = GRAN.fields(), actio
         if( within_git || !do_commit ){
             pkg_srcd <- list.files(src, recursive = TRUE, full.names = TRUE, pattern = '^DESCRIPTION$')
             # filter those that changed
-            if( !is.null(CHANGES$Changed) )
-                pkg_srcd <- pkg_srcd[pkg_srcd %in% file.path(src, CHANGES$Changed)]
+            if( length(CHANGES) )
+                pkg_srcd <- pkg_srcd[pkg_srcd %in% file.path(src, c(CHANGES$Changed, CHANGES$New))]
             if( !length(pkg_srcd) ) message('OK [none]')
             else{
                 sapply(pkg_srcd, function(desc_file){
