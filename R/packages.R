@@ -170,7 +170,7 @@ match.dependencies <- function(deps, db, xdepends.only = FALSE){
         if( nrow(xdb) && !is.na(r <- d[['parentXDepends']]) ){
             r <- gsub("//", "/.*/", strsplit(r, " +")[[1L]])
             r <- r[nzchar(r)]
-            w <- sapply(r, function(x) grepl(x, xdb[, 'XPath']))
+            w <- sapply(sprintf("%s((/)|($))", r), function(x) grepl(x, xdb[, 'XPath']))
             hit <- which(rowSums(w) > 0L) # a hit is when at least one XDepends pattern matched
             if( length(hit) ){
                 xdb <- xdb[hit, , drop = FALSE][order(max.col(w)[hit]), , drop = FALSE]
@@ -584,20 +584,23 @@ repotools_gran <- function(db){
     message(sprintf("OK [%i packages - %s]", nrow(gran), paste0(names(breakdown), ': ', breakdown, collapse = " | ")))
     
     # lookup for target GRAN packages
-    hit <- sapply(rownames(targets), function(x) grep(x, gran[, 'XPath'])[1L])
-    targets <- cbind(targets, gran[hit, ])
+    hit <- sapply(sprintf("%s((/)|($))", rownames(targets)), function(x) grep(x, gran[, 'XPath'])[1L])
+    targets <- cbind(targets, gran[hit, , drop = FALSE])
     
     if( anyNA(hit) ){
         miss <- which(is.na(hit))
-        warning(sprintf("Could not find GRAN package%s: %s", ifelse(length(miss) > 1, 's', ''), str_out(names(hit)[miss], Inf)))
+        warning(sprintf("Could not find package%s in GRAN: %s", ifelse(length(miss) > 1, 's', '')
+                            , str_out(rownames(targets)[miss], Inf))
+                            , call. = FALSE)
         # remove missing packages from targets
-        targets <- targets[-miss, drop = FALSE]
+        targets <- targets[-miss, , drop = FALSE]
         hit <- hit[-miss]
     }
     
     # return main db if no GRAN hit
     if( !nrow(targets) ) return(db)
     
+    message("* Found GRAN packages: ", str_out(targets[, 'XPath'], Inf, total = TRUE))
     # remove alternative package versions from GRAN for matched full targets
     hit_full_packages <- targets[which(rownames(targets) == targets[, 'XPath']), 'Package']
     if( length(hit_full_packages) && length(alt_gran <- setdiff(which(gran[, 'Package'] %in% hit_full_packages), hit)) ){
@@ -611,7 +614,7 @@ repotools_gran <- function(db){
     available <- add_dcf_field(available, 'UniqueID', apply(available, 1L, digest))
     
     # compute GRAN dependencies
-    .f <- c('Package', 'Version', 'XPath', 'XDepends')
+    .f <- c('Package', 'Version', 'XPath', 'XDepends', 'GRANType')
     GRAN_dep <- function(pkgs, available){
         
         gdb <- pkgs
@@ -632,7 +635,7 @@ repotools_gran <- function(db){
             if( !nrow(gdb) ) break
         }
         
-        rownames(gdeps) <- gdeps[, 'Package']
+        rownames(gdeps) <- unname(gdeps[, 'Package'])
         gdeps
     }
     
@@ -644,7 +647,7 @@ repotools_gran <- function(db){
         # remove target GRAN packages from main db
         db <- db[!db[, 'Package'] %in% gran_pkgs[, 'Package'], , drop = FALSE]
         # merge
-        db <- rbind(db, gran_pkgs[, colnames(db)])
+        db <- rbind(db, gran_pkgs[, colnames(db), drop = FALSE])
     }
     
     db
