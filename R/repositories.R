@@ -7,7 +7,7 @@
 .repotools.setup.url = 'http://renozao.github.io/repotools/install.R'
 
 .PACKAGES_fields <- c('Package', 'Version', 'Date')
-.PACKAGES_filters_all_versions <- c("R_version", "OS_type", "subarch")
+.PACKAGES_filters_keep_all_versions <- c("R_version", "OS_type", "subarch")
 
 #' @importFrom tools write_PACKAGES
 create_repo <- function(dir = '.', type = NULL, pkgs = NULL, all = TRUE, ..., clean = FALSE, verbose = FALSE){
@@ -102,10 +102,21 @@ write_PACKAGES_index <- function(path = '.', output = 'index.html', pattern = NU
     p <- lapply(names(.contrib_url_types), function(t){
                 url <- contrib.url('.', t)
                 if( !file.exists(url) ) return()
-                available.packages(file.path('file:/', normalizePath(url)), fields = sel, filters = .PACKAGES_filters_all_versions)
+                available.packages(file.path('file:/', normalizePath(url)), fields = sel, filters = .PACKAGES_filters_keep_all_versions)
             })
     p <- do.call(rbind, p)
     message(sprintf('OK [%s (%s dups)]', nrow(p), sum(duplicated(p[, 'Package']))))
+    
+    # remove bad packages
+    bad <- bad_version(p[, 'Version'])
+    if( any(bad) ){
+        smessage(sprintf("Removing packages with invalid versions [%s]"
+                            , str_out(setNames(p[bad, 'Version'], p[bad, 'Package']), use.names = TRUE, total = TRUE)
+                        )
+                , appendLF = TRUE)
+    }
+    p <- p[!bad, , drop = FALSE]
+    
     if( !is.null(pattern) ){
         smessage('Selecting packages matching pattern "', pattern, '" only ... ')
         i <- grep(pattern, p[, 'Package'])
@@ -131,7 +142,7 @@ write_PACKAGES_index <- function(path = '.', output = 'index.html', pattern = NU
                     , pattern = sprintf("(%s)$", paste0("(", .package_type.reg, ")", collapse = "|"))))
     # aggregate into single packages
     qlibrary('plyr')
-    ov <- orderVersion(df[['Version']], decreasing = TRUE)
+    ov <- order(package_version(df[['Version']]), decreasing = TRUE)
     df <- df[ov, , drop = FALSE]
     df <- ldply(split(seq(nrow(df)), paste0(df$Package, df$GithubRef)), function(i){
                 p <- df[i, , drop = FALSE]

@@ -47,3 +47,7 @@ capwords <- function(s, strict = FALSE) {
                 sep = "", collapse = " " )
     sapply(strsplit(s, split = " "), cap, USE.NAMES = !is.null(names(s)))
 }
+
+bad_version <- function(x){
+    sapply(x, function(v) is(try(package_version(v), silent = TRUE), 'try-error'))
+}
