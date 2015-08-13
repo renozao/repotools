@@ -341,7 +341,7 @@ write_GRAN_repo <- function(var, FUN, ..., PACKAGES, no.dups = TRUE, append = FA
             # order by: package name, version
             # only owned packages are added
             owned <- (PACKAGES[, 'GithubOwner'] %in% c('yes', NA)) & (PACKAGES[, 'GithubFork'] %in% c('no', NA))
-            PACKAGES <- PACKAGES[ owned & PACKAGES[, 'pkgType'] == type, ] 
+            PACKAGES <- PACKAGES[ owned & PACKAGES[, 'pkgType'] == type, , drop = FALSE] 
             PACK <- rbind.fill(.sort(p$PACKAGES), .sort(PACKAGES))
             # remove duplicated entries
             id <- apply(PACK[, c('GRANPath', 'MD5sum', 'Path')], 1L, paste0, collapse = "_")
