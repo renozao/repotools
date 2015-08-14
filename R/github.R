@@ -73,6 +73,13 @@ gh_cache <- function(key, value){
     }
 }
 
+.substNULL <- function(x, val = NA){
+    i <- sapply(x, is.list)
+    x[i] <- sapply(x[i], .substNULL, val = val, simplify = FALSE)
+    x[-i] <- sapply(x[-i], '%||%', val, simplify = FALSE)
+    x
+}
+
 gh_call <- local({
     .rate <- NULL
     function(name){
@@ -120,14 +127,7 @@ gh_call <- local({
                 
                 # fix NULL elements recursively if requested
                 if( !is.null(ifnull) && length(res) ){
-                    .subst <- function(x){
-                        i <- sapply(x, is.list)
-                        x[i] <- sapply(x[i], .subst, simplify = FALSE)
-                        x[-i] <- sapply(x[-i], '%||%', ifnull, simplify = FALSE)
-                        x
-                    }
-                    
-                    res <- .subst(res)
+                    res <- .substNULL(res, ifnull)
                 }
             }
             res
@@ -180,12 +180,52 @@ gh_get_content <- function(user, repo, ..., ref = NULL){
     res
 }
 
-gh_search_Rrepos <- function(query = NULL, ...){
+gh_search_Rrepos <- function(query = NULL, ..., all = TRUE){
     
     q <- 'language:R'
     if( !is.null(query) )
         q <- paste0(c(q, query), collapse = ' ')
-    res <- .GH$search.repositories(q, per_page = Inf)
-    if( !is.null(res$message) ) return(list())
+    res <- .GH$search.repositories(q, per_page = Inf, content.only = FALSE)
+    
+    if( !all || !is.null(res$content$message) ){
+        return(res)
+    }
+    
+    # loop over pages if any
+    link <- res$headers$link
+    pcontent <- list(res$content$items)
+    i <- 2L
+    while( length(link) ){
+        next_url <- sub(".*<([^>]+)>; rel=\"next\".*", "\\1", link)
+        if( next_url == link ) break
+        pres <- curl::curl_fetch_memory(next_url) 
+        h <- curl::parse_headers(pres$headers)
+        link <- grep("^Link: ", h, value = TRUE)
+        link <- gsub("^Link: ", "", link)
+        co <- jsonlite::fromJSON(rawToChar(pres$content))
+        pcontent[[i]] <- co$items 
+        i <- i+1L
+    }
+    
+    .unlist <- function(x){
+        
+        res <- sapply(x, function(y){
+            if( is.data.frame(y) ){
+                y <- sapply(seq(nrow(y)), function(i) .unlist(y[i,, drop = TRUE]), simplify = FALSE)
+            }
+            if( length(y) == 1L ) y <- y[[1L]]
+            y
+        }, simplify = FALSE)
+        if( length(res) == 1L ) res <- res[[1L]]
+        res
+    }
+    pcontent <- .unlist(pcontent)
+    it <- setNames(do.call(c, pcontent), NULL)
+    if( !is.null(it) ){
+        names(it) <- sapply(it, '[[', 'full_name')
+        res$content$items <- .substNULL(it)
+    }else res$content['items'] <- list(NULL)
+    
+    # return
     res
 }
