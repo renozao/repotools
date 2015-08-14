@@ -569,14 +569,25 @@ available.GRAN <- function(url = contrib.path(GRAN.repos(), type = type, version
 
 repotools_gran <- function(db){
     
-    message("* Checking GRAN packages ... ", appendLF = FALSE)
     config <- gran_target_config()
+    
+    gran.only <- config$gran.only %||% FALSE
+    # toogle log messages
+    verbose <- config$verbose %||% TRUE
+    if( !verbose ) message <- function(...) NULL
+    
+    result <- function(){
+        if( gran.only ) targets
+        else db
+    }
+    
+    targets <- config$gran
+    message("* Checking GRAN packages ... ", appendLF = FALSE)
     # do nothing if no GRAN target
     if( is.null(config$gran) ){
         message("none")
-        return(db)
+        return( result() )
     }
-    targets <- config$gran
     
     # remove GRAN targets from db
     db <- db[!db[, 'Package'] %in% targets[, 'name'], , drop = FALSE]
@@ -610,7 +621,7 @@ repotools_gran <- function(db){
     }
     
     # return main db if no GRAN hit
-    if( !nrow(targets) ) return(db)
+    if( !nrow(targets) ) return( result() )
     
     message("* Found GRAN packages: ", str_out(targets[, 'XPath'], Inf, total = TRUE))
     # remove alternative package versions from GRAN for matched full targets
@@ -651,18 +662,18 @@ repotools_gran <- function(db){
         gdeps
     }
     
-    # force GRAN targets and dependencies into main db
-    gran_pkgs <- GRAN_dep(targets, available)
+    targets <- GRAN_dep(targets, available)
 #    print(gran_pkgs[, .f])
-    if( nrow(gran_pkgs) ){
+    # merge/force GRAN targets and dependencies into main db
+    if( !gran.only && nrow(targets) ){
         
         # remove target GRAN packages from main db
-        db <- db[!db[, 'Package'] %in% gran_pkgs[, 'Package'], , drop = FALSE]
+        db <- db[!db[, 'Package'] %in% targets[, 'Package'], , drop = FALSE]
         # merge
-        db <- rbind(db, gran_pkgs[, colnames(db), drop = FALSE])
+        db <- rbind(db, targets[, colnames(db), drop = FALSE])
     }
     
-    db
+    result()
 }
 
 # Parse GRAN path from package specification
@@ -684,7 +695,7 @@ as_gran_spec <- function(pkgs){
         gran <- PKGS[i_gran, , drop = FALSE]
         # build GRAN path from specs
         rownames(gran) <- GRAN_key(gran)
-        gran <- cbind(gran, key = rownames(gran), name = gran[, 'repo'])
+        gran <- cbind(query = rownames(gran), gran, name = gran[, 'repo'])
         res$gran <- gran
         
         # replace GRAN path with package name
@@ -744,6 +755,37 @@ install_gran <- function(pkgs, lib, repos = getOption('repos'), ...){
 
     res <- with_gran({
         install.packages(pkgs, lib = lib, repos = repos, ...)
+    }, pkgs = specs)
+    
+}
+
+#' Computes GRAN Package Dependencies
+#' 
+#' @param pkgs A character vector of package keys, e.g., \code{'renozao/repotools'} or 
+#' \code{'renozao/NMF/devel'}.
+#' @param repos CRAN-like repositories urls
+#' @param ... other parameters passed to \code{\link[utils]{available.packages}}.
+#' @param verbose logical that toggles log messages.
+#' 
+#' @export
+#' @examples 
+#' 
+#' gran_dependencies(c('renozao/NMF/devel', 'renozao/repotools'))
+#' 
+gran_dependencies <- function(pkgs, repos = getOption('repos'), ..., verbose = FALSE){
+    
+    # detect gran packages: user/repo/ref
+    specs <- as_gran_spec(pkgs)
+    if( !length(specs$gran) ) return()
+    
+    o <- options(repos = c(repos, GRAN.repos()))
+    on.exit( options(o) )
+    
+    specs$gran.only <- TRUE
+    specs$verbose <- verbose
+    
+    with_gran({
+        available.packages(...)
     }, pkgs = specs)
     
 }
