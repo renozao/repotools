@@ -431,10 +431,32 @@ update_github_user <- function(user, dir, repos = NULL){
     res[lengths(res) > 0L]
 }
 
-list.github.packages <- function(){
+list.github.packages <- function(Rsince = Sys.Date()){
     
     # init result
-    res <- matrix(NA, 0, 2, dimnames = list(NULL, c('user', 'repo')))
+    fields <- c('source', 'user', 'repo', 'full_name', 'html_url', 'fork', 'created_at', 'updated_at', 'pushed_at', 'language')
+    res <- matrix(NA, 0, length(fields), dimnames = list(NULL, fields))
+    
+    repo_matrix <- function(source, obj){
+        if( !length(obj) ) return()
+        
+        res <- t(sapply(obj, function(x){
+               rdata <- c(user = x$owner$login, repo = x$name)
+               c(rdata, unlist(x[setdiff(fields, c('source', names(rdata)))])) 
+        }))
+        res <- cbind(source = source, res)
+        rownames(res) <- res[, 'full_name']
+        res[!duplicated(rownames(res)), , drop = FALSE]
+    }
+    
+    # From R repositories on Github if a since date is passed
+    if( !is.null(Rsince) ){
+        message("* Checking Github R repositories pushed since ", Rsince, " ... ", appendLF = FALSE)
+        r_repos <- gh_search_Rrepos(paste0("pushed:>=", Rsince))
+        r_lang <- repo_matrix('Github', r_repos$content$items)
+        message(sprintf("OK [%s repos]", nrow(r_lang)))
+        res <- rbind(res, r_lang)
+    }
     
     # From CRAN
     message("* Checking Github package on CRAN ... ", appendLF = FALSE)
@@ -444,18 +466,25 @@ list.github.packages <- function(){
     # select packages with GitHub BugReports
     m <- str_match(CRAN[, 'BugReports'], "://(github\\.com/([^/]+)/([^/]+))/issues")
     i_gh <- which(!is.na(m[, 1L]))
-    m <- m[i_gh, 3:4, drop = FALSE]
+    m <- cbind(source = 'CRAN', m[i_gh, 3:4, drop = FALSE])
+    colnames(m) <- c('source', 'user', 'repo')
     message(sprintf("OK [%i/%i packages | %s users]", nrow(m), nrow(CRAN), length(unique(m[, 1L]))))
-    res <- rbind(res, m)
+    res <- rbind.fill.matrix(res, m)
     
     # From drat forks
     message("* Checking drat froks on Github ... ", appendLF = FALSE)
     drat <- fetch_drat_forks()
-    drat_users <- unique(sapply(drat, function(x) x$owner$login))
+    drat <- repo_matrix('drat', drat)
+    drat_users <- unique(drat[, 'user'])
     message(sprintf("OK [%s users]", length(drat_users)))
-    drat_users <- setdiff(drat_users, res[, 'user'])
-    if( length(drat_users) )
-        res <- rbind(res, cbind(drat_users, NA))
+    res <- rbind(res, drat)
+    
+    # remove duplicated entries
+    rn <- res[, 'full_name']
+    i <- is.na(rn) 
+    rn[i] <- file.path(res[i, 'user'], res[i, 'repo'])
+    rownames(res) <- rn
+    res <- res[!duplicated(rownames(res)), , drop = FALSE]
     
     # total
     message(sprintf("* Number of unique Github users: %s", length(unique(res[, 'user']))))
