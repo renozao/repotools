@@ -284,11 +284,6 @@ update_github_user <- function(user, dir, repos = NULL){
         return()
     }
     
-    # fix NULL elements
-    user_repos <- sapply(user_repos, function(rdata){
-                rdata <- sapply(rdata, '%||%', NA, simplify = FALSE) 
-                rdata
-            }, simplify = FALSE)
     user_repos0 <- user_repos
     pushed_at <- sapply(user_repos0, '[[', 'pushed_at')
     
