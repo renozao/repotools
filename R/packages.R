@@ -107,6 +107,7 @@ list.package.dependencies <- function(db, all = FALSE, depth = 1L, reduce = TRUE
     
     # stick together
     deps <- do.call(rbind, deps)
+#    str(deps)
     
     # set extra fields
     if( nrow(deps) ){
@@ -136,6 +137,16 @@ reduce.dependencies <- function(deps){
     }
     deps <- deps[!duplicated(deps[, 'name']), , drop = FALSE]
     deps
+}
+
+gran_pattern <- function(x){
+    # espace dots
+    x <- gsub(".", "\\.", x, fixed = TRUE)
+    # substitute path shortcut
+    x <- gsub("//", "/.*/", x, fixed = TRUE)
+    # ensure exact match on path component
+    x <- sprintf("%s((/)|($))", x)
+    x
 }
 
 # Finds dependencies honouring external repos weight 
@@ -168,9 +179,10 @@ match.dependencies <- function(deps, db, xdepends.only = FALSE){
         # if parent has XDepends, then re-order the xdb accordingly
         # and append it to the main db
         if( nrow(xdb) && !is.na(r <- d[['parentXDepends']]) ){
-            r <- gsub("//", "/.*/", strsplit(r, " +")[[1L]])
+            r <- strsplit(r, " +")[[1L]]
+            r <- gran_pattern(r)
             r <- r[nzchar(r)]
-            w <- sapply(sprintf("%s((/)|($))", r), function(x) grepl(x, xdb[, 'XPath']))
+            w <- sapply(r, function(x) grepl(x, xdb[, 'XPath']))
             hit <- which(rowSums(w) > 0L) # a hit is when at least one XDepends pattern matched
             if( length(hit) ){
                 xdb <- xdb[hit, , drop = FALSE][order(max.col(w)[hit]), , drop = FALSE]
@@ -584,7 +596,7 @@ repotools_gran <- function(db){
     message(sprintf("OK [%i packages - %s]", nrow(gran), paste0(names(breakdown), ': ', breakdown, collapse = " | ")))
     
     # lookup for target GRAN packages
-    hit <- sapply(sprintf("%s((/)|($))", rownames(targets)), function(x) grep(x, gran[, 'XPath'])[1L])
+    hit <- sapply(gran_pattern(rownames(targets)), function(x) grep(x, gran[, 'XPath'])[1L])
     targets <- cbind(targets, gran[hit, , drop = FALSE])
     
     if( anyNA(hit) ){
