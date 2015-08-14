@@ -34,12 +34,6 @@ cache <- function(name, value, default = NULL){
     res
 }
 
-gh_repo_forks <- function(user, repo, ...){
-    res <- gh_GET(gh_api.path('repos', user, repo, 'forks'), ...)
-    names(res) <- file.path(sapply(res, function(x) x$owner$login), sapply(res, '[[', 'name'))
-    res
-}
-
 fetch_drat_forks <- function(...) gh_repo_forks('eddelbuettel', 'drat', ...)
 
 load_repos_drat <- function(cache = cachefile('drat'), update = 'all', force = FALSE){
