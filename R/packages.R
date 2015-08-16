@@ -139,13 +139,16 @@ reduce.dependencies <- function(deps){
     deps
 }
 
-gran_pattern <- function(x){
+gran_pattern <- function(x, close.path = TRUE){
     # espace dots
     x <- gsub(".", "\\.", x, fixed = TRUE)
-    # substitute path shortcut
-    x <- gsub("//", "/.*/", x, fixed = TRUE)
-    # ensure exact match on path component
-    x <- sprintf("%s((/)|($))", x)
+    # add drat lookup and specification
+    x <- sub("^([^/])/~$", "\\1/[^/]+/~.*", x)
+    x <- sub("~$", "~.*", x)
+    
+    # ensure exact match on path component if requested
+    if( close.path ) x <- sprintf("%s((/)|($))", x)
+    
     x
 }
 
@@ -180,7 +183,7 @@ match.dependencies <- function(deps, db, xdepends.only = FALSE){
         # and append it to the main db
         if( nrow(xdb) && !is.na(r <- d[['parentXDepends']]) ){
             r <- strsplit(r, " +")[[1L]]
-            r <- gran_pattern(r)
+            r <- gran_pattern(r, close.path = FALSE)
             r <- r[nzchar(r)]
             w <- sapply(r, function(x) grepl(x, xdb[, 'XPath']))
             hit <- which(rowSums(w) > 0L) # a hit is when at least one XDepends pattern matched
@@ -540,7 +543,7 @@ available.GRAN <- function(url = contrib.path(GRAN.repos(), type = type, version
             res <- p[['XDepends']]
             res <- if( !is.na(res) ) res
             u <- p[['GithubUsername']]
-            if( !is.na(u) ) res <- c(file.path(u, '', '~'), u, res)
+            if( !is.na(u) ) res <- c(file.path(u, '~'), u, res)
             paste0(unique(res, fromLast = TRUE), collapse = " ")
         })
     depends_repos[!nzchar(depends_repos)] <- NA
