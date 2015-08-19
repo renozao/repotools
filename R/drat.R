@@ -45,7 +45,7 @@ load_repos_drat <- function(cache = cachefile('drat'), update = 'all', force = F
     message(sprintf("OK [%s repos | %s packages]", length(DATA$repos) %||% 0, nrow(DATA$PACKAGES) %||% 0))
     
     update.choice <- c('repos', 'PACKAGES', 'index', 'userdata')
-    if( isFALSE(update) ) update <- 'none'
+    if( is_NA(update) || isFALSE(update) ) update <- 'none'
     if( isTRUE(update) ) update <- 'all'
     update <- match.arg(update, c('all', 'none', update.choice), several.ok = TRUE)
     if( 'none' %in% update ) return(DATA)
