@@ -207,9 +207,7 @@ gh_call_all <- function(FUN, ..., per_page = Inf, all = TRUE, join = TRUE){
         next_url <- sub(".*<([^>]+)>; rel=\"next\".*", "\\1", link)
         if( next_url == link ) break
         pres <- httr::GET(next_url) 
-        h <- pres$headers
-        link <- grep("^Link: ", h, value = TRUE)
-        link <- gsub("^Link: ", "", link)
+        link <- pres$headers$link
         co <- httr::content(pres)
         pcontent[[i]] <- co
         i <- i+1L
