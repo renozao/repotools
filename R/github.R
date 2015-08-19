@@ -45,6 +45,7 @@ gh_context <- local({
             token <- if( !is.na(auth['password']) ) auth['password']
             
             # connect  
+            if( !qrequire('github') ) stop("Could not connect to Github API: missing package 'github'")
             .ctx <<- create.github.context(access_token = token)
             
             # load cached etags from disk
@@ -74,23 +75,25 @@ gh_cache <- function(key, value){
 }
 
 .substNULL <- function(x, val = NA){
-    i <- sapply(x, is.list)
-    x[i] <- sapply(x[i], .substNULL, val = val, simplify = FALSE)
-    x[-i] <- sapply(x[-i], '%||%', val, simplify = FALSE)
+    if( is.list(x) ){
+        x <- sapply(x, .substNULL, val = val, simplify = FALSE)
+    }else x <- x %||% val
     x
 }
 
 gh_call <- local({
     .rate <- NULL
     function(name){
-        
-        if( !requireNamespace('github') )
-            stop(sprintf("Could not query Github API function '%s': package 'github' is missing", name))
             
         # ensure one uses the correct context
         .GH@ctx <- gh_context()
         # get function
-        FUN <- get(name, asNamespace('github'))
+        if( is.function(name) ) FUN <- name
+        else{
+            if( !requireNamespace('github') )
+                stop(sprintf("Could not query Github API function '%s': package 'github' is missing", name))    
+            FUN <- get(name, asNamespace('github'))
+        }
         
         function(..., content.only = TRUE, nice = TRUE, ifnull = NA, per_page = Inf, ctx = .GH@ctx){
             
@@ -115,6 +118,8 @@ gh_call <- local({
             
             # call github function
             args <- list(...)
+#            str(args)
+#            print(per_page)
             args$ctx <- ctx
             if( !is.na(per_page) ){
                 per_page <- min(100, per_page)
@@ -143,10 +148,17 @@ gh_rate_limit <- function(){
     res$resources
 }
 
-gh_user_repo <- function(user, repo = NULL, ...){
+gh_user_repo <- function(user, repo = NULL, ..., all = TRUE, use.names = TRUE){
     
-    res <- .GH$get.user.repositories(user)
-    names(res) <- sapply(res, '[[', 'name')
+    F <- gh_call(function(user, ...){
+                .GH$get.user.repositories(user, ..., content.only = FALSE) 
+            })
+    res <- gh_call_all(.GH$get.user.repositories, user, all = all, per_page = 100)
+#    res <- .GH$get.user.repositories(user)
+    if( !is.null(res$message) ) return(list())
+    res <- res$content
+    
+    if( use.names ) names(res) <- sapply(res, '[[', 'name')
     # subset
     if( !is.null(repo) ) res <- res[[repo]]
     res
@@ -160,7 +172,7 @@ gh_repo_forks <- function(user, repo, ...){
 
 gh_repo_head <- function(user, repo, ref = NULL, ...){
     
-    res <- .GH$get.repository.branches(user, repo)
+    res <- .GH$get.repository.branches(user, repo, per_page = NA)
     
     # early exit if no result
     if( !is.null(res$message) ) return(list())
@@ -180,52 +192,54 @@ gh_get_content <- function(user, repo, ..., ref = NULL){
     res
 }
 
-gh_search_Rrepos <- function(query = NULL, ..., all = TRUE){
+gh_call_all <- function(FUN, ..., per_page = Inf, all = TRUE, join = TRUE){
     
-    q <- 'language:R'
-    if( !is.null(query) )
-        q <- paste0(c(q, query), collapse = ' ')
-    res <- .GH$search.repositories(q, per_page = Inf, content.only = FALSE)
-    
+    res <- FUN(..., per_page = per_page, content.only = FALSE)
     if( !all || !is.null(res$content$message) ){
         return(res)
     }
     
     # loop over pages if any
     link <- res$headers$link
-    pcontent <- list(res$content$items)
+    pcontent <- list(res$content)
     i <- 2L
     while( length(link) ){
         next_url <- sub(".*<([^>]+)>; rel=\"next\".*", "\\1", link)
         if( next_url == link ) break
-        pres <- curl::curl_fetch_memory(next_url) 
-        h <- curl::parse_headers(pres$headers)
+        pres <- httr::GET(next_url) 
+        h <- pres$headers
         link <- grep("^Link: ", h, value = TRUE)
         link <- gsub("^Link: ", "", link)
-        co <- jsonlite::fromJSON(rawToChar(pres$content))
-        pcontent[[i]] <- co$items 
+        co <- httr::content(pres)
+        pcontent[[i]] <- co
         i <- i+1L
     }
-    
-    .unlist <- function(x){
         
-        res <- sapply(x, function(y){
-            if( is.data.frame(y) ){
-                y <- sapply(seq(nrow(y)), function(i) .unlist(y[i,, drop = TRUE]), simplify = FALSE)
-            }
-            if( length(y) == 1L ) y <- y[[1L]]
-            y
-        }, simplify = FALSE)
-        if( length(res) == 1L ) res <- res[[1L]]
-        res
+    if( !join ) res$content <- pcontent
+    else{
+        
+        jcontent <- pcontent[[1L]]
+        . <- lapply(pcontent[-1L], function(x){
+            if( !is.null(x$items) ) jcontent$items <<- c(jcontent$items, x$items)
+            else jcontent <<- c(jcontent, x)
+        })
+        res$content <- .substNULL(jcontent)
     }
-    pcontent <- .unlist(pcontent)
-    it <- setNames(do.call(c, pcontent), NULL)
-    if( !is.null(it) ){
-        names(it) <- sapply(it, '[[', 'full_name')
-        res$content$items <- .substNULL(it)
-    }else res$content['items'] <- list(NULL)
     
     # return
+    res
+}
+
+gh_search_Rrepos <- function(query = NULL, ..., all = TRUE){
+    
+    q <- 'language:R'
+    if( !is.null(query) )
+        q <- paste0(c(q, query), collapse = ' ')
+    
+    res <- gh_call_all(.GH$search.repositories, q, all = all)
+    # use full_name as names
+    if( length(res$content$items) )
+        names(res$content$items) <- sapply(res$content$items, '[[', 'full_name')
+    
     res
 }
