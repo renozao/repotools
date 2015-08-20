@@ -51,3 +51,9 @@ capwords <- function(s, strict = FALSE) {
 bad_version <- function(x){
     sapply(x, function(v) is(try(package_version(v), silent = TRUE), 'try-error'))
 }
+
+messagef <- function(..., appendLF = TRUE){
+    message(sprintf(...), appendLF = appendLF)
+}
+
+.yesno <- function(x) setNames(c('no', 'yes'), c(0, 1))[x+0]
