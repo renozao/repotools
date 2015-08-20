@@ -379,16 +379,15 @@ update_github_user <- function(user, dir, repos = NULL, repos_data = NULL, all.R
         repo <- rdata$name
         RDATA <- .USER_INDEX[repo, , drop = TRUE]
         
-        
         # last commit
         if( !is_NA(COMMIT_SHA0 <- RDATA[['refs_sha']]) ){
             m <- str_match(COMMIT_SHA0, "([^@]+)@([^ ]+)")
-            COMMIT_SHA0 <- setNames(m[, 2], m[, 3])
+            COMMIT_SHA0 <- setNames(m[, 3], m[, 2])
         }
         # DESCRIPITON file SHA
         if( !is_NA(DESC_SHA0 <- RDATA[['desc_sha']]) ){
             m <- str_match(DESC_SHA0, "([^@]+)@([^ ]+)")
-            DESC_SHA0 <- setNames(m[, 2], m[, 3])
+            DESC_SHA0 <- setNames(m[, 3], m[, 2])
         }
         
         message("  ** ", repo, appendLF = FALSE)
@@ -487,7 +486,7 @@ update_github_user <- function(user, dir, repos = NULL, repos_data = NULL, all.R
                         return(c(DESC_SHA, COMMIT_SHA))
                     }
                 }else{
-                    messagef("CACHE", , appendLF = FALSE)
+                    message("CACHE", appendLF = FALSE)
                     # create partial DESCRIPTION file
                     dcf <- cbind(.GithubPartial = 'yes')
                 }
@@ -849,10 +848,14 @@ GRAN.update_github <- function(src, force = FALSE, fields = GRAN.fields(), updat
         message("* Loading updated PACKAGES ... ", appendLF = FALSE)
         d <- list.files(src_fullpath, recursive = TRUE, pattern = '^DESCRIPTION$', full.names = TRUE)
         PACKS_NEW <- do.call(rbind.fill.matrix, lapply(d, read.dcf))
+        messagef("OK [%i packages]", nrow(PACKS_NEW))
+        if( !nrow(PACKS_NEW) ) return()
+        
         # enforce format
+        PACKS_NEW <- add_dcf_field(PACKS_NEW, 'Package')
         PACKS_NEW <- add_dcf_field(PACKS_NEW, 'GithubRepo', PACKS_NEW[, 'Package'])
         PACKS_NEW <- add_dcf_field(PACKS_NEW, '.GithubPartial', '')
-        messagef("OK [%i packages]", nrow(PACKS_NEW))
+        
         # set rownames and check/remove  for duplicates
         rownames(PACKS_NEW) <- GRAN_key(PACKS_NEW)
         if( anyDuplicated(rownames(PACKS_NEW)) ){
@@ -863,7 +866,7 @@ GRAN.update_github <- function(src, force = FALSE, fields = GRAN.fields(), updat
         } 
         
         # clean up
-        bad <- which(is.na(PACKS_NEW[, 'Package']) | !nzchar(PACKS_NEW[, 'Package']))
+        bad <- which( (is.na(PACKS_NEW[, 'Package']) | !nzchar(PACKS_NEW[, 'Package'])) & PACKS_NEW[, '.GithubPartial'] != 'yes' )
         if( length(bad) ){
             bad_nm <- unique(PACKS_NEW[bad, 'Package'])
             messagef("* Removing %i packages with invalid names: %s", length(bad), str_out(bad_nm, 5, total = TRUE))
