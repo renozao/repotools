@@ -474,16 +474,14 @@ update_github_user <- function(user, dir, repos = NULL, repos_data = NULL, packa
                     added_flag <- ''
                 }
                 
-                GH_DATA <- cbind(GithubRepo = repo
-                        , GithubUsername = user
-                        , GithubRef = ref
-                        , GithubSHA1 = SHA
-                        , GithubFork = ifelse(rdata$fork, 'yes', 'no')
-                        , GithubPath = if( pkg_subdir != '.' ) pkg_subdir else NA)
-                
                 # download DESCRIPTION file only if necessary
                 SHA_D <- cnt$DESCRIPTION$sha
-                if( !SHA_D %in% SHA0_D || !GRAN_key(GH_DATA) %in% rownames(packages) ){
+                # load data from packages db if present
+                dcf <- if( i_pkg <- match(GRAN_key(GH_DATA), rownames(packages), nomatch = 0L) ){
+                    packages[i_pkg, , drop = FALSE] 
+                }
+                # fetch update if necessary
+                if( !SHA_D %in% SHA0_D || is.null(dcf) ){
                     
                     message(added_flag, "DESCRIPTION", appendLF = FALSE)
                     tmp_desc <- file.path(tempdir(), paste0('DESCRIPTION_', DESC_SHA))
@@ -497,13 +495,19 @@ update_github_user <- function(user, dir, repos = NULL, repos_data = NULL, packa
                     }
                 }else{
                     message("CACHE", appendLF = FALSE)
-                    # create partial DESCRIPTION file
-                    dcf <- cbind(.GithubPartial = 'yes')
                 }
                 message(sprintf("[%s] ", substr(SHA_D, 1, 7)), appendLF = FALSE)
+                DESC_SHA <- sprintf("%s@%s", ref, SHA_D)
                 
-                DESC_SHA <- sprintf("%s@%s", ref, cnt$DESCRIPTION$sha)
-                dcf <- cbind(dcf, GH_DATA)
+                # add/replace up-to-date Github data
+                GH_DATA <- cbind(GithubRepo = repo
+                        , GithubUsername = user
+                        , GithubRef = ref
+                        , GithubSHA1 = SHA
+                        , GithubFork = ifelse(rdata$fork, 'yes', 'no')
+                        , GithubPath = if( pkg_subdir != '.' ) pkg_subdir else NA)
+                dcf <- cbind(dcf[, setdiff(colnames(dcf), colnames(GH_DATA)), drop = FALSE], GH_DATA)
+                #
                 
                 # create ref sub-directory
                 dir.create(refdir, recursive = TRUE, showWarnings = FALSE)
@@ -875,7 +879,6 @@ GRAN.update_github <- function(src, force = FALSE, fields = GRAN.fields(), updat
         # enforce format
         PACKS_NEW <- add_dcf_field(PACKS_NEW, 'Package')
         PACKS_NEW <- add_dcf_field(PACKS_NEW, 'GithubRepo', PACKS_NEW[, 'Package'])
-        PACKS_NEW <- add_dcf_field(PACKS_NEW, '.GithubPartial', '')
         
         # set rownames and check/remove  for duplicates
         rownames(PACKS_NEW) <- GRAN_key(PACKS_NEW)
@@ -887,7 +890,7 @@ GRAN.update_github <- function(src, force = FALSE, fields = GRAN.fields(), updat
         } 
         
         # clean up
-        bad <- which( (is.na(PACKS_NEW[, 'Package']) | !nzchar(PACKS_NEW[, 'Package'])) & PACKS_NEW[, '.GithubPartial'] != 'yes' )
+        bad <- which( is.na(PACKS_NEW[, 'Package']) | !nzchar(PACKS_NEW[, 'Package']) ) 
         if( length(bad) ){
             bad_nm <- unique(PACKS_NEW[bad, 'Package'])
             messagef("* Removing %i packages with invalid names: %s", length(bad), str_out(bad_nm, 5, total = TRUE))
@@ -924,16 +927,8 @@ GRAN.update_github <- function(src, force = FALSE, fields = GRAN.fields(), updat
         rownames(PACKS) <- GRAN_key(PACKS)
         
         # update other packages
-        partial <- PACKS_NEW[, '.GithubPartial'] == 'yes' & i
-        .f <- setdiff(colnames(PACKS), c('NeedsCompilation', grep('^Github', colnames(PACKS_NEW), value = TRUE)))
-        messagef("  ** Updating Github data for %s packages ", sum(partial))
-        PACKS_NEW[partial, .f] <- PACKS[i[partial], .f]
-        messagef("  ** Updating %s packages ", sum(!partial & i))
+        messagef("  ** Updating %s packages ", sum(i>0))
         PACKS[i, colnames(PACKS)] <- PACKS_NEW[i>0, colnames(PACKS), drop = FALSE]
-        
-        # remove technical columns
-        jp <- which(colnames(PACKS) == '.GithubPartial')
-        PACKS <- PACKS[, -jp, drop = FALSE]
         
         # clean up
         PACKS <- PACKS[!is.na(PACKS[, 'Package']), , drop = FALSE]
