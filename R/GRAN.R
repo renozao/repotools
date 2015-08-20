@@ -277,7 +277,7 @@ GRAN.update <- function(src, outdir = dirname(normalizePath(src)), clean = FALSE
 }
 
 # Fetch package data from GitHub and update associated unpacked sub-directory
-update_github_user <- function(user, dir, repos = NULL, repos_data = NULL, all.R = FALSE){
+update_github_user <- function(user, dir, repos = NULL, repos_data = NULL, packages = NULL, all.R = FALSE){
     
     
     if( !is.null(repos) ) messagef(": %s", str_out(repos, 4, total = length(repos) > 4), appendLF = FALSE)
@@ -344,10 +344,13 @@ update_github_user <- function(user, dir, repos = NULL, repos_data = NULL, all.R
     }
     on.exit( .save_user_data(), add = TRUE)
     
+    force <- FALSE
+#    if( user != 'renozao' ) force <- TRUE
+    
     # only check repos that were pushed after last indexing
     diffs <- .USER_INDEX$pushed_at !=  .USER_INDEX$indexed_at
     changed <- .USER_INDEX$name[which( is.na(diffs) | diffs )]
-    user_repos <- user_repos[names(user_repos) %in% changed]
+    if( !force ) user_repos <- user_repos[names(user_repos) %in% changed]
     
     if( !length(user_repos) ){
         message(sprintf(" ... SKIP [not changed - %s repos]", length(user_repos0)))
@@ -356,7 +359,7 @@ update_github_user <- function(user, dir, repos = NULL, repos_data = NULL, all.R
     
     # only process given repos vector and all the user's R repos (if requested or first time indexing)
     user_R_repos <- which(sapply(user_repos, function(x) identical(x$language, 'R')))
-    if( all.R || !is_updating ){
+    if( force || all.R || !is_updating ){
         repos <- c(repos, names(user_R_repos))
     }
     m <- match(names(user_repos), unique(repos))
@@ -443,7 +446,7 @@ update_github_user <- function(user, dir, repos = NULL, repos_data = NULL, all.R
                 }
                 
                 # skip whole repo if no changes
-                if( SHA %in% SHA0 ){
+                if( SHA %in% SHA0 && !force ){
                     message('OK [no changes]')
                     return(c(DESC_SHA, COMMIT_SHA))
                 }
@@ -471,9 +474,16 @@ update_github_user <- function(user, dir, repos = NULL, repos_data = NULL, all.R
                     added_flag <- ''
                 }
                 
+                GH_DATA <- cbind(GithubRepo = repo
+                        , GithubUsername = user
+                        , GithubRef = ref
+                        , GithubSHA1 = SHA
+                        , GithubFork = ifelse(rdata$fork, 'yes', 'no')
+                        , GithubPath = if( pkg_subdir != '.' ) pkg_subdir else NA)
+                
                 # download DESCRIPTION file only if necessary
                 SHA_D <- cnt$DESCRIPTION$sha
-                if( !SHA_D %in% SHA0_D ){
+                if( !SHA_D %in% SHA0_D || !GRAN_key(GH_DATA) %in% rownames(packages) ){
                     
                     message(added_flag, "DESCRIPTION", appendLF = FALSE)
                     tmp_desc <- file.path(tempdir(), paste0('DESCRIPTION_', DESC_SHA))
@@ -493,20 +503,20 @@ update_github_user <- function(user, dir, repos = NULL, repos_data = NULL, all.R
                 message(sprintf("[%s] ", substr(SHA_D, 1, 7)), appendLF = FALSE)
                 
                 DESC_SHA <- sprintf("%s@%s", ref, cnt$DESCRIPTION$sha)
-                 
-                dcf <- cbind(dcf, GithubRepo = repo
-                         , GithubUsername = user
-                         , GithubRef = ref
-                         , GithubSHA1 = SHA
-                         , GithubFork = ifelse(rdata$fork, 'yes', 'no')
-                         , GithubPath = if( pkg_subdir != '.' ) pkg_subdir else NA
-                        )
-                has_src <- !is.null(cnt$src) && cnt$src$type == 'dir'
-                if( has_src ) message('src ', appendLF = FALSE)
-                dcf <- add_dcf_field(dcf, 'NeedsCompilation', .yesno(has_src), force = TRUE)
+                dcf <- cbind(dcf, GH_DATA)
                 
                 # create ref sub-directory
                 dir.create(refdir, recursive = TRUE, showWarnings = FALSE)
+                
+                # process src/ sub-directory
+                has_src <- !is.null(cnt$src) && cnt$src$type == 'dir'
+                refdir_src <- file.path(refdir, 'src')
+                if( has_src ){
+                    message('src ', appendLF = FALSE)
+                    dir.create(refdir_src, recursive = TRUE, showWarnings = FALSE)
+                }else unlink(refdir_src)
+                dcf <- add_dcf_field(dcf, 'NeedsCompilation', .yesno(has_src), force = TRUE)
+                #
                 
                 # update DESCRIPTION file
                 write.dcf(dcf, file.path(refdir, 'DESCRIPTION'))
@@ -697,7 +707,7 @@ pull_github_packages <- function(dir, sources = NULL){
     # load previous index and save new on exit
     USER <- NULL
     if( file.exists(index_file <- file.path(dir, "REPOS")) ){
-    message("* Loading previous repo index ... ", appendLF = FALSE)
+        message("* Loading previous repo index ... ", appendLF = FALSE)
         USER <- read.repos(file = index_file)                
         index <- as.matrix(USER[!duplicated(USER[, 'full_name']), , drop = FALSE])
         message(sprintf(" OK [%i refs | %i repos]", nrow(USER), nrow(index)))
@@ -718,6 +728,12 @@ pull_github_packages <- function(dir, sources = NULL){
         to_update <- subset(g, (language == 'R' & pushed_at != indexed_at) | language != 'R' )
         message(sprintf(" OK [%i/%i changed]", nrow(to_update), nrow(gh_packages)))
         gh_packages <- as.matrix(to_update)
+    }
+    
+    PACKS <- NULL
+    if( file.exists(packages_file <- file.path(dir, 'packages.rds')) ){
+        PACKS <- readRDS(packages_file)
+        rownames(PACKS) <- GRAN_key(PACKS)
     }
     
     if( !nrow(gh_packages) ) return(result.ok(0L))
@@ -756,7 +772,9 @@ pull_github_packages <- function(dir, sources = NULL){
             data <- gh_packages[i, , drop = FALSE]
             user <- data[1L, 'user']
             message("* Checking ", user, appendLF = FALSE)
-            update_github_user(user, dir = dir, repos = data[, 'name'], repos_data = USER[USER[, 'user'] == user, , drop = FALSE])
+            update_github_user(user, dir = dir, repos = data[, 'name']
+                                , repos_data = USER[USER[, 'user'] == user, , drop = FALSE]
+                                , packages = PACKS[PACKS[, 'GithubUsername'] == user, , drop = FALSE])
         }, .id = NULL)
         
         # Update USER table if necessary
@@ -786,13 +804,15 @@ repopath2xpath <- function(x){
 #' 
 #' @param src path to the directory that holds the package directory tree 
 #' @importFrom tools md5sum
-GRAN.update_github <- function(src, force = FALSE, fields = GRAN.fields(), update = FALSE, actions = c('changes', 'PACKAGES', 'index'), test = FALSE, verbose = TRUE){
+GRAN.update_github <- function(src, force = FALSE, fields = GRAN.fields(), update = FALSE, actions = c('changes', 'PACKAGES', 'index')
+                                , clean = TRUE, test = FALSE, verbose = TRUE){
     
     library(plyr)
     do_commit <- TRUE
     if( test ){
         do_commit <- FALSE
         verbose <- TRUE
+        clean <- FALSE
     }
     
     # dump messages if non-verbose
@@ -848,8 +868,9 @@ GRAN.update_github <- function(src, force = FALSE, fields = GRAN.fields(), updat
         message("* Loading updated PACKAGES ... ", appendLF = FALSE)
         d <- list.files(src_fullpath, recursive = TRUE, pattern = '^DESCRIPTION$', full.names = TRUE)
         PACKS_NEW <- do.call(rbind.fill.matrix, lapply(d, read.dcf))
-        messagef("OK [%i packages]", nrow(PACKS_NEW))
-        if( !nrow(PACKS_NEW) ) return()
+        n_up <- nrow(PACKS_NEW) %||% 0L 
+        messagef("OK [%i packages]", n_up)
+        if( !n_up ) return()
         
         # enforce format
         PACKS_NEW <- add_dcf_field(PACKS_NEW, 'Package')
@@ -875,23 +896,30 @@ GRAN.update_github <- function(src, force = FALSE, fields = GRAN.fields(), updat
         
         # load previous PACKAGES
         message("* Loading old PACKAGES ... ", appendLF = FALSE)
-        PACKS <- readRDS(file.path(src, 'packages.rds'))
-        rownames(PACKS) <- GRAN_key(PACKS)
-        PACKS <- PACKS[!rownames(PACKS) %in% rownames(PACKS)[duplicated(rownames(PACKS))], , drop = FALSE]
-        messagef("OK [%i packages]", nrow(PACKS))
+        if( file.exists(packages_file <- file.path(src, 'packages.rds')) ){
+            PACKS <- readRDS(packages_file)
+            rownames(PACKS) <- GRAN_key(PACKS)
+            PACKS <- PACKS[!rownames(PACKS) %in% rownames(PACKS)[duplicated(rownames(PACKS))], , drop = FALSE]
+            messagef("OK [%i packages]", nrow(PACKS))
+            
+        }else{
+            PACKS <- rbind.fill.matrix(matrix(NA, 0, 0), PACKS_NEW[0, , drop = FALSE])
+            message("none")
+        }
         
-        # align
+        # align package matrices
         i <- match(rownames(PACKS_NEW), rownames(PACKS), nomatch = 0L)
         PACKS <- rbind.fill.matrix(PACKS, PACKS_NEW[0L, , drop = FALSE])
         rownames(PACKS) <- GRAN_key(PACKS)
         PACKS_NEW <- rbind.fill.matrix(PACKS_NEW, PACKS[0L, , drop = FALSE])
+        PACKS_NEW <- PACKS_NEW[, colnames(PACKS), drop = FALSE]
         rownames(PACKS_NEW) <- GRAN_key(PACKS_NEW)
         
         # add new packages
         new <- which(!i)
         if( length(new) ){
             messagef("  ** Adding %i packages to index", length(new))
-            PACKS <- rbind.fill.matrix(PACKS, PACKS_NEW[new, , drop = FALSE])
+            PACKS <- rbind(PACKS, PACKS_NEW[new, colnames(PACKS), drop = FALSE])
         }
         rownames(PACKS) <- GRAN_key(PACKS)
         
@@ -900,8 +928,8 @@ GRAN.update_github <- function(src, force = FALSE, fields = GRAN.fields(), updat
         .f <- setdiff(colnames(PACKS), c('NeedsCompilation', grep('^Github', colnames(PACKS_NEW), value = TRUE)))
         messagef("  ** Updating Github data for %s packages ", sum(partial))
         PACKS_NEW[partial, .f] <- PACKS[i[partial], .f]
-        messagef("  ** Updating %s packages ", sum(!partial))
-        PACKS[i, ] <- PACKS_NEW[i>0, , drop = FALSE]
+        messagef("  ** Updating %s packages ", sum(!partial & i))
+        PACKS[i, colnames(PACKS)] <- PACKS_NEW[i>0, colnames(PACKS), drop = FALSE]
         
         # remove technical columns
         jp <- which(colnames(PACKS) == '.GithubPartial')
@@ -912,7 +940,7 @@ GRAN.update_github <- function(src, force = FALSE, fields = GRAN.fields(), updat
         PACKS <- add_dcf_field(PACKS, 'Path', file.path('github.com', rownames(PACKS)), force = TRUE)
         
         # TODO: remove deleted packages
-        to_delete <- NULL 
+        to_delete <- NULL
 #        if( length(del <- which(rownames(PACKS) %in% to_delete)) ){
 #            message(sprintf("  ** Removing %i packages from index", length(del)))
 #            PACKS <- PACKS[-del, , drop = FALSE]
@@ -923,8 +951,10 @@ GRAN.update_github <- function(src, force = FALSE, fields = GRAN.fields(), updat
 #        write_PACKAGES_files(PACKS, src)
         saveRDS(PACKS, file.path(src, 'packages.rds'))
             
-        # remove pulled data
-        unlink( file.path(src_fullpath, 'github.com'), recursive = TRUE )
+        # clean pulled data
+        if( clean ){
+            unlink( file.path(src_fullpath, 'github.com'), recursive = TRUE)
+        }
         
 #        }else if( force ){
 #            message("  ** Writing PACKAGES from unpacked directories")
@@ -940,5 +970,5 @@ GRAN.update_github <- function(src, force = FALSE, fields = GRAN.fields(), updat
     }
     
     # return output directory to calling script in non-interactive mode
-    invisible(src)
+    invisible(PACKS)
 }
