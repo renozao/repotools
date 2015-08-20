@@ -474,6 +474,15 @@ update_github_user <- function(user, dir, repos = NULL, repos_data = NULL, packa
                     added_flag <- ''
                 }
                 
+                
+                # Build Github data part
+                GH_DATA <- cbind(GithubRepo = repo
+                        , GithubUsername = user
+                        , GithubRef = ref
+                        , GithubSHA1 = SHA
+                        , GithubFork = ifelse(rdata$fork, 'yes', 'no')
+                        , GithubPath = if( pkg_subdir != '.' ) pkg_subdir else NA)
+                
                 # download DESCRIPTION file only if necessary
                 SHA_D <- cnt$DESCRIPTION$sha
                 # load data from packages db if present
@@ -500,12 +509,6 @@ update_github_user <- function(user, dir, repos = NULL, repos_data = NULL, packa
                 DESC_SHA <- sprintf("%s@%s", ref, SHA_D)
                 
                 # add/replace up-to-date Github data
-                GH_DATA <- cbind(GithubRepo = repo
-                        , GithubUsername = user
-                        , GithubRef = ref
-                        , GithubSHA1 = SHA
-                        , GithubFork = ifelse(rdata$fork, 'yes', 'no')
-                        , GithubPath = if( pkg_subdir != '.' ) pkg_subdir else NA)
                 dcf <- cbind(dcf[, setdiff(colnames(dcf), colnames(GH_DATA)), drop = FALSE], GH_DATA)
                 #
                 
