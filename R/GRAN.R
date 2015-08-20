@@ -949,7 +949,7 @@ GRAN.update_github <- function(src, force = FALSE, fields = GRAN.fields(), updat
         # write files
         message(sprintf("  ** Updating file PACKAGES files [%i]", nrow(PACKS)))
 #        write_PACKAGES_files(PACKS, src)
-        saveRDS(PACKS, file.path(src, 'packages.rds'))
+        if( !test ) saveRDS(PACKS, file.path(src, 'packages.rds'))
             
         # clean pulled data
         if( clean ){
