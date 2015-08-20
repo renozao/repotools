@@ -292,6 +292,17 @@ add_dcf_field <- function(x, name, value, force = FALSE){
     
 }
 
+set_column <- function(x, name, default = NA){
+    
+    # early exit if no input data
+    if( !nrow(x) %||% FALSE ) return(x)
+    if( name %in% colnames(x) ) return(x)
+    
+    x <- cbind(x, default)
+    colnames(x)[ncol(x)] <- name
+    x
+}
+
 # adapted from utils:::available_packages_filters_db$R_version
 R_version_depends <- function(depends, use.sign = FALSE){
     

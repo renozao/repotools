@@ -56,4 +56,4 @@ messagef <- function(..., appendLF = TRUE){
     message(sprintf(...), appendLF = appendLF)
 }
 
-.yesno <- function(x) setNames(c('no', 'yes'), c(0, 1))[x+0]
+.yesno <- function(x) c('no', 'yes')[x + 1L]

@@ -190,13 +190,20 @@ GRAN_key <- function(...){
     
     .local <- function(...){
         res <- paste0(..., collapse = "/")
-        gsub("/NA$", "", res)
+        gsub("(/NA)*$", "", res)
     }
     
     args <- list(...)
     if( length(args) == 1L ){
         x <- args[[1L]]
-        if( !is.null(nrow(x)) ) return( apply(x, 1L, .local) )
+        if( !is.null(nrow(x)) ){
+            if( length(grep("^Github", colnames(x))) ){
+                .f <- c('GithubUsername', 'GithubRepo', 'GithubRef', 'GithubPath')
+                x <- rbind.fill.matrix(x, matrix(NA, 0, length(.f), dimnames = list(NULL, .f)))
+                x <- x[, .f, drop = FALSE]
+            }
+            return( apply(x, 1L, .local) )
+        }
         stopifnot( is.character(x) )
     }
     do.call(.local, args)
@@ -214,7 +221,9 @@ GRAN.update <- function(src, outdir = dirname(normalizePath(src)), clean = FALSE
     if( !is.dir(outdir) || clean ) create_repo(outdir, pkgs = NA)
     
     # update GitHub source package
-    contrib_github <- GRAN.update_github(src, update = update)
+    update_gh <- update
+    if( isTRUE(update_gh) ) update_gh <- c('Github', 'drat')
+    contrib_github <- GRAN.update_github(src, update = update_gh)
      
     # update Drat packages
     DATA <- GRAN.update_drat(file.path(src, 'drat'), update = update)
@@ -229,7 +238,6 @@ GRAN.update <- function(src, outdir = dirname(normalizePath(src)), clean = FALSE
         create_repo(outdir, verbose = TRUE)
         
         ## add Github packages to those in src/contrib
-        ## Only add non-forked packages
         gh_P <- read.dcf(file.path(contrib_github, 'PACKAGES'))
         # fix for migration of field names
         gh_P <- add_dcf_field(gh_P, 'GithubRepo', gh_P[, 'Package'])
@@ -239,7 +247,7 @@ GRAN.update <- function(src, outdir = dirname(normalizePath(src)), clean = FALSE
         # preprend to drat packages
         library(plyr)
         PACKAGES <- rbind.fill(data.frame(gh_P, stringsAsFactors = FALSE), DATA$PACKAGES)
-        PACKAGES <- add_dcf_field(PACKAGES, 'GRANPath', GRAN_key(PACKAGES[, c('GithubUsername', 'GithubRepo', 'GithubRef')]))
+        PACKAGES <- add_dcf_field(PACKAGES, 'GRANPath', GRAN_key(PACKAGES))
         
         # Filter out bad packages
         # remove bad packages
@@ -272,7 +280,7 @@ GRAN.update <- function(src, outdir = dirname(normalizePath(src)), clean = FALSE
 update_github_user <- function(user, dir, repos = NULL, repos_data = NULL, all.R = FALSE){
     
     
-    if( !is.null(repos) ) message(sprintf(": %s", str_out(repos, 4, total = length(repos) > 4)), appendLF = FALSE)
+    if( !is.null(repos) ) messagef(": %s", str_out(repos, 4, total = length(repos) > 4), appendLF = FALSE)
     # clean up priority repos
     repos <- repos[!is.na(repos)]
     
@@ -292,38 +300,42 @@ update_github_user <- function(user, dir, repos = NULL, repos_data = NULL, all.R
     udir <- file.path(dir, user_url)
     loc_user_file <- file.path(udir, 'USER')
     is_updating <- file.exists(loc_user_file)
-    is_updating <- length(repos_data) > 0
+    is_updating <- nrow(repos_data) %||% 0
     fields <- c('name', 'full_name', 'html_url', 'fork', grep('_at$', names(user_repos0[[1L]]), value = TRUE), 'language')
     .USER_INDEX <- cbind(user = user
             , ldply(user_repos0, .id = NULL, function(x) as.data.frame(x[fields], stringsAsFactors = FALSE))
-            , indexed_at = NA
+                , indexed_at = NA
+                , refs_sha = NA
+                , desc_sha = NA
             , stringsAsFactors = FALSE)
     if( is_updating ){
 #        luser <- read.repos(file = loc_user_file)
-        luser <- data.frame(repos_data, stringsAsFactors = FALSE)
+        luser <- as.matrix(repos_data)
         # fix for backward compatiblility
         colnames(luser)[colnames(luser) == 'repo'] <- 'name'
-        if( is.null(luser[['indexed_at']]) ) luser[['indexed_at']] <- luser[['pushed_at']]
-        luser <- luser[!is.na(luser[['name']]), , drop = FALSE]
-        # merge old and new
-        .USER_INDEX <- rbind.fill(.USER_INDEX, luser[!luser$name %in% .USER_INDEX$name, , drop = FALSE])
-        # force old indexed date
-        inm <- match(luser$name, .USER_INDEX$name)
-        stopifnot( !anyNA(inm) )
-        .USER_INDEX[inm, 'indexed_at'] <- luser[['indexed_at']]
+        luser <- set_column(luser, 'indexed_at', luser[, 'pushed_at'])
+        luser <- rbind.fill.matrix(luser, .USER_INDEX[0, , drop = FALSE])
+        luser <- luser[!is.na(luser[ , 'name']), , drop = FALSE]
+        # force in previous indexing data
+        inm <- match(luser[, 'name'], .USER_INDEX$name, nomatch = 0L)
+        .f <- c('indexed_at', 'refs_sha', 'desc_sha')
+        .USER_INDEX[inm, .f] <- luser[inm > 0, .f]
     }
     # set rownames
     rownames(.USER_INDEX) <- .USER_INDEX[['name']]
     
     # save repos data on.exit
-    .update_repo_index <- function(data, SHA = NULL){
+    .update_repo_index <- function(data, content){
         .USER_INDEX[data$name, 'indexed_at'] <<- data[['pushed_at']]
-        if( !is.null(SHA) ){
-            SHA <- if( is.matrix(SHA) ){
-                paste0(colnames(SHA), "@", SHA[2, ], SHA[1, ], collapse = ' ')
-            }
+        if( is.matrix(content) ){
+            SHA <- paste0(na.omit(content[2, ]), collapse = ' ')
+            if( !nzchar(SHA) ) SHA <- NA
+            .USER_INDEX[data$name, 'refs_sha'] <<- unname(SHA)
+            desc <- paste0(na.omit(content[1, ]), collapse = ' ')
+            if( !nzchar(desc) ) desc <- NA
+            .USER_INDEX[data$name, 'desc_sha'] <<- unname(desc)
         }
-        .USER_INDEX[data$name, 'refs'] <<- if( length(SHA) ) SHA else NA
+        
     }
 
     .save_user_data <- function(file = loc_user_file){
@@ -365,6 +377,19 @@ update_github_user <- function(user, dir, repos = NULL, repos_data = NULL, all.R
         path <- gsub("^https?://", '', rdata$html_url)
         pdir <- file.path(dir, path)
         repo <- rdata$name
+        RDATA <- .USER_INDEX[repo, , drop = TRUE]
+        
+        
+        # last commit
+        if( !is_NA(COMMIT_SHA0 <- RDATA[['refs_sha']]) ){
+            m <- str_match(COMMIT_SHA0, "([^@]+)@([^ ]+)")
+            COMMIT_SHA0 <- setNames(m[, 2], m[, 3])
+        }
+        # DESCRIPITON file SHA
+        if( !is_NA(DESC_SHA0 <- RDATA[['desc_sha']]) ){
+            m <- str_match(DESC_SHA0, "([^@]+)@([^ ]+)")
+            DESC_SHA0 <- setNames(m[, 2], m[, 3])
+        }
         
         message("  ** ", repo, appendLF = FALSE)
                 
@@ -375,7 +400,7 @@ update_github_user <- function(user, dir, repos = NULL, repos_data = NULL, all.R
             message(" ... OK [empty]")
             
         }else{
-            refs_todo <- unique(c(rdata$default_branch, grep("^devel[^/]*", names(refs), value = TRUE)))
+            refs_todo <- unique(c(rdata$default_branch, grep("^devel[^/]*$", names(refs), value = TRUE)))
             if( length(refs_todo) > 1L ) message(":")
             
             res <- sapply(refs_todo, function(ref){
@@ -388,9 +413,15 @@ update_github_user <- function(user, dir, repos = NULL, repos_data = NULL, all.R
                 refobject <- refs[[ref]] 
                 SHA <- refobject$commit$sha
                 
+                # not sure how this can happen, but it does happens (e.g., wch/r-source/trunk)
+                if( is.null(SHA) ){
+                    message('SKIP [invalid ref]')
+                    return(c(NA, NA))   
+                }
+                
                 # ref sub-directory
                 refdir <- file.path(pdir, 'tarball', ref, repo)
-                added_flag <- if( is.na(.USER_INDEX[rdata$name, 'indexed_at']) ) '+' else ''
+                added_flag <- if( is.na(RDATA[['indexed_at']]) ) '+' else ''
                 # skip packages processed by the webhook
 #                flag_file <- file.path(refdir, 'SHA1')
 #                if( dir.exists(refdir) && !file.exists(flag_file) ){
@@ -398,90 +429,96 @@ update_github_user <- function(user, dir, repos = NULL, repos_data = NULL, all.R
 #                    return(0L)
 #                }
                 
-                # load/check local DESCRIPTION
+                # load/check last local commit SHA
                 desc_file <- list.files(refdir, recursive = TRUE, full.names = TRUE, pattern = '^DESCRIPTION$')
                 stopifnot( length(desc_file) %in% c(0, 1) )
-                if( length(desc_file) ){
+                # SHAs
+                SHA0 <- COMMIT_SHA0[ref]
+                SHA0_D <- DESC_SHA0[ref]
+                DESC_SHA <- COMMIT_SHA <- sprintf("%s@%s", ref, SHA)
+                if( !is.na(SHA0_D) ) DESC_SHA <- sprintf("%s@%s", ref, SHA0_D)
+                if( is_NA(SHA0) && length(desc_file) ){
                     dcf <- read.dcf(desc_file)
                     dcf <- add_dcf_field(dcf, 'GithubSHA1')
-                    # skip whole repo if no changes
-                    if( dcf[, 'GithubSHA1'] %in% SHA ){
-                        message('OK [no changes]')
-                        return(c('', SHA))
-                    }
+                    SHA0 <- dcf[, 'GithubSHA1']
+                }
+                
+                # skip whole repo if no changes
+                if( SHA %in% SHA0 ){
+                    message('OK [no changes]')
+                    return(c(DESC_SHA, COMMIT_SHA))
                 }
                 
                 # fetch content of master branch
                 cnt <- gh_get_content(user, repo, ref = ref)
-                pkg_subdir <- ''
                 if( is.null(d <- cnt$DESCRIPTION) ){
                     
                     # test pkg/ sub-directory (e.g., rforge-like tree structure)
                     if( !is.null(cnt$pkg) && cnt$pkg$type == 'dir' ){
                         cnt <- gh_get_content(user, repo, ref = ref, path = 'pkg')
-                        pkg_subdir <- 'pkg'
                     }
                     
                     if( is.null(d <- cnt$DESCRIPTION) ){
                         message(added_flag, 'SKIP [no package]')
-                        return(c('$', SHA))
+                        return(c(NA, COMMIT_SHA))
                     }
                 }
-                
-                # append package subdirectory
-                if( nzchar(pkg_subdir) ){
-                    refdir <- file.path(refdir, paste0('!', pkg_subdir))
-                    message(file.path(pkg_subdir, ''), appendLF = FALSE)
-                }
-                
-                # update DESCRIPTION only if necessary
-                res <- 1L
-#                cat(SHA, '\n', file = flag_file, sep = '')
-                message(added_flag, "DESCRIPTION", appendLF = FALSE)
-                tmp_desc <- file.path(tempdir(), paste0('DESCRIPTION_', SHA))
-                on.exit( unlink(tmp_desc), add = TRUE)
-                download.file(d$download_url, dest = tmp_desc, quiet = TRUE)
-                # add fields
-                dcf <- try(read.dcf(tmp_desc), silent = TRUE)
-                if( is(dcf, 'try-error') ){
-                    message(sprintf('[error: %s]', dcf))
-                    return(c("!", SHA))
-                }
-                message(sprintf("[%s] ", substr(SHA, 1, 7)), appendLF = FALSE)
-                dcf <- cbind(dcf, GithubRepo = repo
-                                , GithubUsername = user
-                                , GithubRef = ref
-                                , GithubSHA1 = SHA
-                                , GithubFork = ifelse(rdata$fork, 'yes', 'no')
-                                )
                                 
+                # append package subdirectory
+                pkg_subdir <- dirname(cnt$DESCRIPTION$path)
+                if( pkg_subdir != '.' ){
+                    refdir <- file.path(refdir, paste0('!', pkg_subdir))
+                    message(added_flag, file.path(pkg_subdir, ''), appendLF = FALSE)
+                    added_flag <- ''
+                }
+                
+                # download DESCRIPTION file only if necessary
+                SHA_D <- cnt$DESCRIPTION$sha
+                if( !SHA_D %in% SHA0_D ){
+                    
+                    message(added_flag, "DESCRIPTION", appendLF = FALSE)
+                    tmp_desc <- file.path(tempdir(), paste0('DESCRIPTION_', DESC_SHA))
+                    on.exit( unlink(tmp_desc), add = TRUE)
+                    download.file(d$download_url, dest = tmp_desc, quiet = TRUE)
+                    # add fields
+                    dcf <- try(read.dcf(tmp_desc), silent = TRUE)
+                    if( is(dcf, 'try-error') ){
+                        message(sprintf('[error: %s]', dcf))
+                        return(c(DESC_SHA, COMMIT_SHA))
+                    }
+                }else{
+                    messagef("CACHE", , appendLF = FALSE)
+                    # create partial DESCRIPTION file
+                    dcf <- cbind(.GithubPartial = 'yes')
+                }
+                message(sprintf("[%s] ", substr(SHA_D, 1, 7)), appendLF = FALSE)
+                
+                DESC_SHA <- sprintf("%s@%s", ref, cnt$DESCRIPTION$sha)
+                 
+                dcf <- cbind(dcf, GithubRepo = repo
+                         , GithubUsername = user
+                         , GithubRef = ref
+                         , GithubSHA1 = SHA
+                         , GithubFork = ifelse(rdata$fork, 'yes', 'no')
+                         , GithubPath = if( pkg_subdir != '.' ) pkg_subdir else NA
+                        )
+                has_src <- !is.null(cnt$src) && cnt$src$type == 'dir'
+                if( has_src ) message('src ', appendLF = FALSE)
+                dcf <- add_dcf_field(dcf, 'NeedsCompilation', .yesno(has_src), force = TRUE)
+                
                 # create ref sub-directory
                 dir.create(refdir, recursive = TRUE, showWarnings = FALSE)
                 
-                # create src/ sub-directory if present
-                src_dir <- file.path(refdir, 'src')
-                if( !is.null(cnt$src) && cnt$src$type == 'dir' ){
-                    if( !dir.exists(src_dir) ){
-                        res <- res + 1L
-                        message("+src", appendLF = FALSE)
-                        dir.create(src_dir, recursive = TRUE, showWarnings = FALSE)
-                        cat('', file = file.path(src_dir, 'README'))
-                    }
-                }else if( dir.exists(src_dir) ){
-                    res <- res + 1L
-                    message("-src", appendLF = FALSE)
-                    unlink(src_dir, recursive = TRUE, force = TRUE)
-                }
-                message()
-                
                 # update DESCRIPTION file
                 write.dcf(dcf, file.path(refdir, 'DESCRIPTION'))
-                return(c('', SHA))
+                
+                message()
+                return(c(DESC_SHA, COMMIT_SHA))
             })
         }
         
         # update indexed data
-        .update_repo_index(rdata, SHA = res)
+        .update_repo_index(rdata, res)
         
         res[res > 0L]
     }, simplify = FALSE)
@@ -657,12 +694,11 @@ pull_github_packages <- function(dir, sources = NULL){
     # update each unpacked sub-directory
     on.exit(gh_context_save(), add = TRUE)
     library(plyr)
-#            o <- options(download.file.method = 'curl')
-#            on.exit( options(o), add = TRUE)
+    
     # load previous index and save new on exit
     USER <- NULL
     if( file.exists(index_file <- file.path(dir, "REPOS")) ){
-        message("* Loading previous repo index ... ", appendLF = FALSE)
+    message("* Loading previous repo index ... ", appendLF = FALSE)
         USER <- read.repos(file = index_file)                
         index <- as.matrix(USER[!duplicated(USER[, 'full_name']), , drop = FALSE])
         message(sprintf(" OK [%i refs | %i repos]", nrow(USER), nrow(index)))
@@ -689,20 +725,17 @@ pull_github_packages <- function(dir, sources = NULL){
     
     USER_hash <- digest(USER)
     on.exit({
-#        message("* Checking changes in repo indexes ")
-#        changes <- list.changed.user(dir)
-#        uname <- basename(dirname(unlist(changes)))
-#        USER <- USER[!USER[, 'user'] %in% uname, , drop = FALSE]
-#        .git <- dirname(discover_repository(dir))
-#        user_path <- file.path(.git, c(changes$Changed, changes$New))
-#        USER_NEW <- ldply(user_path, function(x) read.repos(file = x))
-#        USER <- rbind.fill(USER, USER_NEW)
-#        USER <- USER[order(USER[, 'full_name']), , drop = FALSE]
-#        print(digest(USER))
-            
-        # order by key (user/repo/ref)
+        message("* Checking changes in repo indexes ")
         user_path <- list.files(dir, recursive = TRUE, full.names = TRUE, pattern = "^USER$")
-        USER <- ldply(user_path, function(x) read.repos(file = x))
+        uname <- basename(dirname(user_path))
+        # remove users for which there are updated data 
+        USER <- USER[!USER[, 'user'] %in% uname, , drop = FALSE]
+        USER_NEW <- ldply(user_path, function(x) read.repos(file = x))
+        USER <- rbind.fill(USER, USER_NEW)
+        # drop old columns
+        USER$refs <- NULL
+        USER$commit_sha <- NULL
+        # order by full_name
         USER <- USER[order(USER[, 'full_name']), , drop = FALSE]
         
         if( digest(USER) != USER_hash ){
@@ -719,7 +752,7 @@ pull_github_packages <- function(dir, sources = NULL){
     message("* Processing repos: ", str_out(sum, Inf, use.names = TRUE))
     with_rcurl({
         iuser <- split(seq(nrow(gh_packages)), gh_packages[, 'user'])
-#                iuser <- head(iuser, 3L)
+#        iuser <- head(iuser, 3L)
         USER_NEW <- ldply(iuser, function(i){
             data <- gh_packages[i, , drop = FALSE]
             user <- data[1L, 'user']
@@ -756,6 +789,7 @@ repopath2xpath <- function(x){
 #' @importFrom tools md5sum
 GRAN.update_github <- function(src, force = FALSE, fields = GRAN.fields(), update = FALSE, actions = c('changes', 'PACKAGES', 'index'), test = FALSE, verbose = TRUE){
     
+    library(plyr)
     do_commit <- TRUE
     if( test ){
         do_commit <- FALSE
@@ -790,21 +824,7 @@ GRAN.update_github <- function(src, force = FALSE, fields = GRAN.fields(), updat
     if( update ){
         nUpdated <- pull_github_packages(src_fullpath, update.src)
     }
-    
-    # push changes to Github
-    .list.DESCRIPTION <- local({.cache <- NULL; function(strip = FALSE){
-        if( is.null(.cache) ){
-            res <- list.files(src, recursive = TRUE, full.names = TRUE, pattern = '^DESCRIPTION$')
-            names(res) <- gsub(".*github.com/([^/]+)/([^/]+)/.*", "\\1/\\2", res)
-            .cache <<- res
-        }
-        res <- .cache
-        if( strip ) res <- gsub(paste0("^", src, "/"), "", res)
-        res
-    }})
-    
-
-
+        
     ## CHECK CHANGES
     library(git2r)
     # initialise repository if not already in a git repo
@@ -813,84 +833,10 @@ GRAN.update_github <- function(src, force = FALSE, fields = GRAN.fields(), updat
     }
     GH_repo <- repository(src0)
     #        status <- status(GH_repo) 
-    message("* Checking changes ", appendLF = FALSE)
-    CHANGES <- list.changed.packages(src)
-    message(sprintf("[%s]", paste(lengths(CHANGES), names(CHANGES), collapse = " | ")))
+#    message("* Checking changes ", appendLF = FALSE)
+#    CHANGES <- list.changed.packages(src)
+#    message(sprintf("[%s]", paste(lengths(CHANGES), names(CHANGES), collapse = " | ")))
     #
-    
-    if( 'changes' %in% actions ){
-        
-        message("* Commiting changes ", appendLF = FALSE)
-        pkg_srcd <- file.path(c(CHANGES$Changed, CHANGES$New), 'DESCRIPTION')
-        if( !length(pkg_srcd) ) message('OK [none]')
-        else{
-            message(sprintf("[%s]", paste(lengths(CHANGES), names(CHANGES), collapse = " | ")))
-            back <- function(x){
-                n <- nchar(x)
-                b <- paste0(rep("\b", n), collapse = '')
-                dolog(b)
-            }
-            dolog <- function(..., appendLF = TRUE) cat(...)
-            dolog <- message
-            dolog <- function(...) NULL
-            # build commmit message
-            ch <- sapply(c('Changed', 'New'), function(t){
-                msg <- lapply(file.path(CHANGES[[t]], 'DESCRIPTION'), function(desc_file){
-                
-                    srcd <- dirname(desc_file)
-                    repo_name <- basename(srcd)
-                    .log <- ''
-                    log <- paste0("- ", repo_name, " ... ") 
-                    dolog(log, appendLF = FALSE)
-                    .log <- paste0(.log, log)
-                    # load description file to extract some GitHub data 
-                    desc <- read.dcf(file.path(src0, desc_file))
-                    ghRepo <- if( 'GithubRepo' %in% colnames(desc) ) desc[1L, 'GithubRepo'] else desc[, 'Package']
-                    ghUser <- desc[1L, 'GithubUsername']
-                    ghRef <- desc[1L, 'GithubRef']
-                    ghSHA1 <- if( 'GithubSHA1' %in% colnames(desc) ) desc[1L, 'GithubSHA1']
-                    
-                    # build commit message
-                    ref <- paste0(sprintf('%s/%s', ghUser, ghRepo), if( length(ghSHA1) ) paste0('@', ghSHA1))
-                    msg <- sprintf('%s: %s', repo_name, ref)
-                    log <- paste0("[", ref, ']                                       ')
-                    dolog(log, appendLF = TRUE)
-    #                .log <- paste0(.log, log)
-    #                back(.log)
-                    
-                    # add and commit
-                    if( do_commit ){
-                        add(GH_repo, srcd)
-    #                    commit(GH_repo, message = msg)
-    #                    
-                    }else message(sprintf("skipped [%s]", srcd))
-                    msg
-                })
-            }, simplify = FALSE)
-    
-            # build yaml message
-            to_commit <- c(ch, CHANGES['Deleted'])
-            msg <- paste0("# GRAN update: ", Sys.time())
-            msg <- paste0(msg, "\n", yaml::as.yaml(to_commit[lengths(to_commit) > 0]))
-            message(msg)
-            if( do_commit ){
-                commit(GH_repo, message = msg)
-            }
-        }
-        
-        if( do_commit ){
-            user_changes <- list.changed.user(src)
-            if( any(lengths(user_changes)) ){
-                user_changes <- user_changes[lengths(user_changes) > 0]
-                add(GH_repo, unlist(user_changes))
-                user_msg <- paste0("# USER repos: ", Sys.time(), "\n", yaml::as.yaml(user_changes))
-                message(user_msg)
-                commit(GH_repo, message = user_msg)
-            }
-        }
-        message()
-        
-    }
     
     # update PACKAGES files
     if( 'PACKAGES' %in% actions ){
@@ -900,53 +846,87 @@ GRAN.update_github <- function(src, force = FALSE, fields = GRAN.fields(), updat
         fields <- c('Date', fields)
         message("* Generating PACKAGES files in '", src, "'")
         
-        if( length(CHANGES) && !force ){
-            # load previous PACKAGES
-            PACKS <- read.dcf(file.path(src, 'PACKAGES.gz'))
-            rownames(PACKS) <- file.path(PACKS[, 'GithubUsername'], PACKS[, 'GithubRepo'], PACKS[, 'GithubRef'])
-            
-            # remove deleted packages
-            to_delete <- repopath2xpath(CHANGES$Deleted)
-            if( length(del <- which(rownames(PACKS) %in% to_delete)) ){
-                message(sprintf("  ** Removing %i packages from index", length(del)))
-                PACKS <- PACKS[-del, , drop = FALSE]
-            }
-            
-            # set changed/new packages
-            rootdir <- attr(CHANGES, 'root')
-            to_set <- file.path(rootdir, c(CHANGES$Changed, CHANGES$New), 'DESCRIPTION')
-            if( length(to_set) ){
-                ch <- as.matrix(ldply(to_set, function(path){
-                    res <- data.frame(read.dcf(path), stringsAsFactors = FALSE)
-                    # compilation flag
-                    res$NeedsCompilation <- unname(ifelse(dir.exists(file.path(dirname(path), 'src')), 'yes', 'no'))
-                    # sub-path
-                    res$Path <- dirname(path)
-                    res
-                }))
-                ch[, 'Path'] <- sub(sprintf("^%s/", normalizePath(src)), '', ch[, 'Path'])
-                rownames(ch) <- file.path(ch[, 'GithubUsername'], ch[, 'GithubRepo'], ch[, 'GithubRef'])
-                
-                # update PACKS
-                im <- match(rownames(ch), rownames(PACKS))
-                i.ok <- !is.na(im)
-                message(sprintf("  ** Adding %i packages to index", sum(!i.ok)))
-                PACKS <- rbind.fill.matrix(PACKS, ch[!i.ok, , drop = FALSE])
-                message(sprintf("  ** Updating %i packages in index", sum(i.ok)))
-                f <- intersect(colnames(PACKS), colnames(ch))
-                PACKS[im[i.ok], f] <- ch[i.ok, f, drop = FALSE] 
-                
-                # write files
-                message(sprintf("  ** Writing PACKAGES files [%i]", nrow(PACKS)))
-                write_PACKAGES_files(PACKS, src)
-            }
-            
-            if( !length(c(to_delete, to_set)) ) message("  ** No changes") 
-            
-        }else if( force ){
-            message("  ** Writing PACKAGES from unpacked directories")
-#            write_GH_PACKAGES(src, fields = fields)
+        message("* Loading updated PACKAGES ... ", appendLF = FALSE)
+        d <- list.files(src_fullpath, recursive = TRUE, pattern = '^DESCRIPTION$', full.names = TRUE)
+        PACKS_NEW <- do.call(rbind.fill.matrix, lapply(d, read.dcf))
+        # enforce format
+        PACKS_NEW <- add_dcf_field(PACKS_NEW, 'GithubRepo', PACKS_NEW[, 'Package'])
+        PACKS_NEW <- add_dcf_field(PACKS_NEW, '.GithubPartial', '')
+        messagef("OK [%i packages]", nrow(PACKS_NEW))
+        # set rownames and check/remove  for duplicates
+        rownames(PACKS_NEW) <- GRAN_key(PACKS_NEW)
+        if( anyDuplicated(rownames(PACKS_NEW)) ){
+            dups <- unique(rownames(PACKS_NEW)[duplicated(rownames(PACKS_NEW))])
+            id <- which(rownames(PACKS_NEW) %in% dups)
+            messagef("* Removing %i duplicated packages: %s", length(id), str_out(dups, 5, total = TRUE))
+            PACKS_NEW <- PACKS_NEW[-id, , drop = FALSE] 
+        } 
+        
+        # clean up
+        bad <- which(is.na(PACKS_NEW[, 'Package']) | !nzchar(PACKS_NEW[, 'Package']))
+        if( length(bad) ){
+            bad_nm <- unique(PACKS_NEW[bad, 'Package'])
+            messagef("* Removing %i packages with invalid names: %s", length(bad), str_out(bad_nm, 5, total = TRUE))
+            PACKS_NEW <- PACKS_NEW[-bad, , drop = FALSE]
         }
+        
+        # load previous PACKAGES
+        message("* Loading old PACKAGES ... ", appendLF = FALSE)
+        PACKS <- readRDS(file.path(src, 'packages.rds'))
+        rownames(PACKS) <- GRAN_key(PACKS)
+        PACKS <- PACKS[!rownames(PACKS) %in% rownames(PACKS)[duplicated(rownames(PACKS))], , drop = FALSE]
+        messagef("OK [%i packages]", nrow(PACKS))
+        
+        # align
+        i <- match(rownames(PACKS_NEW), rownames(PACKS), nomatch = 0L)
+        PACKS <- rbind.fill.matrix(PACKS, PACKS_NEW[0L, , drop = FALSE])
+        rownames(PACKS) <- GRAN_key(PACKS)
+        PACKS_NEW <- rbind.fill.matrix(PACKS_NEW, PACKS[0L, , drop = FALSE])
+        rownames(PACKS_NEW) <- GRAN_key(PACKS_NEW)
+        
+        # add new packages
+        new <- which(!i)
+        if( length(new) ){
+            messagef("  ** Adding %i packages to index", length(new))
+            PACKS <- rbind.fill.matrix(PACKS, PACKS_NEW[new, , drop = FALSE])
+        }
+        rownames(PACKS) <- GRAN_key(PACKS)
+        
+        # update other packages
+        partial <- PACKS_NEW[, '.GithubPartial'] == 'yes' & i
+        .f <- setdiff(colnames(PACKS), c('NeedsCompilation', grep('^Github', colnames(PACKS_NEW), value = TRUE)))
+        messagef("  ** Updating Github data for %s packages ", sum(partial))
+        PACKS_NEW[partial, .f] <- PACKS[i[partial], .f]
+        messagef("  ** Updating %s packages ", sum(!partial))
+        PACKS[i, ] <- PACKS_NEW[i>0, , drop = FALSE]
+        
+        # remove technical columns
+        jp <- which(colnames(PACKS) == '.GithubPartial')
+        PACKS <- PACKS[, -jp, drop = FALSE]
+        
+        # clean up
+        PACKS <- PACKS[!is.na(PACKS[, 'Package']), , drop = FALSE]
+        PACKS <- add_dcf_field(PACKS, 'Path', file.path('github.com', rownames(PACKS)), force = TRUE)
+        
+        # TODO: remove deleted packages
+        to_delete <- NULL 
+#        if( length(del <- which(rownames(PACKS) %in% to_delete)) ){
+#            message(sprintf("  ** Removing %i packages from index", length(del)))
+#            PACKS <- PACKS[-del, , drop = FALSE]
+#        }
+        
+        # write files
+        message(sprintf("  ** Updating file PACKAGES files [%i]", nrow(PACKS)))
+#        write_PACKAGES_files(PACKS, src)
+        saveRDS(PACKS, file.path(src, 'packages.rds'))
+            
+        # remove pulled data
+        unlink( file.path(src_fullpath, 'github.com'), recursive = TRUE )
+        
+#        }else if( force ){
+#            message("  ** Writing PACKAGES from unpacked directories")
+##            write_GH_PACKAGES(src, fields = fields)
+#        }
         
     }
     
