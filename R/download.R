@@ -75,7 +75,7 @@ has_userpwd <- function(x){
             # set environment variable read by custom rcurl binary
             Sys.setenv(`R_REPOTOOLS_RSCRIPT` = rscript)
             Sys.setenv(`R_REPOTOOLS_RCURL` = path.pkg('RCurl'))
-            Sys.setenv(`R_REPOTOOLS_RCURL.r` = path.pkg('repotools', 'exec/rcurl.R'))
+            Sys.setenv(`R_REPOTOOLS_RCURL_SCRIPT` = path.pkg('repotools', 'exec/rcurl.R'))
             # prepend binary path to system PATH
             .settings$PATH <<- Sys.getenv('PATH')
             Sys.setenv(PATH = paste(dirname(.settings$curl_exec), .settings$PATH, sep = .Platform$path.sep))
@@ -89,7 +89,7 @@ has_userpwd <- function(x){
             # clean up repotools environment variables
             Sys.unsetenv('R_REPOTOOLS_RSCRIPT')
             Sys.unsetenv('R_REPOTOOLS_RCURL')
-            Sys.unsetenv('R_REPOTOOLS_RCURL.r')
+            Sys.unsetenv('R_REPOTOOLS_RCURL_SCRIPT')
             # reset settings backup list
             .settings <<- list()
         }

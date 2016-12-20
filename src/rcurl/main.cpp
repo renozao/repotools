@@ -75,7 +75,7 @@ int main(int argc, const char* argv[] ){
 	if( rscript == NULL ){
 		rscript = "Rscript";
 	}
-	const char* RCurl_script = getenv("R_REPOTOOLS_RCURL.r");
+	const char* RCurl_script = getenv("R_REPOTOOLS_RCURL_SCRIPT");
 	if( RCurl_script == NULL ){
 		RCurl_script = "NOT_FOUND";
 	}
