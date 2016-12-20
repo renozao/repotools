@@ -8,8 +8,10 @@
 # process command line arguments
 args <- commandArgs(TRUE)
 getArg <- function(x, default = NULL){
-    if( length(i <- which(args == x)) ) args[i+1L]
+    res <- if( length(i <- which(args == x)) ) args[i+1L]
     else default
+    if( res == 'NULL' ) res <- default
+    res
 }
 
 src <- args[1L]
