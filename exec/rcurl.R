@@ -10,7 +10,7 @@ args <- commandArgs(TRUE)
 getArg <- function(x, default = NULL){
     res <- if( length(i <- which(args == x)) ) args[i+1L]
     else default
-    if( res == 'NULL' ) res <- default
+    if( res == 'NULL' ) res <- NULL
     res
 }
 
@@ -20,7 +20,7 @@ src <- args[1L]
 dest <- args[2L]
 quiet <- '--quiet' %in% args
 lib.loc <- getArg('--lib')
-httpheader <- getArg('--httpheader', NULL)
+httpheader <- getArg('--httpheader', '')
 userpwd <- getArg('--userpwd', '')
         
 # progress bar
@@ -57,12 +57,22 @@ file.fsize <- function(x, size = file.size(x)){
 
 rcurl <- function(){
     suppressMessages(library(RCurl, lib.loc = lib.loc))
-    curl_opts <- curlOptions(progressfunction = rcurl_progress_func
-                    , userpwd = userpwd # credentials wihtin url
-                    , noprogress = quiet
-                    , netrc = as.numeric(nzchar(userpwd)) # look for credentials in netrc file if not already provided in url
-                    , followlocation = TRUE
-                    )
+    
+    opts <- list(progressfunction = rcurl_progress_func
+                  , noprogress = quiet
+                  , followlocation = TRUE
+                  , netrc = 1
+              )
+    # add credentials if needed
+    # look for credentials in netrc file if not already provided in url
+    if( !is.null(userpwd) ){
+      opts$netrc <- NULL
+      opts$userpwd <- userpwd
+    }
+    
+    # build curl option list
+    opts <- opts[!sapply(opts, is.null)]
+    curl_opts <- do.call(curlOptions, opts)
     
     if( debug_mode() ){
       cat("Checking url:", src, "\n")
@@ -76,6 +86,8 @@ rcurl <- function(){
 		}
         return(invisible())
     }
+    
+    # fetch URL data
     get_call <- call('getBinaryURL', url = src, .opts = curl_opts)
     if( length(httpheader) ) get_call[['httpheader']] <- httpheader
     raw <- eval(get_call)
