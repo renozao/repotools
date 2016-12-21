@@ -14,11 +14,13 @@ getArg <- function(x, default = NULL){
     res
 }
 
+debug_mode <- function() nzchar(Sys.getenv('R_REPOTOOLS_DEBUG'))
+
 src <- args[1L]
 dest <- args[2L]
 quiet <- '--quiet' %in% args
 lib.loc <- getArg('--lib')
-httpheader <- getArg('--httpheader', '')
+httpheader <- getArg('--httpheader', NULL)
 userpwd <- getArg('--userpwd', '')
         
 # progress bar
@@ -58,9 +60,15 @@ rcurl <- function(){
     curl_opts <- curlOptions(progressfunction = rcurl_progress_func
                     , userpwd = userpwd # credentials wihtin url
                     , noprogress = quiet
-                    , netrc = as.numeric(!nzchar(userpwd)) # look for credentials in netrc file if not already provided in url
+                    , netrc = as.numeric(nzchar(userpwd)) # look for credentials in netrc file if not already provided in url
                     , followlocation = TRUE
                     )
+    
+    if( debug_mode() ){
+      cat("Checking url:", src, "\n")
+      cat("Options:\n")
+      cat(sprintf("  - %s: '%s'", names(curl_opts), curl_opts), sep = "\n")
+    }
     if( !url.exists(src, .opts = curl_opts) ){
         if( !quiet ){ 
             rcurl_progress_func(NULL, NULL)
@@ -68,7 +76,10 @@ rcurl <- function(){
 		}
         return(invisible())
     }
-    raw <- getBinaryURL(src, .opts = curl_opts, httpheader = httpheader)
+    get_call <- call('getBinaryURL', url = src, .opts = curl_opts)
+    if( length(httpheader) ) get_call[['httpheader']] <- httpheader
+    raw <- eval(get_call)
+    
     if( !quiet ){ 
         rcurl_progress_func(NULL, TRUE) 
         cat(" [OK"); 
