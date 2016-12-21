@@ -40,7 +40,7 @@ if( !quiet ){
         if( totaldotz - dotz > 0 ) replicate(totaldotz - dotz, cat(" "))
         cat(sprintf("] %3.0f%%",fractiondownloaded*100))
         flush.console()
-        if( !isTRUE(now) && totaldotz > 0 ) replicate(totaldotz + 7, cat("\b"))
+        if( !isTRUE(now) ) replicate(totaldotz + 7, cat("\b"))
 	}
 }
 
