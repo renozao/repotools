@@ -10,7 +10,7 @@ args <- commandArgs(TRUE)
 getArg <- function(x, default = NULL){
     res <- if( length(i <- which(args == x)) ) args[i+1L]
     else default
-    if( res == 'NULL' ) res <- NULL
+    if( !is.null(res) && res == 'NULL' ) res <- NULL
     res
 }
 
@@ -20,8 +20,8 @@ src <- args[1L]
 dest <- args[2L]
 quiet <- '--quiet' %in% args
 lib.loc <- getArg('--lib')
-httpheader <- getArg('--httpheader', '')
-userpwd <- getArg('--userpwd', '')
+httpheader <- getArg('--httpheader')
+userpwd <- getArg('--userpwd')
         
 # progress bar
 rcurl_progress_func <- NULL
@@ -36,11 +36,11 @@ if( !quiet ){
         fractiondownloaded = NowDownloaded / TotalToDownload
         dotz = round(fractiondownloaded * totaldotz)
         cat("[")
-        replicate(dotz, cat("="))
-        replicate(totaldotz - dotz, cat(" "))
+        if( dotz > 0 ) replicate(dotz, cat("="))
+        if( totaldotz - dotz > 0 ) replicate(totaldotz - dotz, cat(" "))
         cat(sprintf("] %3.0f%%",fractiondownloaded*100))
         flush.console()
-        if( !isTRUE(now) ) replicate(totaldotz + 7, cat("\b"))
+        if( !isTRUE(now) && totaldotz > 0 ) replicate(totaldotz + 7, cat("\b"))
 	}
 }
 
