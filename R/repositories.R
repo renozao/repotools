@@ -250,10 +250,10 @@ install.pkgs("<pkgname>", devel = TRUE)
 #' Repository Indexes
 #' 
 #' \code{contrib_cache} returns the path to the RDS file were a repository index is
-#' stored when first accessed by \code[utils]{available.packages}.
+#' stored when first accessed by \code{\link[utils]{available.packages}}.
 #' 
 #' @param repos Repository URL
-#' @param type Package type (see \code[utils]{contrib.url})
+#' @param type Package type (see \code{\link[utils]{contrib.url}})
 #' @export
 contrib_cache <- function(repos, type = getOption('pkgType')){
     url <- contrib.url(repos, type)
@@ -263,7 +263,7 @@ contrib_cache <- function(repos, type = getOption('pkgType')){
 
 #' \code{contrib_cache_clear} deletes the index cache file, 
 #' so that the repository's index is refreshed by the next call to
-#' \code[utils]{available.packages}.
+#' \code{\link[utils]{available.packages}}.
 #'  
 #' @param ... parameters passed to \code{contrib_cache}.
 #' @rdname contrib_cache

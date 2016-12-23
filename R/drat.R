@@ -197,7 +197,7 @@ load_repos_drat <- function(cache = cachefile('drat'), update = 'all', force = F
 
 #' Fetch the Last N R Versions
 #' 
-#' This function uses \code[rversions]{r_versions} to fetch all the 
+#' This function uses \code{\link[rversions]{r_versions}} to fetch all the 
 #' R versions from R main SVN server.
 #' 
 #' @param n Number of versions to return
@@ -373,9 +373,8 @@ write_GRAN_repo <- function(var, FUN, ..., PACKAGES, no.dups = TRUE, append = FA
 }
 
 #' Updates Repository Indexes of Built Packages
-#' 
-#' @details
-#' Create a package repository that aggregates all GitHub source and 
+#'
+#' Creates a package repository that aggregates all GitHub source and 
 #' \code{drat} repositories into a single one, compatible with 
 #' \code{\link{install.packages}}.
 #' 
