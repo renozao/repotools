@@ -4,7 +4,7 @@
 # Created: Nov 18, 2013
 ###############################################################################
 
-#' @import pkgmaker
+#' @import pkgmaker utils plyr
 NULL
 
 # or-NULL operator (borrowed from Hadley Wickham)

@@ -13,22 +13,24 @@ SCM: github+gran:renozao
 Depends:
     R (>= 3.0)
 Imports:
+	utils,
     digest,
     tools,
     pkgmaker (>= 0.25.8),
     devtools (>= 1.6.1),
     RCurl,
-    stringr
+    stringr,
+    rversions,
+    plyr
 Suggests:
     BiocInstaller,
     hwriter,
-    ReportingTools,
-    plyr
+    ReportingTools
 Collate:
     'GRAN.R'
+    'utils.R'
     'url.R'
     'download.R'
-    'utils.R'
     'api.R'
     'drat.R'
     'github.R'
