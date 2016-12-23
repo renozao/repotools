@@ -19,6 +19,7 @@ void gsub(string& s, char x, char y) {
 int main(int argc, const char* argv[] ){
 
 	bool debug = getenv("R_REPOTOOLS_DEBUG") != NULL;
+	bool force_verbose = getenv("R_REPOTOOLS_VERBOSE") != NULL;
 	const char** args = argv;
 	// arguments
 	stringstream args_s;
@@ -55,7 +56,7 @@ int main(int argc, const char* argv[] ){
 	}
 
 	// determine silent download
-	bool silent = !debug && silent_flags > 1;
+	bool silent = !debug && silent_flags > 1 && !force_verbose;
 
 	silent_s = silent ? "TRUE" : "FALSE";
 	if( !silent ){

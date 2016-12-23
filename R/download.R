@@ -56,7 +56,7 @@ has_userpwd <- function(x){
 
 .setup_rcurl <- local({
     .settings <- list()
-    function(reset = FALSE){
+    function(reset = FALSE, verbose = FALSE){
         
         # only setup if necessary
         if( is.character(reset) ){
@@ -76,6 +76,7 @@ has_userpwd <- function(x){
             Sys.setenv(`R_REPOTOOLS_RSCRIPT` = rscript)
             Sys.setenv(`R_REPOTOOLS_RCURL` = path.pkg('RCurl'))
             Sys.setenv(`R_REPOTOOLS_RCURL_SCRIPT` = path.pkg('repotools', 'exec/rcurl.R'))
+            if( verbose ) Sys.setenv(`R_REPOTOOLS_VERBOSE` = 1)
             # prepend binary path to system PATH
             .settings$PATH <<- Sys.getenv('PATH')
             Sys.setenv(PATH = paste(dirname(.settings$curl_exec), .settings$PATH, sep = .Platform$path.sep))
@@ -86,10 +87,10 @@ has_userpwd <- function(x){
             old <- if( is.list(reset) ) reset else .settings
             options(old$options)
             if( !is.null(old$PATH) ) Sys.setenv(PATH = old$PATH)
-            # clean up repotools environment variables
-            Sys.unsetenv('R_REPOTOOLS_RSCRIPT')
-            Sys.unsetenv('R_REPOTOOLS_RCURL')
-            Sys.unsetenv('R_REPOTOOLS_RCURL_SCRIPT')
+            # clean up repotools environment variables (except debug)
+            reptools_env <- grep("^R_REPOTOOLS_", names(Sys.getenv()), value = TRUE)
+            reptools_env <- setdiff(reptools_env, 'R_REPOTOOLS_DEBUG')
+            lapply(reptools_env, Sys.unsetenv)
             # reset settings backup list
             .settings <<- list()
         }
@@ -132,11 +133,15 @@ download_file <- function(url, destfile, ...){
 #' setup as the default download method.
 #' 
 #' @param expr an expression
+#' @param verbose logical that forces downloads to be shown (progress bar).
+#' This parameter is used to overides any hard coded value for the \var{quiet} argument 
+#' in sub-sequent calls to \code{\link{download.file}}.
+#' 
 #' @rdname download_file
 #' @export
-with_rcurl <- function(expr){
+with_rcurl <- function(expr, verbose = FALSE){
     
-    if( .setup_rcurl() ) on.exit( .setup_rcurl(TRUE) )
+    if( .setup_rcurl(verbose = verbose) ) on.exit( .setup_rcurl(TRUE) )
     e <- parent.frame()
     eval(expr, env = e)
 }
