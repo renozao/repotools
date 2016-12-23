@@ -106,6 +106,7 @@ has_userpwd <- function(x){
 #' @inheritParams utils::download.file
 #' @param ... arguments passed to \code{\link{download.file}}.
 #' 
+#' @export
 download_file <- function(url, destfile, ...){
     
     x <- url
