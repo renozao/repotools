@@ -13,7 +13,7 @@ SCM: github+gran:renozao
 Depends:
     R (>= 3.0)
 Imports:
-	utils,
+    utils,
     digest,
     tools,
     pkgmaker (>= 0.25.8),
@@ -28,9 +28,9 @@ Suggests:
     ReportingTools
 Collate:
     'GRAN.R'
-    'utils.R'
     'url.R'
     'download.R'
+    'utils.R'
     'api.R'
     'drat.R'
     'github.R'
