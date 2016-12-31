@@ -195,32 +195,6 @@ load_repos_drat <- function(cache = cachefile('drat'), update = 'all', force = F
     DATA
 }
 
-#' Fetch the Last N R Versions
-#' 
-#' This function uses \code{\link[rversions]{r_versions}} to fetch all the 
-#' R versions from R main SVN server.
-#' 
-#' @param n Number of versions to return
-#' @param digits Number of version digits: 1 = major version number, 
-#' 2 = <major>.<minor1>, 3 = <major>.<minor1>.<minor2>
-#' @param cache logical that indicates if the result should be retrieved from 
-#' cache or (re-)fetched from the SVN server.
-#' 
-#' @importFrom rversions r_versions
-#' @export
-r_versions_n <- local({
-    .versions <- NULL
-    function(n = Inf, digits = 2L, cache = TRUE){
-        # fetch versions if necessary
-        .versions <<- {if( cache ) .versions} %||% r_versions(dots = TRUE)
-        
-        # process and limit
-        vd <- sapply(strsplit(.versions[[1L]], ".", fixed = TRUE)
-                    , function(x) paste0(head(x, digits), collapse = "."))
-        tail(unique(vd), n)
-    }
-})
-
 #' @importFrom RCurl url.exists
 drat_PACKAGES <- function(user, type, repo = 'drat', verbose = TRUE){
     
@@ -261,34 +235,6 @@ contrib.path <- function(..., type = getOption('pkgType'), version = NULL){
     p <- gsub('^/', '', contrib.url('', type = type))
     if( !is.null(version) && !is_NA(version) ) p <- file.path(dirname(p), version)
     file.path(..., p)
-    
-}
-
-# Adds a field to a DESCRIPTION/PACKAGE data
-add_dcf_field <- function(x, name, value, force = FALSE){
-    
-    # early exit if no input data
-    if( !nrow(x) %||% FALSE ) return(x)
-    
-    if( !name %in% colnames(x) ){
-        x <- cbind(x, NA)
-        colnames(x)[ncol(x)] <- name
-    }
-    
-    if( missing(value) ) return(x)
-    
-    value <- rep(value, length.out = nrow(x))
-    
-    # set values
-    if( force ){
-        x[, name] <- value
-        
-    }else{
-        i <- is.na(x[, name])
-        x[i, name] <- value[i]
-    }
-    
-    x
     
 }
 

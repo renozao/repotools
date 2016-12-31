@@ -144,7 +144,7 @@ with_rcurl <- function(expr, verbose = FALSE){
     
     if( .setup_rcurl(verbose = verbose) ) on.exit( .setup_rcurl(TRUE) )
     e <- parent.frame()
-    eval(expr, env = e)
+    eval(expr, envir = e)
 }
 
 readURL <- function(x, ...){

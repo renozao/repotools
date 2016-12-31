@@ -10,11 +10,12 @@
 NULL
 
 .biocinstallRepos <- function(siteRepos = NULL, lib = NULL){
-    if( !qrequire('BiocInstaller', character.only = TRUE, lib.loc = lib) ){
-        sourceURL('http://www.bioconductor.org/biocLite.R')
+    
+    if( !requireNamespace('BiocInstaller', lib.loc = lib) ){
+      using_lib(lib, sourceURL('http://www.bioconductor.org/biocLite.R'))
     }
-    library(BiocInstaller, lib.loc = lib)
-    biocinstallRepos(siteRepos)
+    loadNamespace('BiocInstaller', lib.loc = lib)
+    BiocInstaller::biocinstallRepos(siteRepos)
 }
 
 package_name <- function(x){
@@ -450,41 +451,41 @@ install.pkgs <- function(pkgs, lib = NULL, repos = getOption('repos'), type = ge
             if( length(check_res$hit) ) repos <- c(repos, omega_repo)
         }
         
-        # check GRAN repo (binary)
-        if( type != 'source' && (check_res$missing || devel > 0) ){
-            message("* Checking including binary packages in GRAN ... ", appendLF = FALSE)
-            # select only the master versions
-            p_gran <- GRAN.available(type = contrib_bintype(type), fields = .fields)
-            check_res <- check_repo(p_gran, 'GRAN!', latest = TRUE)
-            # add GRAN to repos list
-            if( length(gran_pkg <- check_res$hit) ){
-               repos <- c(repos, GRAN.repos())
-            }
-        }
-        
-        # check GRAN repo
-        if( check_res$missing || devel > 0 ){
-            message("* Checking including source packages in GRAN ... ", appendLF = FALSE)
-            # select only the master versions
-            p_gran <- GRAN.available(type = 'source', fields = .fields, version = 'master')
-            check_res <- check_repo(p_gran, 'GRAN', latest = devel > 0)
-            # add GRAN to repos list
-            if( length(gran_pkg <- check_res$hit) ){
-                ##repos <- c(repos, gran_repo)
-            }
-        }
-        
-        # check GRAN-dev repo
-        if( check_res$missing || devel > 1 ){
-            message("* Checking including source packages in GRAN (development version)... ", appendLF = FALSE)
-            # select only the non-master versions
-            p_granD <- GRAN.available(type = 'source', fields = .fields, version = '!master')
-            check_res <- check_repo(p_granD, 'GRAN*', latest = devel > 1)
-            # add GRAN to repos list
-            if( length(granD_pkg <- check_res$hit) ){
-                ##repos <- c(repos, gran_repo)
-            }
-        }
+#        # check GRAN repo (binary)
+#        if( type != 'source' && (check_res$missing || devel > 0) ){
+#            message("* Checking including binary packages in GRAN ... ", appendLF = FALSE)
+#            # select only the master versions
+#            p_gran <- GRAN.available(type = contrib_bintype(type), fields = .fields)
+#            check_res <- check_repo(p_gran, 'GRAN!', latest = TRUE)
+#            # add GRAN to repos list
+#            if( length(gran_pkg <- check_res$hit) ){
+#               repos <- c(repos, GRAN.repos())
+#            }
+#        }
+#        
+#        # check GRAN repo
+#        if( check_res$missing || devel > 0 ){
+#            message("* Checking including source packages in GRAN ... ", appendLF = FALSE)
+#            # select only the master versions
+#            p_gran <- GRAN.available(type = 'source', fields = .fields, version = 'master')
+#            check_res <- check_repo(p_gran, 'GRAN', latest = devel > 0)
+#            # add GRAN to repos list
+#            if( length(gran_pkg <- check_res$hit) ){
+#                ##repos <- c(repos, gran_repo)
+#            }
+#        }
+#        
+#        # check GRAN-dev repo
+#        if( check_res$missing || devel > 1 ){
+#            message("* Checking including source packages in GRAN (development version)... ", appendLF = FALSE)
+#            # select only the non-master versions
+#            p_granD <- GRAN.available(type = 'source', fields = .fields, version = '!master')
+#            check_res <- check_repo(p_granD, 'GRAN*', latest = devel > 1)
+#            # add GRAN to repos list
+#            if( length(granD_pkg <- check_res$hit) ){
+#                ##repos <- c(repos, gran_repo)
+#            }
+#        }
         
         # retrieve pacakge list
         to_install <- check_repo()

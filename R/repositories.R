@@ -66,6 +66,20 @@ create_repo <- function(dir = '.', type = NULL, pkgs = NULL, all = TRUE, ..., cl
     invisible(repo_url)
 }
 
+GRAN.fields <- function(named = FALSE, all = FALSE){
+  f <- c(Repo = 'GithubRepo', User = "GithubUsername"
+      , Branch = "GithubRef", Forked = 'GithubFork'
+      , SHA1 = 'GithubSHA1', RepoType = 'GRANType')
+  if( all ) f <- c(f, XDepends = 'XDepends', Key = 'XPath', Type = 'GRANType', Path = 'GRANPath')
+  if( !named ) f <- unname(f)
+  f
+}
+
+gh_repo_path <- function(user, repo, branch = 'master'){
+  sprintf("https://github.com/%s", file.path(user, repo, branch))
+}
+
+
 #' Generate CRAN-like Repository Index
 #' 
 #' @param path path to the repository's root directory
@@ -78,6 +92,9 @@ create_repo <- function(dir = '.', type = NULL, pkgs = NULL, all = TRUE, ..., cl
 #' @export
 #' @importFrom tools write_PACKAGES
 write_PACKAGES_index <- function(path = '.', output = 'index.html', pattern = NULL, title = 'Packages', robots.file = TRUE){
+    
+    if( !requireNamespace('rmarkdown') )
+      stop("Could not generate package HTML index: missing required package 'rmarkdown'")
     
     # parameters
     dir <- path
@@ -168,11 +185,8 @@ write_PACKAGES_index <- function(path = '.', output = 'index.html', pattern = NU
     
     # write index page
     smessage('Loading required packages ... ')
-    qlibrary('ReportingTools')
-    qlibrary('hwriter')
     message('OK')
     smessage('Generating ', output, ' ... ')
-    index <- HTMLReport(shortName = tools::file_path_sans_ext(output), title = title)
     
     # link to source package
     linkPackage <- function(df, ...){
@@ -186,8 +200,9 @@ write_PACKAGES_index <- function(path = '.', output = 'index.html', pattern = NU
                         }) 
         }
         
-        hwrite_ghlink <- function(...) hwriter::hwrite(..., target = "_github")
-	    df$Package <- hwrite(as.character(df$Package), link = NA, table=FALSE)
+        hwrite <- function(x, link = x, ...) sprintf('<a href="%s" target="%s">%s</a>', link, x)
+        hwrite_ghlink <- function(x, link = x) sprintf('<a href="%s" target="%s">%s</a>', link, "_github", x)
+#	      df$Package <- hwrite(as.character(df$Package), link = NA, table=FALSE)
         i_gh <- !is.na(df$Repo)
         # SHA1
         sha1 <- hwrite_ghlink(substr(df$SHA1, 1, 7), link = gh_repo_path(df$User, df$Repo, file.path('tree', df$SHA1)), table = FALSE)
@@ -231,20 +246,27 @@ write_PACKAGES_index <- function(path = '.', output = 'index.html', pattern = NU
 	    df
     }
     
-    # publish
-    publish(knit2html(quiet = TRUE, text = sprintf('Install packages from this repository as follows (in an R console):                            
+    df <- emailMaintainer(df)
+    df <- linkPackage(df)
+    cat(sprintf('Install packages from this repository as follows (in an R console):                            
 ```{r, eval = FALSE}
 # install repotools (only once)
 source("%s")
-                            
+                
 # install package
 library(repotools)
 install.pkgs("<pkgname>", devel = TRUE)
-```', .repotools.setup.url), fragment.only = TRUE), index)
-    publish(df, index, name=title, .modifyDF = list(emailMaintainer, linkPackage))
-    finish(index)
+```
+
+```{r, package_table, echo = FALSE}
+library(DT)
+datatable(df, escape = FALSE)
+```
+', .repotools.setup.url), file = tmp <- tempfile(tmpdir = ".", fileext = ".Rmd"))
+    on.exit( unlink(tmp), add = TRUE)
+    rmarkdown::render(tmp, output_file = output)
     message('OK')
-    invisible(normalizePath(output))
+    invisible(list(path = normalizePath(output), packages = df))
 }
 
 #' Repository Indexes

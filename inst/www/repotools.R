@@ -45,18 +45,18 @@ require2 <- function(x, lib.loc = NULL, version = NULL, cmp = ">="){
 }
 
 # load devtools
-if( !require2('devtools', version = '1.6.1') ){
+if( !require2('devtools', version = '1.12') ){
     install.packages('devtools')
     suppressMessages(library(devtools))
 }
 
 # install required version of pkgmaker
-if( !require2('pkgmaker', version = '0.25.8') ){    
+if( !require2('pkgmaker', version = '0.26.2') ){    
     install_github('renozao/pkgmaker', ref = 'develop', quick = TRUE)
 }
 
 
-if( !require2('repotools', version = '1.7.4') ){
+if( !require2('repotools', version = '1.8') ){
     
     # install BiocInstaller
     if( !require2('BiocInstaller') ){
@@ -65,7 +65,7 @@ if( !require2('repotools', version = '1.7.4') ){
     
     # install repotools
     if( WINDOWS ){
-        install.packages('repotools', repos = c(getOption('repos'), 'http://renozao.github.io/GRAN'))
+        install_github('renozao/repotools', quick = QUICK)
         
     }else{
         # add BiocInstaller if needed
