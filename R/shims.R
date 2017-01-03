@@ -103,7 +103,7 @@ shim_devtools_remote <- function(type, ...) {
   
   if( is(res, 'github_remote') ){
     # get token from netrc file
-    if( !is.null(rc <- read_netrc(quiet = TRUE)) ){
+    if( !is.null(rc <- repotools::read_netrc(quiet = TRUE)) ){
       i <- c(which(file.path('github.com', res$username, res$repo) == rc[, 'machine'])
             , which(file.path('github.com', res$username) == rc[, 'machine']))
       if( length(i) ){
