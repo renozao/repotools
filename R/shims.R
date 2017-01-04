@@ -101,25 +101,37 @@ with_shim <- function(envir, FUN, expr, name = NULL){
 shim_devtools_remote <- function(type, ...) {
   res <- structure(list(...), class = c(paste0(type, "_remote"), "remote"))
   
-  if( is(res, 'github_remote') ){
-    # get token from netrc file
-    if( !is.null(rc <- repotools::read_netrc(quiet = TRUE)) ){
-      i <- c(which(file.path('github.com', res$username, res$repo) == rc[, 'machine'])
-            , which(file.path('github.com', res$username) == rc[, 'machine']))
-      if( length(i) ){
-        res$auth_token <- rc[i[1L], 'password']
-        message("Using auth token from netrc [", names(i)[1L], ']')
-      }
-    }
-    
+  # look suitable token in .netrc file for some type of remotes
+  base_host <- c(github = 'github.com', bitbucket = 'bitbucket.org')[type]
+  if( !is.na(base_host) ){
+    # look for host/username/repo first, then for host/username
+    repo <- paste(base_host, res$username, sep = '/')
+    if( is.null(res$auth_token) ) res$auth_token <- repotools::url_auth(paste(repo, res$repo, sep = '/'), default = NULL)[[1L]]
+    if( is.null(res$auth_token) ) res$auth_token <- repotools::url_auth(repo, default = NULL)[[1L]]
   }
   
   res
 }
 
 
+##' Install Packages from Github
+##' 
+##' This function is used to mask the original function [devtools::install_github],
+##' to provide the same functionnality but using authentication tokens stored in 
+##' the user's `.netrc` file.
+##' 
+##' @inheritParams devtools::install_github
+##' 
+##' @export
+#install_github <- local({
+#  f <- devtools::install_github
+#  body(f) <- substitute({ ca <- match.call(); ca[[1L]] <- devtools::install_github; pe <- parent.frame(); eval(ca, envir = pe) })
+#  f
+#})
+
 # Mask devtools method with fixed version for remote package name query 
 # to ensure that queries to private repository use authentication token
+#' @noRd 
 #' @export
 remote_package_name.github_remote <- function(remote, url = "https://raw.githubusercontent.com", ...) {
   
