@@ -428,3 +428,86 @@ repos_auth <- local({
         invisible(old_auth)
     }
 })
+
+
+# match a url with a machine pattern (from extended .netrc file format)
+match_url <- function(url, machine, nomatch = NA_integer_, last = TRUE, ignore.protocol = FALSE){
+  
+  
+  .local <- function(u, m){
+    u <- tolower(u)
+    m <- tolower(m)
+    if( ignore.protocol ){
+      u <- sub("^[^/]+://", '', u)
+      m <- sub("^[^/]+://", '', m)
+    }
+    
+    # check for regular expression
+    i <- integer()
+    if( any(regs <- grepl("[*)(+]", m)) )
+      i <- seq_along(m)[regs][sapply(m[regs], grepl, u)]
+      
+    i <- c(i, which(!is.na(pmatch(paste0(gsub("/*$", '', m[!regs]), '/'), paste0(gsub("/*$", '', u), '/')))))
+    i <- sort(i)
+    
+    # return tail or head according to request
+    if( !length(i) ) nomatch
+    else if( last ) tail(i, 1L) else head(i, 1L)
+  }
+  
+  sapply(url, .local, machine)
+  
+}
+
+
+#' Gets URL Authentication Token
+#' 
+#' @param url character vector of URLs
+#' 
+#' @return a character vector of authentication tokens.
+#' URLs for which no token was found get `NA` values. 
+#' @param default default value to use for URLs for which no authentication token
+#' can be found.
+#' @param quiet logical that indicates to mute messages showing the matched machine
+#' authentication
+#' @param ... other parmeters passed to internal function `match_url`.
+#' 
+#' @export
+url_auth <- function(url, default = NA_character_, quiet = TRUE, ...){
+  
+  # process url
+  stripped_url <- sub("^[^/]+://", '', url)
+  
+  # load data form .netrc file
+  netrc <- read_netrc(quiet = TRUE)[, c('machine', 'login', 'password'), drop = FALSE]
+  
+  # prepend personal authentication token for Github URLs from environment variable GITHUB_PAT (if defined)
+  if( !is.na(gpat <- Sys.getenv('GITHUB_PAT', unset = NA_character_)) ){
+    netrc <- rbind(cbind(machine = '.*\\.github\\.com', login = 'GITHUB_PAT', password = gpat)
+                  , netrc)
+  }
+  
+  .local <- function(url, ...){
+    
+    res <- default
+    
+    # override with last suitable token from .netrc file (if different from current value)
+    if( !is.null(netrc) ){
+      i <- match_url(url, netrc[, 'machine'], last = TRUE, ...)
+
+      if( !is.na(i) ){
+        netrc_token <- netrc[i, 'password']
+        if( !netrc_token %in% res ){
+          res <- netrc_token
+          if( !quiet ) message("Using .netrc authentication token [", netrc[i, 'machine'], ']')
+        }
+      }    
+    }
+    
+    # return result
+    res
+  }
+  
+  sapply(setNames(stripped_url, url), .local, ..., simplify = !is.null(default))
+      
+}

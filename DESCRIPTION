@@ -28,7 +28,8 @@ Suggests:
 	BiocInstaller,
 	httr,
     DT,
-    rmarkdown
+    rmarkdown,
+    testthat
 Collate:
     'url.R'
     'download.R'
