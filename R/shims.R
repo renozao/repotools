@@ -158,6 +158,7 @@ remote_package_name.github_remote <- function(remote, url = "https://raw.githubu
   req <- httr::GET(url, path = path, httr::write_disk(path = tmp), auth)
   
   if (httr::status_code(req) >= 400) {
+    warning(sprintf("Could not access Github repo DESCRIPTION file at '%s' [Code: %s]", dirname(path), httr::status_code(req)))
     return(NA_character_)
   }
   
