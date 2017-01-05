@@ -69,9 +69,9 @@
 #' read_netrc(f, std = NA)
 #'  
 #' 
-read_netrc <- function(x = .netrc_path(), std = TRUE, line.number = FALSE, quiet = FALSE){
+read_netrc <- function(x = netrc_path(), std = TRUE, line.number = FALSE, quiet = FALSE){
     
-    x <- x %||% .netrc_path()
+    x <- x %||% netrc_path()
     if( is.character(x) ){
         if( !file.exists(x) ){
             if( !quiet ) stop("netrc file '", x, "' does not exist.")
@@ -135,9 +135,13 @@ read_netrc <- function(x = .netrc_path(), std = TRUE, line.number = FALSE, quiet
     res
 }
 
+#' Function `netrc_path` returns the default location of the `.netrc` file, 
+#' i.e. in the user home directory.
+#' 
+#' @rdname read_netrc
 #' @export
-.netrc_path <- function(){
-    file.path(Sys.getenv('HOME'), '.netrc')
+netrc_path <- function(){
+  file.path(Sys.getenv('HOME'), '.netrc')
 }
 
 url_credential_split <- function(x){
@@ -413,8 +417,8 @@ repos_auth <- local({
         # update file
         if( is.character(save) ) netrc_file <- save
         else if( is.null(netrc_file) || !file.exists(netrc_file) ){
-            netrc_file <- netrc_file %||% .netrc_path()
-            if( askUser(paste0("Default .netrc file [", netrc_file, "] does not exist. Do you want to create it? "), idefault = 'y') != 'y' ){
+            netrc_file <- netrc_file %||% netrc_path()
+            if( askUser(paste0("Your .netrc file [", netrc_file, "] does not exist. Do you want to create it? "), idefault = 'y') != 'y' ){
                 stop('Aborted saving repository credentials: user did not allowed creation of file ', netrc_file)
             }
         }

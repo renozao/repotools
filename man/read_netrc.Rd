@@ -2,10 +2,13 @@
 % Please edit documentation in R/url.R
 \name{read_netrc}
 \alias{read_netrc}
+\alias{netrc_path}
 \title{Parsing netrc files}
 \usage{
-read_netrc(x = .netrc_path(), std = TRUE, line.number = FALSE,
+read_netrc(x = netrc_path(), std = TRUE, line.number = FALSE,
   quiet = FALSE)
+
+netrc_path()
 }
 \arguments{
 \item{x}{path or connection to an netrc file.
@@ -28,6 +31,9 @@ and \code{'password'} if \code{std} is \code{TRUE} or \code{NA}, and additional 
 }
 \description{
 Parses an netrc file in different ways and return the credential specifications it contains.
+
+Function `netrc_path` returns the default location of the `.netrc` file, 
+i.e. in the user home directory.
 }
 \details{
 Entries in the netrc file can be associated to R repositories, which are looked up 
