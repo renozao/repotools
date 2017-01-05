@@ -508,7 +508,7 @@ url_auth <- function(url, default = NA_character_, quiet = TRUE, ..., full = FAL
         if( !netrc_token %in% res ){
           res <- netrc_token
           if( full ) res <- netrc[i, ]
-          if( !quiet ) message("Using .netrc authentication token [", netrc[i, 'machine'], ']')
+          if( !quiet ) message(sprintf("Using .netrc authentication token [%s@%s]", netrc[i, 'login'], netrc[i, 'machine']))
         }
       }    
     }
