@@ -448,8 +448,9 @@ match_url <- function(url, machine, nomatch = NA_integer_, last = TRUE, ignore.p
     
     # check for regular expression
     i <- integer()
-    if( any(regs <- grepl("[*)(+]", m)) )
-      i <- seq_along(m)[regs][sapply(m[regs], grepl, u)]
+    if( any(regs <- grepl("[*)(+?$]", m)) ){
+      i <- seq_along(m)[regs][sapply(m[regs], function(x) grepl(x, u) | grepl(x, paste0(u, '/')))]
+    }
       
     i <- c(i, which(!is.na(pmatch(paste0(gsub("/*$", '', m[!regs]), '/'), paste0(gsub("/*$", '', u), '/')))))
     i <- sort(i)
