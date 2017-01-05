@@ -392,15 +392,45 @@ packageDependencies <- function(x, all = FALSE, available = NULL, missing.only =
     
 }
 
-# adapted from devtools::parse_deps
-parse_deps <- function (string) 
-{
-	if (is.null(string)) 
-		return()
-	string <- gsub("\\s*\\(.*?\\)", "", string)
-	pieces <- strsplit(string, ",")[[1]]
-	pieces <- gsub("^\\s+|\\s+$", "", pieces)
-	pieces[pieces != "R"]
+#' Parse Package Dependencies
+#' 
+#' @param string Specification of a set of dependencies either as a character vector
+#' or as a single string as returned by [devtools::as.package] in fields `Depends`, 
+#' `Imports` or `Suggests`.
+#' @param full logical that indicates if version requirements should also be returned.
+#' @param all loigical that indicates if R requirement and base packages should be 
+#' indluded in the result.
+#' 
+#' @return a character vector if `full=FALSE` or a character matrix otherwise.
+#' 
+#' @examples
+#' 
+#' parse_deps_versions("a, b, c")
+#' # with some version requirement
+#' parse_deps_versions("a (>= 1.2.3), b, c (<= 2.5)")
+#' 
+#' @export
+parse_deps <- function(string, full = FALSE, all = FALSE){
+  
+  deps <- string
+  # split list of dependencies if necessary
+  if( length(deps) == 1L && grepl(",", deps) )
+    deps <- strsplit(deps, ",")[[1L]]
+  desp <- str_trim(deps)
+  deps <- str_match(deps, "([^ ]+) *(\\(([><=]=) *([^(]+)\\))?")[, c(2, 4, 5), drop = FALSE]
+  colnames(deps) <- c('package', 'op', 'version')
+  rownames(deps) <- deps[, 'package']
+  
+  # remove R and base package if requested
+  if( !all ){
+    base_pkg <- character()
+    deps[!rownames(deps) %in% c('R', base_pkg), , drop = FALSE]
+  }
+  # only return package names if requested
+  if( !full ) deps <- deps[, 'package']
+  
+  deps
+  
 }
 
 pkg.dependencies <- function(pkg, dependencies = NA, ..., verbose = FALSE){
