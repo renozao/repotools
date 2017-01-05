@@ -4,7 +4,7 @@
 \alias{url_auth}
 \title{Gets URL Authentication Token}
 \usage{
-url_auth(url, default = NA_character_, quiet = TRUE, ...)
+url_auth(url, default = NA_character_, quiet = TRUE, ..., full = FALSE)
 }
 \arguments{
 \item{url}{character vector of URLs}
@@ -16,6 +16,9 @@ can be found.}
 authentication}
 
 \item{...}{other parmeters passed to internal function `match_url`.}
+
+\item{full}{logical that indicates if the function should return the full 
+authentication details (machine, login, password) or only the password (i.e., token)}
 }
 \value{
 a character vector of authentication tokens.

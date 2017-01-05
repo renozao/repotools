@@ -476,9 +476,11 @@ match_url <- function(url, machine, nomatch = NA_integer_, last = TRUE, ignore.p
 #' @param quiet logical that indicates to mute messages showing the matched machine
 #' authentication
 #' @param ... other parmeters passed to internal function `match_url`.
+#' @param full logical that indicates if the function should return the full 
+#' authentication details (machine, login, password) or only the password (i.e., token)
 #' 
 #' @export
-url_auth <- function(url, default = NA_character_, quiet = TRUE, ...){
+url_auth <- function(url, default = NA_character_, quiet = TRUE, ..., full = FALSE){
   
   # process url
   stripped_url <- sub("^[^/]+://", '', url)
@@ -495,6 +497,7 @@ url_auth <- function(url, default = NA_character_, quiet = TRUE, ...){
   .local <- function(url, ...){
     
     res <- default
+    if( full ) res <- setNames(rep(default, 3L), c('machine', 'login', 'password'))
     
     # override with last suitable token from .netrc file (if different from current value)
     if( !is.null(netrc) ){
@@ -504,6 +507,7 @@ url_auth <- function(url, default = NA_character_, quiet = TRUE, ...){
         netrc_token <- netrc[i, 'password']
         if( !netrc_token %in% res ){
           res <- netrc_token
+          if( full ) res <- netrc[i, ]
           if( !quiet ) message("Using .netrc authentication token [", netrc[i, 'machine'], ']')
         }
       }    
@@ -513,6 +517,8 @@ url_auth <- function(url, default = NA_character_, quiet = TRUE, ...){
     res
   }
   
-  sapply(setNames(stripped_url, url), .local, ..., simplify = !is.null(default))
+  res <- sapply(setNames(stripped_url, url), .local, ..., simplify = !is.null(default))
+  if( full ) res <- t(res)
+  res
       
 }
