@@ -79,6 +79,59 @@ gh_repo_path <- function(user, repo, branch = 'master'){
   sprintf("https://github.com/%s", file.path(user, repo, branch))
 }
 
+#' Fetching Github Package Description
+#' 
+#' Fetches DESCRIPTION file form a remote Github repository.
+#'
+#' @param ... arguments passed to `devtools:::github_remote` to build a `remote` S3 object
+#' if argument `remote=NULL`.
+#' @param remote remote S3 object as returned by `devtools:::github_remote`.
+#' @param url base url
+#' 
+#' @return an S3 object as returned by [devtools::as.package]. 
+#' 
+#' @export
+github_remote_description <- function(..., remote = NULL, url = "https://raw.githubusercontent.com") {
+
+  # build remote object
+  remote <- remote %||% do.call(ns_get('github_remote', 'devtools'), list(...))
+  
+  # setup download destination directory
+  tmpd <- tempfile()
+  dir.create(tmpd)
+  on.exit(unlink(tmpd, recursive = TRUE))
+  tmp <- file.path(tmpd, 'DESCRIPTION')
+  
+  # fetch DESCRIPTION file
+  path <- paste(c(
+          remote$username,
+          remote$repo,
+          remote$ref,
+          remote$subdir,
+          "DESCRIPTION"), collapse = "/")
+  
+  if (!is.null(remote$auth_token)) {
+    auth <- httr::authenticate(
+        user = remote$auth_token,
+        password = "x-oauth-basic",
+        type = "basic"
+    )
+  } else {
+    auth <- NULL
+  }
+  
+  req <- httr::GET(url, path = path, httr::write_disk(path = tmp), auth)
+  
+  if (httr::status_code(req) >= 400) {
+    warning(sprintf("Could not access Github repo DESCRIPTION file at '%s' [Code: %s]", dirname(path), httr::status_code(req)))
+    return(NA_character_)
+  }
+  
+  # return as a devtools package S3 object
+  as.package(tmpd)
+  
+}
+
 
 #' Generate CRAN-like Repository Index
 #' 
