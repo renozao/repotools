@@ -141,7 +141,8 @@ read_netrc <- function(x = netrc_path(), std = TRUE, line.number = FALSE, quiet 
 #' @rdname read_netrc
 #' @export
 netrc_path <- function(){
-  file.path(Sys.getenv('HOME'), '.netrc')
+  prefix <- if( .Platform$OS.type == 'windows' ) '_' else '.'
+  file.path(Sys.getenv('HOME'), paste0(prefix, 'netrc'))
 }
 
 url_credential_split <- function(x){
