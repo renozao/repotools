@@ -410,7 +410,7 @@ packageDependencies <- function(x, all = FALSE, available = NULL, missing.only =
 #' parse_deps_versions("a (>= 1.2.3), b, c (<= 2.5)")
 #' 
 #' @export
-parse_deps <- function(string, full = FALSE, all = FALSE){
+parse_deps_versions <- function(string, full = FALSE, all = FALSE){
   
   deps <- string
   # split list of dependencies if necessary
