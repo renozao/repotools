@@ -119,3 +119,17 @@ add_dcf_field <- function(x, name, value, force = FALSE){
   x
   
 }
+
+# Sets environment variables and returns old values
+Sys_setenv <- function(...){
+  vars <- list(...)
+  if( length(vars) == 1L && is.list(vars[[1L]]) && is.null(names(vars)) ) vars <- vars[[1L]]
+  
+  old <- Sys.getenv(names(vars), unset = NA, names = TRUE)
+  # unset NA values, set non-NA values
+  sapply(names(vars)[is.na(vars)], Sys.unsetenv)
+  if( any(!is.na(vars)) ) do.call(Sys.setenv, vars[!is.na(vars)])
+  
+  invisible(as.list(old))
+}
+

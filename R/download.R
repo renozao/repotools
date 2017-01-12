@@ -65,6 +65,8 @@ has_userpwd <- function(x){
         }
         
         if( isFALSE(reset) ){ # setup
+            # backup initial backed-up settings
+            .settings$old_settings <<- .settings
             # set some default options
             .settings$options <<- options(download.file.method = 'curl')
             
@@ -73,26 +75,29 @@ has_userpwd <- function(x){
             rscript <- file.path(R.home('bin'), "Rscript")
             if( .Platform$OS.type == 'windows' ) rscript <- paste0(rscript, ".exe")
             # set environment variable read by custom rcurl binary
-            Sys.setenv(`R_REPOTOOLS_RSCRIPT` = rscript)
-            Sys.setenv(`R_REPOTOOLS_RCURL` = path.pkg('RCurl'))
-            Sys.setenv(`R_REPOTOOLS_RCURL_SCRIPT` = path.pkg('repotools', 'exec/rcurl.R'))
-            if( verbose ) Sys.setenv(`R_REPOTOOLS_VERBOSE` = 1)
-            # prepend binary path to system PATH
-            .settings$PATH <<- Sys.getenv('PATH')
-            Sys.setenv(PATH = paste(dirname(.settings$curl_exec), .settings$PATH, sep = .Platform$path.sep))
+            new_envvar <- list(
+                `R_REPOTOOLS_RSCRIPT` = rscript
+                , `R_REPOTOOLS_RCURL` = path.pkg('RCurl')
+                , `R_REPOTOOLS_RCURL_SCRIPT` = path.pkg('repotools', 'exec/rcurl.R')
+                # prepend binary path to system PATH
+                , PATH = paste(dirname(.settings$curl_exec), Sys.getenv('PATH'), sep = .Platform$path.sep)
+            )
+            if( verbose ) new_envvar$R_REPOTOOLS_VERBOSE <- 1
+            
+            # set env vars and keep their old values
+            .settings$env_vars <<- Sys_setenv(new_envvar)
             # return backup list of previous settings
             .settings
             TRUE    
         }else{ # cleanup
+            message('RESET')
             old <- if( is.list(reset) ) reset else .settings
+            # restore old options
             options(old$options)
-            if( !is.null(old$PATH) ) Sys.setenv(PATH = old$PATH)
-            # clean up repotools environment variables (except debug)
-            reptools_env <- grep("^R_REPOTOOLS_", names(Sys.getenv()), value = TRUE)
-            reptools_env <- setdiff(reptools_env, 'R_REPOTOOLS_DEBUG')
-            lapply(reptools_env, Sys.unsetenv)
-            # reset settings backup list
-            .settings <<- list()
+            # restore old environment
+            Sys_setenv(old$env_vars)
+            # reset settings backup list to previous state
+            .settings <<- .settings$old_settings
         }
     }
 })
@@ -144,7 +149,9 @@ with_rcurl <- function(expr, verbose = FALSE){
     
     if( .setup_rcurl(verbose = verbose) ) on.exit( .setup_rcurl(TRUE) )
     e <- parent.frame()
-    eval(expr, envir = e)
+    res <- eval(expr, envir = e)
+    if( withVisible(res)$visible ) res
+    else invisible(res)
 }
 
 readURL <- function(x, ...){
