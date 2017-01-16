@@ -498,7 +498,9 @@ url_auth <- function(url, default = NA_character_, quiet = TRUE, ..., full = FAL
   .local <- function(url, ...){
     
     res <- default
-    if( full ) res <- setNames(rep(default, 3L), c('machine', 'login', 'password'))
+    if( full ){
+      if( !is.null(default) ) res <- setNames(rep(res, 3L), c('machine', 'login', 'password'))
+    }
     
     # override with last suitable token from .netrc file (if different from current value)
     if( !is.null(netrc) ){
