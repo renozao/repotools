@@ -7,7 +7,7 @@
 OS_type()
 }
 \value{
-a single character string: code{'unix'}, code{'mac'}, or code{'windows'} 
+a single character string: code{'unix'}, code{'mac'}, or code{'windows'}
 depending on the OS of the calling machine.
 }
 \description{

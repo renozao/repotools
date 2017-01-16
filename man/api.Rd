@@ -53,8 +53,8 @@ Library(package, lib.loc = NULL, ...)
     \code{"http://lib.stat.cmu.edu/R/CRAN"}.
   }
 
-\item{value}{logical, used only when \code{fixed=FALSE}, that indicates if the 
-name of the matched packages should be returned (instead of a \code{TRUE/FALSE} 
+\item{value}{logical, used only when \code{fixed=FALSE}, that indicates if the
+name of the matched packages should be returned (instead of a \code{TRUE/FALSE}
 logical value.}
 
 \item{fixed}{logical that indicates if the elements of \code{x} should match
@@ -74,7 +74,7 @@ exactly (\code{TRUE}) or interpreted and matched as regular expressions.}
 \item{instlib}{character string giving the library directory where to
     install the packages.}
 
-\item{ask}{logical that specifies if the user should be asked before installling the available updates, 
+\item{ask}{logical that specifies if the user should be asked before installling the available updates,
 or if these should be directly installed.}
 
 \item{oldPkgs}{
@@ -83,7 +83,7 @@ or if these should be directly installed.}
     of package names or a matrix as returned by \code{old.packages}.
   }
 
-\item{dry.run}{logical that indicates if one should only return the computed set of 
+\item{dry.run}{logical that indicates if one should only return the computed set of
 packages and dependencies to install.
 If \code{NULL}, then it is internally set to \code{TRUE} only when there is a mismatch between
 the requested and the OS binary package types (e.g., if \code{type = 'win.both'} on a Unix/Mac host).}

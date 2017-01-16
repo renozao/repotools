@@ -8,16 +8,16 @@ parse_deps_versions(string, full = FALSE, all = FALSE)
 }
 \arguments{
 \item{string}{Specification of a set of dependencies either as a character vector
-or as a single string as returned by [devtools::as.package] in fields `Depends`, 
-`Imports` or `Suggests`.}
+or as a single string as returned by \link[devtools:as.package]{devtools::as.package} in fields \code{Depends},
+\code{Imports} or \code{Suggests}.}
 
 \item{full}{logical that indicates if version requirements should also be returned.}
 
-\item{all}{loigical that indicates if R requirement and base packages should be 
+\item{all}{loigical that indicates if R requirement and base packages should be
 indluded in the result.}
 }
 \value{
-a character vector if `full=FALSE` or a character matrix otherwise.
+a character vector if \code{full=FALSE} or a character matrix otherwise.
 }
 \description{
 Parse Package Dependencies

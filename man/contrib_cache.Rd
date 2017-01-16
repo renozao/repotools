@@ -20,7 +20,7 @@ contrib_cache_clear(...)
 \code{contrib_cache} returns the path to the RDS file were a repository index is
 stored when first accessed by \code{\link[utils]{available.packages}}.
 
-\code{contrib_cache_clear} deletes the index cache file, 
+\code{contrib_cache_clear} deletes the index cache file,
 so that the repository's index is refreshed by the next call to
 \code{\link[utils]{available.packages}}.
 }

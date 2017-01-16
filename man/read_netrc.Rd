@@ -14,30 +14,30 @@ netrc_path()
 \item{x}{path or connection to an netrc file.
 Default is to look for file \code{'.netrc'} into the user's home directory.}
 
-\item{std}{indicates if the file should be parsed as a standard netrc file (\code{TRUE}), 
-searched for R repository specifications (see \emph{Details}) (\code{FALSE}), 
+\item{std}{indicates if the file should be parsed as a standard netrc file (\code{TRUE}),
+searched for R repository specifications (see \emph{Details}) (\code{FALSE}),
 or if entries associated with R repositories should be skipped (\code{NA}).}
 
-\item{line.number}{logical that indicates if the starting and ending line number of each 
+\item{line.number}{logical that indicates if the starting and ending line number of each
 credential definition should also be returned.}
 
-\item{quiet}{logical that indicates if the function should return \code{NULL} if the file is not found, 
+\item{quiet}{logical that indicates if the function should return \code{NULL} if the file is not found,
 or throw an error.}
 }
 \value{
-a character matrix with one row per credential and columns \code{'machine'}, \code{'login'} 
-and \code{'password'} if \code{std} is \code{TRUE} or \code{NA}, and additional columns 
+a character matrix with one row per credential and columns \code{'machine'}, \code{'login'}
+and \code{'password'} if \code{std} is \code{TRUE} or \code{NA}, and additional columns
 \code{'repos'} and \code{'path'} if \code{std = FALSE}.
 }
 \description{
 Parses an netrc file in different ways and return the credential specifications it contains.
 
-Function `netrc_path` returns the default location of the `.netrc` file, 
+Function \code{netrc_path} returns the default location of the \code{.netrc} file,
 i.e. in the user home directory.
 }
 \details{
-Entries in the netrc file can be associated to R repositories, which are looked up 
-by \code{install.pkgs} via \code{\link{repos_url}}, by adding a comment line 
+Entries in the netrc file can be associated to R repositories, which are looked up
+by \code{install.pkgs} via \code{\link{repos_url}}, by adding a comment line
 to a standard entry the following format:
 
 \preformatted{
@@ -54,7 +54,7 @@ password 1234
 
 The first entry is standard and provide credentials for a named host.
 
-The second entry starts with \code{'#repos '}, which indicates it is an entry for an R repository 
+The second entry starts with \code{'#repos '}, which indicates it is an entry for an R repository
 with shortcut key (\code{'@myRepo'}) and an -- optional -- path
 to the actual repository on the host machine \code{'www.myrepo.org'}.
 

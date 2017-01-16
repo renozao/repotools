@@ -15,14 +15,14 @@ can be found.}
 \item{quiet}{logical that indicates to mute messages showing the matched machine
 authentication}
 
-\item{...}{other parmeters passed to internal function `match_url`.}
+\item{...}{other parmeters passed to internal function \code{match_url}.}
 
-\item{full}{logical that indicates if the function should return the full 
+\item{full}{logical that indicates if the function should return the full
 authentication details (machine, login, password) or only the password (i.e., token)}
 }
 \value{
 a character vector of authentication tokens.
-URLs for which no token was found get `NA` values.
+URLs for which no token was found get \code{NA} values.
 }
 \description{
 Gets URL Authentication Token

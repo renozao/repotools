@@ -21,14 +21,14 @@ with_rcurl(expr, verbose = FALSE)
 \item{expr}{an expression}
 
 \item{verbose}{logical that forces downloads to be shown (progress bar).
-This parameter is used to overides any hard coded value for the \var{quiet} argument 
+This parameter is used to overides any hard coded value for the \var{quiet} argument
 in sub-sequent calls to \code{\link{download.file}}.}
 }
 \description{
-Downloads files using a custom \code{curl} binary that uses  
-\pkg{RCurl} and is able to download files from password protected 
+Downloads files using a custom \code{curl} binary that uses
+\pkg{RCurl} and is able to download files from password protected
 directories.
 
-\code{with_rcurl} executes an expression with the custom \code{curl} binary 
+\code{with_rcurl} executes an expression with the custom \code{curl} binary
 setup as the default download method.
 }

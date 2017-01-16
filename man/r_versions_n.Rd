@@ -9,13 +9,13 @@ r_versions_n(n = Inf, digits = 2L, cache = TRUE)
 \arguments{
 \item{n}{Number of versions to return}
 
-\item{digits}{Number of version digits: 1 = major version number, 
+\item{digits}{Number of version digits: 1 = major version number,
 2 = <major>.<minor1>, 3 = <major>.<minor1>.<minor2>}
 
-\item{cache}{logical that indicates if the result should be retrieved from 
+\item{cache}{logical that indicates if the result should be retrieved from
 cache or (re-)fetched from the SVN server.}
 }
 \description{
-This function uses \code{\link[rversions]{r_versions}} to fetch all the 
+This function uses \code{\link[rversions]{r_versions}} to fetch all the
 R versions from R main SVN server.
 }

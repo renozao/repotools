@@ -17,7 +17,7 @@ the index.}
 
 \item{title}{title of the index page}
 
-\item{robots.file}{logical that indicates if a file \code{robots.txt} that hides the repository from 
+\item{robots.file}{logical that indicates if a file \code{robots.txt} that hides the repository from
 search engine robots should be created.}
 }
 \description{

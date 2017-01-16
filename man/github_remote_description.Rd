@@ -8,15 +8,15 @@ github_remote_description(..., remote = NULL,
   url = "https://raw.githubusercontent.com")
 }
 \arguments{
-\item{...}{arguments passed to `devtools:::github_remote` to build a `remote` S3 object
-if argument `remote=NULL`.}
+\item{...}{arguments passed to \code{devtools:::github_remote} to build a \code{remote} S3 object
+if argument \code{remote=NULL}.}
 
-\item{remote}{remote S3 object as returned by `devtools:::github_remote`.}
+\item{remote}{remote S3 object as returned by \code{devtools:::github_remote}.}
 
 \item{url}{base url}
 }
 \value{
-an S3 object as returned by [devtools::as.package].
+an S3 object as returned by \link[devtools:as.package]{devtools::as.package}.
 }
 \description{
 Fetches DESCRIPTION file form a remote Github repository.

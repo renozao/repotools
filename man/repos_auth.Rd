@@ -11,27 +11,27 @@ repos_auth(..., save = FALSE, cache = NULL, exact = FALSE,
 \item{...}{repository keys or credential specifications}
 
 \item{save}{indicates if the new credentials are to be saved on disk,
-by updating in the \code{.netrc} file, or in a cache -- which expires at the end of 
+by updating in the \code{.netrc} file, or in a cache -- which expires at the end of
 the \pkg{R} session.
-It can also be a character string, which then specifies the path where to save the 
+It can also be a character string, which then specifies the path where to save the
 result (cached entries are not written to disk).
 
 Use \code{save=""} to print to the console.}
 
-\item{cache}{specifies how the temporary cached credentials should be 
-loaded: 
+\item{cache}{specifies how the temporary cached credentials should be
+loaded:
 
 \itemize{
-\item \code{NULL} loads both the cache and netrc data, with cache override matching 
+\item \code{NULL} loads both the cache and netrc data, with cache override matching
 netrc credentials;
-\item \code{TRUE} loads only the cache data; 
+\item \code{TRUE} loads only the cache data;
 \item \code{FALSE} loads only the netrc data.
 }
 
 The special value \code{cache = NA} will delete the cache, prior to any other operation.}
 
-\item{exact}{logical that indicates if the the repository keys should be matched 
-exactly. If \code{FALSE}, then keys are matched independently of possible trailing 
+\item{exact}{logical that indicates if the the repository keys should be matched
+exactly. If \code{FALSE}, then keys are matched independently of possible trailing
 path specification.}
 
 \item{.netrc}{path or connection to a \emph{netrc} file, which is looked up for
