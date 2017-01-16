@@ -162,7 +162,7 @@ OS_type <- function(){
 #' \item Full URL, that can be remote (start with 'http://') or local (start with file://), and 
 #' may include authentication credentials in the form \code{'http://username:password@@cran.domain.org'}, 
 #' for password protected repositories (Basic, Digest, etc..);
-#' \item Repo URL shortcut key [+ path], defined as a string prefixed with \code{'@@'}, e.g., \code{'@@myRepo/path/to/repo'}, 
+#' \item Repo URL shortcut key (+ path), defined as a string prefixed with \code{'@@'}, e.g., \code{'@@myRepo/path/to/repo'}, 
 #' that matches a repository entry in file \code{'.netrc'} in the user's home directory -- as returned by 
 #' \code{Sys.getenv('HOME')}.
 #' It is internally substituted into a full repository base URL using by \code{repos_url} (see details in  
