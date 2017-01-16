@@ -100,44 +100,126 @@ with_shim <- function(envir, FUN, expr, name = NULL){
 # make remotes use authentication from netrc file
 shim_devtools_remote <- function(type, ...) {
   res <- structure(list(...), class = c(paste0(type, "_remote"), "remote"))
+  # resolve remote authentication
+  res <- repotools::remote_auth(res)
+  # return remote object
+  res
   
-  # look suitable token in .netrc file for some type of remotes
-  base_host <- c(github = 'github.com', bitbucket = 'bitbucket.org')[type]
-  if( !is.na(base_host) ){
-    # look for host/username/repo first, then for host/username
-    repo <- paste(base_host, res$username, sep = '/')
-    if( is.null(res$auth_token) ) res$auth_token <- repotools::url_auth(paste(repo, res$repo, sep = '/'), default = NULL)[[1L]]
-    if( is.null(res$auth_token) ) res$auth_token <- repotools::url_auth(repo, default = NULL)[[1L]]
+}
+
+remote_url_auth <- function(urls, quiet = FALSE, ...){
+  
+  for(u in urls){
+    res <- url_auth(u, default = NULL, quiet = quiet, full = TRUE, ...)[[1L]]
+    if( !is.null(res) ) return(res)
+  }
+  NULL
+  
+}
+
+#' Resolve Authentication Credentials from Remotes
+#' 
+#' Looks for suitable authentication tokens in environment or .netrc file for 
+#' some type of remotes.
+#' 
+#' @param x a `remote` S3 object as built by `devtools:::remote`.
+#' @param ... extra arguments passed to [url_auth]
+#' 
+#' @return the remote object with updated credentials.
+#' 
+#' @export 
+remote_auth <- function(x, ...){
+  UseMethod('remote_auth')
+}
+
+#' @export 
+remote_auth.default <- function(x, ..., host = NULL, auth_user = 'auth_user', auth_token = 'auth_token'){
+  
+  if( is.null(host) ) x
+  else{
+    base_url <- paste(host, x$username, sep = '/')
+    auth <- remote_url_auth(c(paste(base_url, x$repo, sep = '/'), base_url), ...)
+    if( !is.null(auth) ){
+      x[['auth_user']] <- auth[['login']]
+      x[[auth_user]] <- x[['auth_user']]
+      # add field name from github to make other devtools auth calls work (e.g., remote_package_name)
+      x[['auth_token']] <- auth[['password']]
+      x[[auth_token]] <- x[['auth_token']]
+    }
+    x
   }
   
-  res
+}
+
+#' @export
+remote_auth.github_remote <- function(x, ...){
+  remote_auth.default(x, host = 'github.com', ...)
+  
+}
+
+#' @export
+remote_auth.bitbucket_remote <- function(x, ...){
+  remote_auth.default(x, host = 'bitbucket.org', auth_token = 'password', ...)
+  
 }
 
 
-##' Install Packages from Github
-##' 
-##' This function is used to mask the original function [devtools::install_github],
-##' to provide the same functionnality but using authentication tokens stored in 
-##' the user's `.netrc` file.
-##' 
-##' @inheritParams devtools::install_github
-##' 
-##' @export
+# #' Install Packages from Github
+# #' 
+# #' This function is used to mask the original function [devtools::install_github],
+# #' to provide the same functionnality but using authentication tokens stored in 
+# #' the user's `.netrc` file.
+# #' 
+# #' @inheritParams devtools::install_github
+# #' 
+# #' @export
 #install_github <- local({
 #  f <- devtools::install_github
 #  body(f) <- substitute({ ca <- match.call(); ca[[1L]] <- devtools::install_github; pe <- parent.frame(); eval(ca, envir = pe) })
 #  f
 #})
 
-# Mask devtools method with fixed version for remote package name query 
-# to ensure that queries to private repository use authentication token
-#' @noRd 
+#' Fetch DESCRIPTION File from Remote
+#' 
+#' @param remote remote S3 object as returned by `devtools:::remote`
+#' @param url base repo host url
+#' @param path path to DESCRIPTION file
+#' @param user username to use for authentication
+#' @param password authentication password or token
+#' @param ... arguments passed to [httr::GET]
+#' 
 #' @export
-remote_package_name.github_remote <- function(remote, url = "https://raw.githubusercontent.com", ...) {
+get_remote_package_description <- function(remote, url, path, user = remote$auth_token, password = NULL, ...) {
   
   loadNamespace('httr')
   
   tmp <- tempfile()
+  if (!is.null(user)) {
+    auth <- httr::authenticate(
+        user = user,
+        password = password %||% '',
+        type = "basic"
+    )
+  } else {
+    auth <- NULL
+  }  
+  
+  req <- httr::GET(url, path = path, httr::write_disk(path = tmp), auth, ...)
+  if (httr::status_code(req) >= 400) {
+    warning(sprintf("Could not access remote DESCRIPTION file at '%s/%s' [Code: %s]", url, dirname(path), httr::status_code(req)))
+    return(NA_character_)
+  }
+  
+  read_dcf(tmp)$Package
+}
+environment(get_remote_package_description) <- asNamespace('devtools')
+
+# Mask devtools method with bug-fixed version for remote package name query 
+# to ensure that queries to private repository use authentication token
+#' @noRd
+#' @export
+remote_package_name.github_remote <- function(remote, url = "https://raw.githubusercontent.com", ...) {
+  
   path <- paste(c(
           remote$username,
           remote$repo,
@@ -145,23 +227,28 @@ remote_package_name.github_remote <- function(remote, url = "https://raw.githubu
           remote$subdir,
           "DESCRIPTION"), collapse = "/")
   
-  if (!is.null(remote$auth_token)) {
-    auth <- httr::authenticate(
-        user = remote$auth_token,
-        password = "x-oauth-basic",
-        type = "basic"
-    )
-  } else {
-    auth <- NULL
-  }  
-
-  req <- httr::GET(url, path = path, httr::write_disk(path = tmp), auth)
-  
-  if (httr::status_code(req) >= 400) {
-    warning(sprintf("Could not access Github repo DESCRIPTION file at '%s' [Code: %s]", dirname(path), httr::status_code(req)))
-    return(NA_character_)
-  }
-  
-  read_dcf(tmp)$Package
+  repotools::get_remote_package_description(remote, url, path, user = remote$auth_token, password = "x-oauth-basic", ...)
 }
 environment(remote_package_name.github_remote) <- asNamespace('devtools')
+shim_devtools_remote_package_name.github_remote <- remote_package_name.github_remote
+
+# https://api.bitbucket.org/1.0/repositories/{accountname}/{repo_slug}/raw/{revision}/{path}
+#' @noRd
+#' @export
+remote_package_name.bitbucket_remote <- function(remote, ...) {
+  
+  path <- paste(c(
+          "1.0/repositories",
+          remote$username,
+          tolower(remote$repo),
+          'raw',
+          remote$ref,
+          remote$subdir,
+          "DESCRIPTION"), collapse = "/")
+  
+  repotools::get_remote_package_description(remote, "https://api.bitbucket.org", path
+                                            , user = remote$auth_user, password = remote$password, ...)
+}
+environment(remote_package_name.bitbucket_remote) <- asNamespace('devtools')
+shim_devtools_remote_package_name.bitbucket_remote <- remote_package_name.bitbucket_remote
+
