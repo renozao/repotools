@@ -41,6 +41,7 @@ Collate:
     'remote-auth.R'
     'patches-devtools.R'
     'repositories.R'
+BiocView: Utilities
 Remotes: renozao/pkgmaker@develop
 RoxygenNote: 5.0.1.9000
 Roxygen: list(markdown = TRUE)

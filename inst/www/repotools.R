@@ -8,74 +8,57 @@
 ###############################################################################
 
 local({
-            
+  
 WINDOWS <- .Platform$OS.type == 'windows' 
 QUICK <- if( exists('QUICK') ) get('QUICK') 
-                 else if( '--quick' %in% commandArgs(TRUE) ) TRUE
-                 else WINDOWS
+          else if( '--quick' %in% commandArgs(TRUE) ) TRUE
+          else WINDOWS
 
- .biocinstallRepos <- function(siteRepos = NULL, lib = NULL){
-     if( !require('BiocInstaller', character.only = TRUE, lib.loc = lib) ){
-        source('http://www.bioconductor.org/biocLite.R')
-     }
-     library(BiocInstaller, lib.loc = lib)
-     biocinstallRepos(siteRepos)
- }
- 
 # setup up RStudio mirror if necessary
 if( !interactive() ){
-    options(repos = gsub('@CRAN@', 'http://cran.rstudio.com', getOption('repos'), fixed = TRUE))
+options(repos = gsub('@CRAN@', 'http://cran.rstudio.com', getOption('repos'), fixed = TRUE))
 }
 
-require2 <- function(x, lib.loc = NULL, version = NULL, cmp = ">="){
-    
-    # look for package
-    if( !length(find.package(x, quiet = TRUE, lib.loc = lib.loc)) ) return(FALSE)
-    
-    req <- function(){
-        suppressMessages(suppressWarnings(require(x, character.only = TRUE, lib.loc = lib.loc, quietly = TRUE)))
-    }
-    
-    if( is.null(version) ) req()
-    else{
-        compare <- match.fun(cmp)
-        if( compare(packageVersion(x, lib.loc = lib.loc), version) ) req()
-        else FALSE
-    }
+#' Requires Package of Given Version
+#' Equivalent of `require` but enables imposing constraint on the version of 
+#' the required package.
+#' 
+#' @param version required minimum/maximum/exact version depending on the value of `cmp`
+#' @param cmp comparison operator that indicates if the version of the required package 
+#' should be greater ('>='), lower ('<=') or equal ('==') to `version`. 
+#' @inheritParams require
+require_version <- function(package, version = NULL, lib.loc = NULL, cmp = ">="){
+
+  # look for package
+  if( !length(find.package(package, quiet = TRUE, lib.loc = lib.loc)) ) return(FALSE)
+  
+  req <- function(){
+  suppressMessages(suppressWarnings(require(package, character.only = TRUE, lib.loc = lib.loc, quietly = TRUE)))
+  }
+
+  if( is.null(version) ) req()
+  else{
+    compare <- match.fun(cmp)
+    if( compare(packageVersion(package, lib.loc = lib.loc), version) ) req()
+    else FALSE
+  }
 }
 
-# load devtools
-if( !require2('devtools', version = '1.12') ){
-    install.packages('devtools')
-    suppressMessages(library(devtools))
+# load/install devtools
+if( !require_version('devtools', version = '1.12') ){
+  install.packages('devtools')
+  suppressMessages(library(devtools))
+
 }
 
-# install required version of pkgmaker
-if( !require2('pkgmaker', version = '0.26.2') ){    
-    install_github('renozao/pkgmaker', ref = 'develop', quick = TRUE)
+# load/install repotools
+if( !require_version('repotools', version = '1.8.3') ){
+  # install repotools
+  install_github('renozao/repotools', quick = QUICK)
+  library(repotools)
+
 }
 
-
-if( !require2('repotools', version = '1.8') ){
-    
-    # install BiocInstaller
-    if( !require2('BiocInstaller') ){
-        source("http://www.bioconductor.org/biocLite.R")
-    }
-    
-    # install repotools
-    if( WINDOWS ){
-        install_github('renozao/repotools', quick = QUICK)
-        
-    }else{
-        # add BiocInstaller if needed
-        # NB: do not setup repos tom make sure ReportingTools CANNOT be found (too big)
-            if( !QUICK ) .biocinstallRepos()
-            install_github('renozao/repotools', quick = QUICK)
-        
-    }
-    library(repotools)
-}
 message("Loaded repotools version ", packageVersion('repotools'))
 
 })
