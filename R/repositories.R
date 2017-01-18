@@ -90,6 +90,7 @@ gh_repo_path <- function(user, repo, branch = 'master'){
 #' 
 #' @return an S3 object as returned by [devtools::as.package]. 
 #' 
+#' @importFrom devtools as.package
 #' @export
 github_remote_description <- function(..., remote = NULL, url = "https://raw.githubusercontent.com") {
 

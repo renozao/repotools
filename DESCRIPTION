@@ -18,6 +18,7 @@ Imports:
     stats,
     methods,
     tools,
+    withr,
     stringr,
     digest,
     pkgmaker (>= 0.26.2),
