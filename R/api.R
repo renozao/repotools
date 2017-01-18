@@ -22,6 +22,21 @@ package_name <- function(x){
     basename(gsub("_[-0-9.]+\\.((tar\\.gz)|(zip)|(tgz))?$", "", x))
 }
 
+# extract remote type from specification
+package_remote_type <- function(x){
+  m <- str_match(x, '^(([^:]+)::)?([^/]+)(/?.*)')
+  # CRAN package if no remote spec nor slash in spec
+  m[is.na(m)] <- ''
+  m[!nzchar(m[, 3L]) & !nzchar(m[, 5L]), 2L] <- 'cran::'
+  # Github if no remote but slash in spec
+  m[!nzchar(m[, 3L]) & nzchar(m[, 5L]), 2L] <- 'github::'
+  
+  # collapse each element into complete spec
+  apply(m[, c(2, 4, 5), drop = FALSE], 1L, paste0, collapse = '')
+  
+}
+  
+
 is_package_dir <- function(x, check = FALSE){
     res <- is.na(package_type(x)) & grepl("((^\\.)|([/]))", x)
     if( check ) res <- res & is.dir(x) & is.file(file.path(x, 'DESCRIPTION'))
@@ -170,10 +185,14 @@ OS_type <- function(){
 #' and substituted respectively.
 #' }
 #' 
-#' @import devtools
+#' @importFrom devtools install_local install_github
 #' @importFrom tools md5sum
+#' @importFrom withr with_options
 #' @export
-install.pkgs <- function(pkgs, lib = NULL, repos = getOption('repos'), type = getOption('pkgType'), dependencies = NA, available = NULL, ..., quick = FALSE, dry.run = NULL, devel = FALSE, verbose = TRUE){
+install.pkgs <- function(pkgs, lib = NULL, repos = getOption('repos'), type = getOption('pkgType'), dependencies = NA, available = NULL
+                        , ...
+                        , reload = FALSE, upgrade_dependencies = FALSE
+                        , quick = FALSE, dry.run = NULL, devel = FALSE, verbose = TRUE){
     
     mode <- 'install'
 
@@ -236,17 +255,30 @@ install.pkgs <- function(pkgs, lib = NULL, repos = getOption('repos'), type = ge
     if( is.character(x) && length(i_src <- grep("((\\.tar\\.gz)|(\\.zip)|(\\.tgz))$", x)) ){
             # create temporary local repo to install from
             sx <- x[i_src]
-            lrepo_path <- tempfile("tmprepo_")
-            lrepo <- create_repo(lrepo_path, pkgs = sx)
-            on.exit( unlink(lrepo_path, recursive = TRUE), add = TRUE)
             # check for source files and adapt type if necessary
             if( OS_type() != 'unix' && auto_type && any(grepl("\\.tar\\.gz$", sx)) ){
                 type <- 'both'
             }
-            # install including local repo in repos list
-            loc_install <- install.pkgs(package_name(sx), repos = c(lrepo, repos), type = type
-                                        , dependencies = dependencies, available = available, ...
-                                        , devel = devel, verbose = verbose, dry.run = dry.run)
+            
+            if( dry.run ){
+              lrepo_path <- tempfile("tmprepo_")
+              lrepo <- create_repo(lrepo_path, pkgs = sx)
+              on.exit( unlink(lrepo_path, recursive = TRUE), add = TRUE)
+              
+              # install including local repo in repos list
+              loc_install <- install.pkgs(package_name(sx), repos = c(lrepo, repos), type = type
+                                          , dependencies = dependencies, available = available, ...
+                                          , devel = devel, verbose = verbose, dry.run = dry.run)
+                                      
+            }else{ 
+              # use devtools installer
+              withr::with_options(list(repos = repos)
+                                  , install_local(sx, reload = FALSE, dependencies = dependencies, upgrade_dependencies = upgrade_dependencies
+                                                , quick = quick
+                                                , ...)
+                                  )
+                          
+            }
             # remove installed packages from query
             x <- x[-i_src]
         
@@ -255,6 +287,19 @@ install.pkgs <- function(pkgs, lib = NULL, repos = getOption('repos'), type = ge
     }
     
     if( !length(x) ) return()
+    
+    # use devtools installers if not doing a dry run
+    if( !dry.run ){
+      parse_one_remote <- ns_get('parse_one_remote', 'devtools')
+      x_remotes <- lapply(package_remote_type(x), parse_one_remote)
+      install_remotes <- ns_get('install_remotes', 'devtools')
+      res <- withr::with_options(list(repos = repos)
+          , install_remotes(x_remotes, reload = reload, dependencies = dependencies, upgrade_dependencies = FALSE
+              , quick = quick
+              , ...))
+      # exit
+      return( invisible(res) )
+    }
     
     if( dry.run && dry.run.show ) message("*** DRY RUN ***")
     

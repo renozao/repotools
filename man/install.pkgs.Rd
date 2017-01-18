@@ -6,7 +6,8 @@
 \usage{
 install.pkgs(pkgs, lib = NULL, repos = getOption("repos"),
   type = getOption("pkgType"), dependencies = NA, available = NULL, ...,
-  quick = FALSE, dry.run = NULL, devel = FALSE, verbose = TRUE)
+  reload = FALSE, upgrade_dependencies = FALSE, quick = FALSE,
+  dry.run = NULL, devel = FALSE, verbose = TRUE)
 }
 \arguments{
 \item{pkgs}{character vector of the names of packages whose current versions should be downloaded
@@ -58,6 +59,12 @@ Use \code{repos = '+http://myrepo.org'} to append repositories to the default on
   }
 
 \item{...}{extra parameters eventually passed to the corresponding base function.}
+
+\item{reload}{if \code{TRUE} (the default), will automatically reload the
+package after installing.}
+
+\item{upgrade_dependencies}{If \code{TRUE}, the default, will also update
+any out of date dependencies.}
 
 \item{quick}{if \code{TRUE} skips docs, multiple-architectures,
 demos, and vignettes, to make installation as fast as possible.}
