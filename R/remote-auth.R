@@ -6,11 +6,41 @@
 #' @include url.R
 NULL
 
-remote_url_auth <- function(urls, quiet = FALSE, ...){
+.must_message_auth <- local({
+  .call <- NULL
+  .logged <- c()
+  function(key, frame){
+    sf <- format(frame)
+    .call <<- .call %||% sf
+    # reset if new call
+    if( .call != sf ){
+      .logged <<- c()
+      .call <<- sf
+    }
+    if( key %in% .logged ) FALSE
+    else{
+      .logged <<- c(.logged, key)
+      TRUE
+    }
+
+  }
+})
+
+remote_url_auth <- function(urls, quiet = NULL, ...){
   
   for(u in urls){
-    res <- url_auth(u, default = NULL, quiet = quiet, full = TRUE, ...)[[1L]]
-    if( !is.null(res) ) return(res)
+    res <- url_auth(u, default = NULL, quiet = quiet %||% TRUE, full = TRUE, ...)[[1L]]
+    if( !is.null(res) ){
+      
+      # show message for hits
+      if( is.null(quiet) ){
+        sf <- sys.frame(1)
+        if( .must_message_auth(digest(res), sf) )
+          url_auth(u, default = NULL, quiet = FALSE, full = TRUE, ...)[[1L]]
+      }
+      #
+      return(res)
+    }
   }
   NULL
   
