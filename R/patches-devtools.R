@@ -16,6 +16,13 @@ shim_devtools_remote <- function(type, ...) {
   
 }
 
+# To fix issue hadley/devtools#1370: change default value for devtools:::install_packages
+shim_devtools_install_packages <- local({
+  f <- devtools:::install_packages
+  formals(f)[['dependencies']] <- NA
+  f
+})
+
 # #' Install Packages from Github
 # #' 
 # #' This function is used to mask the original function [devtools::install_github],
