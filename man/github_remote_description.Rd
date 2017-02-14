@@ -5,7 +5,7 @@
 \title{Fetching Github Package Description}
 \usage{
 github_remote_description(..., remote = NULL,
-  url = "https://raw.githubusercontent.com")
+  url = "https://raw.githubusercontent.com", warn = TRUE)
 }
 \arguments{
 \item{...}{arguments passed to \code{devtools:::github_remote} to build a \code{remote} S3 object
@@ -14,6 +14,8 @@ if argument \code{remote=NULL}.}
 \item{remote}{remote S3 object as returned by \code{devtools:::github_remote}.}
 
 \item{url}{base url}
+
+\item{warn}{logical that indicates if a warning should be thrown if the file cannot be found.}
 }
 \value{
 an S3 object as returned by \link[devtools:as.package]{devtools::as.package}.

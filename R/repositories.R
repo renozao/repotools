@@ -87,12 +87,13 @@ gh_repo_path <- function(user, repo, branch = 'master'){
 #' if argument `remote=NULL`.
 #' @param remote remote S3 object as returned by `devtools:::github_remote`.
 #' @param url base url
+#' @param warn logical that indicates if a warning should be thrown if the file cannot be found.
 #' 
 #' @return an S3 object as returned by [devtools::as.package]. 
 #' 
 #' @importFrom devtools as.package
 #' @export
-github_remote_description <- function(..., remote = NULL, url = "https://raw.githubusercontent.com") {
+github_remote_description <- function(..., remote = NULL, url = "https://raw.githubusercontent.com", warn = TRUE) {
 
   # build remote object
   remote <- remote %||% do.call(ns_get('github_remote', 'devtools'), list(...))
@@ -124,7 +125,7 @@ github_remote_description <- function(..., remote = NULL, url = "https://raw.git
   req <- httr::GET(url, path = path, httr::write_disk(path = tmp), auth)
   
   if (httr::status_code(req) >= 400) {
-    warning(sprintf("Could not access Github repo DESCRIPTION file at '%s' [Code: %s]", dirname(path), httr::status_code(req)))
+    if( warn ) warning(sprintf("Could not access Github repo DESCRIPTION file at '%s' [Code: %s]", dirname(path), httr::status_code(req)))
     return(NA_character_)
   }
   
