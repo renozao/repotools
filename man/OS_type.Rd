@@ -18,9 +18,7 @@ Returns the type of OS.
 options(R_CHECK_RUNNING_EXAMPLES_=TRUE) ## roxygen generated flag
 }
 
-## OS_type
 
 OS_type()
-
 
 }

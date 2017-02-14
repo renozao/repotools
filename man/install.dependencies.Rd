@@ -52,12 +52,10 @@ package source file.
 options(R_CHECK_RUNNING_EXAMPLES_=TRUE) ## roxygen generated flag
 }
 
-## install.dependencies
 
 try( install.dependencies('Matrix', dep = "!", dry.run = TRUE) )
 \dontrun{
 install.dependencies("mypackage_1.0.tar.gz", dry.run=TRUE)
 }
-
 
 }

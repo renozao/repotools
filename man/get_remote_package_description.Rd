@@ -5,7 +5,7 @@
 \title{Fetch DESCRIPTION File from Remote}
 \usage{
 get_remote_package_description(remote, url, path, user = remote$auth_token,
-  password = NULL, ...)
+  password = NULL, ..., file = NULL)
 }
 \arguments{
 \item{remote}{remote S3 object as returned by \code{devtools:::remote}}

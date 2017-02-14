@@ -34,7 +34,6 @@ Builds full repository URLs based on shortcut repository keys and host names, ad
 options(R_CHECK_RUNNING_EXAMPLES_=TRUE) ## roxygen generated flag
 }
 
-## repos_url
 
 # appending to default repos
 repos_url('+')
@@ -48,7 +47,6 @@ if( interactive() ) file.show(f) else cat(readLines(f), sep = "\\n")
 spec <- c('@myRepo', '@myRepo/extra/path', 'http://www.public.org'
 				, 'http://www.privatehost.org/repo/dir', '@CRAN@')
 cbind(Specification = spec, URL = repos_url(spec, .netrc = f))
-
 
 }
 \seealso{

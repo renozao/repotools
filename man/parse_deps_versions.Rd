@@ -27,11 +27,9 @@ Parse Package Dependencies
 options(R_CHECK_RUNNING_EXAMPLES_=TRUE) ## roxygen generated flag
 }
 
-## parse_deps_versions
 
 parse_deps_versions("a, b, c")
 # with some version requirement
 parse_deps_versions("a (>= 1.2.3), b, c (<= 2.5)")
-
 
 }

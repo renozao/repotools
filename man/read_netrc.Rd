@@ -66,7 +66,6 @@ that the first part of the path is a key to be substituted rather than being par
 options(R_CHECK_RUNNING_EXAMPLES_=TRUE) ## roxygen generated flag
 }
 
-## read_netrc
 
 \dontrun{
 try( read_netrc() )
@@ -85,7 +84,6 @@ read_netrc(f, std = FALSE)
 # skip repo entries
 read_netrc(f, std = NA)
  
-
 
 }
 \seealso{
