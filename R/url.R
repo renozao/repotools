@@ -97,7 +97,7 @@ read_netrc <- function(x = netrc_path(), std = TRUE, line.number = FALSE, quiet 
         fields <- c(std_fields, 'repos')
         comment_pattern <- '#?\\s*'
     }
-    pattern <- sprintf("^\\s*%s([^ ]+)\\s([^ ]+)", comment_pattern)
+    pattern <- sprintf("^\\s*%s([^ ]+)\\s+([^ ]+)", comment_pattern)
     
     res <- lapply(seq_along(chunk)[-1L], function(i){
             # parse each line in the definition
