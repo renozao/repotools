@@ -104,7 +104,7 @@ remote_package_description.github_remote <- function(remote, url = "https://raw.
 #' @export
 remote_package_name.github_remote <- function(remote, url = "https://raw.githubusercontent.com", ...) {
   
-  desc <- remote_package_description(remote, url = url, ...)
+  desc <- repotools::remote_package_description(remote, url = url, ...)
   desc$Package
 }
 environment(remote_package_name.github_remote) <- asNamespace('devtools')
@@ -130,7 +130,7 @@ remote_package_description.bitbucket_remote <- function(remote, url = "https://a
 #' @export
 remote_package_name.bitbucket_remote <- function(remote, url = "https://api.bitbucket.org", ...) {
   
-  desc <- remote_package_description(remote, url = url, ...)
+  desc <- repotools::remote_package_description(remote, url = url, ...)
   desc$Package
 }
 environment(remote_package_name.bitbucket_remote) <- asNamespace('devtools')
