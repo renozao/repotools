@@ -447,13 +447,18 @@ match_url <- function(url, machine, nomatch = NA_integer_, last = TRUE, ignore.p
       m <- sub("^[^/]+://", '', m)
     }
     
-    # check for regular expression
-    i <- integer()
-    if( any(regs <- grepl("[*)(+?$]", m)) ){
-      i <- seq_along(m)[regs][sapply(m[regs], function(x) grepl(x, u) | grepl(x, paste0(u, '/')))]
-    }
-      
-    i <- c(i, which(!is.na(pmatch(paste0(gsub("/*$", '', m[!regs]), '/'), paste0(gsub("/*$", '', u), '/')))))
+    m0 <- m
+    # escape dots in non-regular expression
+    regs <- grepl("[*^\\)\\(+?\\$]", m) | grepl("[", m, fixed = TRUE) | grepl("]", m, fixed = TRUE)
+    m[!regs] <- gsub(".", "\\.", m[!regs], fixed = TRUE)
+    # allow for prefix if not prevented by leading '//'
+    extend_i <- grep('^((//)|(\\^))', m, invert = TRUE)
+    m[extend_i] <- paste0('^([^/]+\\.)?', m[extend_i])
+    # force exact end math or trailing /
+    trail_i <- grep("[/\\$]$", m, invert = TRUE)
+    m[trail_i] <- paste0(m[trail_i], '((/)|$)')
+    i <- seq_along(m)[sapply(m, grepl, u) | sapply(m, grepl, paste0(u, '/'))]
+    
     i <- sort(i)
     
     # return tail or head according to request

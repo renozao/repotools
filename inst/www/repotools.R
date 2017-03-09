@@ -52,7 +52,7 @@ if( !require_version('devtools', version = '1.12') ){
 }
 
 # load/install repotools
-if( !require_version('repotools', version = '1.8.5') ){
+if( !require_version('repotools', version = '1.8.7') ){
   # install repotools
   install_github('renozao/repotools', quick = QUICK)
   library(repotools)
