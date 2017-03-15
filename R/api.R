@@ -291,7 +291,10 @@ install.pkgs <- function(pkgs, lib = NULL, repos = getOption('repos'), type = ge
     # use devtools installers if not doing a dry run
     if( !dry.run ){
       parse_one_remote <- ns_get('parse_one_remote', 'devtools')
-      x_remotes <- lapply(package_remote_type(x), parse_one_remote)
+      x_remotes <- lapply(package_remote_type(x), function(x){
+            if( grepl("^cran::", x) ) ns_get('devtools::cran_remote')(sub("^cran::", "", x), repos = repos, type = type)
+            else parse_one_remote(x)
+          })
       install_remotes <- ns_get('install_remotes', 'devtools')
       res <- withr::with_options(list(repos = repos)
           , install_remotes(x_remotes, reload = reload, dependencies = dependencies, upgrade_dependencies = FALSE
