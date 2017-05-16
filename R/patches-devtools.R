@@ -136,3 +136,13 @@ remote_package_name.bitbucket_remote <- function(remote, url = "https://api.bitb
 environment(remote_package_name.bitbucket_remote) <- asNamespace('devtools')
 shim_devtools_remote_package_name.bitbucket_remote <- remote_package_name.bitbucket_remote
 
+#' @noRd
+#' @export
+remote_sha.github_remote <- function(remote, url = "https://github.com", ...) {
+  
+  f <- get_shim_parent('devtools::remote_sha.github_remote')
+  f(remote, url = url, credentials = git2r::cred_user_pass(remote$auth_user, remote$auth_token), ...)
+
+}
+environment(remote_sha.github_remote) <- asNamespace('devtools')
+shim_devtools_remote_sha.github_remote <- remote_sha.github_remote
