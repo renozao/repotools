@@ -74,10 +74,19 @@ parse_function_name <- function(name, envir = NULL){
   
 }
 
-# returns the original function that has been patched
-get_shim_parent <- function(name, ...){
+#' Retrieving Original Patched Function
+#' 
+#' Returns the original function that has been patched.
+#' 
+#' @param name name of the patched function.
+#' Can be specified as `package_name::funname`, in which case 
+#' argument `envir` default value becomes "package_name".
+#' @param envir environment where the function should be looked for.
+#' 
+#' @export
+get_shim_parent <- function(name, envir = NULL){
   # extract key from name
-  spec <- parse_function_name(name, ...)
+  spec <- parse_function_name(name, envir = envir)
   # return stored original function
   .shim_registry[[spec$key]]
   
