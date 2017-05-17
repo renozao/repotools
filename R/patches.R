@@ -14,41 +14,42 @@ set_shim <- function(name, FUN, envir = NULL, quiet = FALSE){
   key <- spec$key
   envir <- spec$envir
   
-  # backup original definition if necessary
-  if( is.null(.shim_registry[[key]]) ){
-    .shim_registry[[key]] <- envir[[name]]
-  }
-  
   # force function's environment
   fpkg <- packageName(topenv(environment(FUN)))
   eFUN <- FUN
   environment(eFUN) <- environment(envir[[name]])
-  
-  # inject if necessary
-  if( digest(eFUN) != digest(envir[[name]]) ){
-    # check if environment is locked
-    was_locked <- bindingIsLocked(name, envir)
-    if( was_locked ) do.call("unlockBinding", list(name, envir))
+    
+  # inject only if necessary
+  old <- get_shim_parent(key)
+  .shim_registry[[key]] <- eFUN
+  if( is.null(old) && !identical(eFUN, envir[[name]]) && digest(body(eFUN)) != digest(body(envir[[name]])) ){
     
     # override function if necessary
     if( !quiet ){
-      msg <- sprintf("Patching %s::%s with definition in %s [%s <- %s]"
-          , ename, name, fpkg, sha1(.shim_registry[[key]] %||% envir[[name]]), sha1(eFUN))
+      msg <- sprintf("Patching %s with definition in %s [%s <- %s]", key, fpkg, sha1(body(envir[[name]])), sha1(body(eFUN)))
       message(msg)
     }
     
+    # backup original definition as an attribute of the injected function
+    old <- envir[[name]]
+    attr(eFUN, 'original') <- envir[[name]]
+    
+    # check if environment is locked
+    was_locked <- bindingIsLocked(name, envir)
+    if( was_locked ) do.call("unlockBinding", list(name, envir))
+        
     assign(name, eFUN, envir = envir)
     
 #    if( isS3method(name, envir = envir) ) namespaceExport(envir, name)
     
     # lock it again if necessary
     if( was_locked ) lockBinding(name, envir)
-    return(invisible(TRUE))
+    return(invisible(old))
     
   }
   
-  # return FALSE if nothing was injected 
-  invisible(FALSE)
+  # return NULL if nothing was injected 
+  invisible(NULL)
   
 }
 
@@ -88,7 +89,8 @@ get_shim_parent <- function(name, envir = NULL){
   # extract key from name
   spec <- parse_function_name(name, envir = envir)
   # return stored original function
-  .shim_registry[[spec$key]]
+#  .shim_registry[[spec$key]]
+  attr(spec$envir[[spec$name]], 'original')
   
 }
 
@@ -122,20 +124,17 @@ set_shims <- function(ns = topenv(parent.frame()), quiet = NULL){
 reset_shim <- function(name, envir = NULL){
   
   # process envir
-  if( isString(envir) ){
-    envir <- strsplit(envir, '::')[[1L]]
-    name <- name %||% envir[2L]
-    envir <- asNamespace(envir[1L])
-  }
-  if( is.null(name) || !nzchar(name) ) stop("Invalid target function name (empty)")
+  spec <- parse_function_name(name)
+  name <- spec$name
+  envir <- spec$envir  
+  ename <- spec$ename
+  key <- spec$key
   
-  ename <- packageName(envir)
   was_locked <- bindingIsLocked(name, envir)
   if( was_locked ) do.call("unlockBinding", list(name, envir))
-  key <- paste0(ename, '::', name)
-  message(sprintf("Restoring definition for function %s::%s [%s <- %s]"
-          , ename, name, digest(envir[[name]]), digest(.shim_registry[[key]])))
-  envir[[name]] <- .shim_registry[[key]]
+  old <- get_shim_parent(key)
+  message(sprintf("Restoring definition for function %s [%s <- %s]", key, digest(body(envir[[name]])), digest(body(old))))
+  envir[[name]] <- old
   if( was_locked ) lockBinding(name, envir)
   
 }
@@ -144,7 +143,7 @@ with_shim <- function(name, FUN, expr, envir = NULL){
   
   # restore shim on exit
   on.exit(reset_shim(name, envir))
-  if( !set_shim(name, FUN, envir) ) on.exit()
+  if( is.null(set_shim(name, FUN, envir)) ) on.exit()
   e <- parent.frame()
   eval(expr, envir = e)
   
