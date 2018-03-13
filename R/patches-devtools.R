@@ -141,8 +141,15 @@ shim_devtools_remote_package_name.bitbucket_remote <- remote_package_name.bitbuc
 remote_sha.github_remote <- function(remote, url = "https://github.com", ...) {
   
   f <- repotools::get_shim_parent('devtools::remote_sha.github_remote')
-  f(remote, url = url, credentials = git2r::cred_user_pass(remote$auth_user, remote$auth_token), ...)
-
+  # try with credentials if any
+  cred <- if( !is.null(remote$auth_token) ) git2r::cred_user_pass(remote$auth_user, remote$auth_token)
+  sha <- f(remote, url = url, credentials = cred, ...)
+  # if this did not work: try without credentials
+  if( all(is.na(sha)) && !is.null(cred) ){
+    sha <- f(remote, url = url, credentials = NULL, ...)
+  }
+  sha
+  
 }
 environment(remote_sha.github_remote) <- asNamespace('devtools')
 shim_devtools_remote_sha.github_remote <- remote_sha.github_remote
