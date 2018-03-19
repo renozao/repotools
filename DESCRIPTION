@@ -1,8 +1,8 @@
 Package: repotools
 Type: Package
 Title: Tools for R Package Repositories
-Version: 1.9
-Date: 2018-03-13
+Version: 1.9.1
+Date: 2018-03-18
 Authors@R: person('Renaud', 'Gaujoux', email = 'renaud.gaujoux@ensae.org', role
     = c('aut', 'cre'))
 Description: Provides utilities to facilitate the creation and usage of
@@ -29,10 +29,10 @@ Imports:
     pkgmaker (>= 0.26.3),
     RCurl,
     rversions,
-    plyr
+    plyr,
+    httr
 Suggests:
     BiocInstaller,
-    httr,
     DT,
     rmarkdown,
     testthat

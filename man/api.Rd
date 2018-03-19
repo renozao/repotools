@@ -66,7 +66,7 @@ exactly (\code{TRUE}) or interpreted and matched as regular expressions.}
 
 \item{type}{
     character string, indicate which type of packages: see
-    \code{\link{install.packages}}.
+    \code{\link{install.packages}} and \sQuote{Details}.
   }
 
 \item{verbose}{verbosity level (logical or numeric)}
