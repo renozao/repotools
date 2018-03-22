@@ -112,7 +112,6 @@ NULL
 #' such as url base and function to query and fetch raw contents.
 #' 
 #' @export
-#' @importFrom repotools remote_auth
 #' @examples
 #' # build augmented remote object
 #' as_remote('a/b@c')
@@ -221,7 +220,7 @@ remote_get_api <- function(remote, url, path, user = remote$auth_user, password 
     auth <- NULL
   }  
     
-  req <- httr::GET(url, config = c(auth, config), path = path)
+    req <- httr::GET(url, config = c(auth, config), path = path)
   # throw error if GET is not not successful
   if (httr::status_code(req) >= 400) {
     msg <- switch(as.character(httr::status_code(req)), 
