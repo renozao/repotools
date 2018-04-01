@@ -142,7 +142,12 @@ remote_sha.github_remote <- function(remote, url = "https://github.com", ...) {
   
   f <- repotools::get_shim_parent('devtools::remote_sha.github_remote')
   # try with credentials if any
-  cred <- if( !is.null(remote$auth_token) ) git2r::cred_user_pass(remote$auth_user, remote$auth_token)
+  cred <- if( !is.null(remote$auth_token) ){
+    usr <- remote$auth_user
+    if( is.null(usr) ) usr <- ""
+    git2r::cred_user_pass(usr, remote$auth_token)
+    
+  }
   sha <- f(remote, url = url, credentials = cred, ...)
   # if this did not work: try without credentials
   if( all(is.na(sha)) && !is.null(cred) ){
