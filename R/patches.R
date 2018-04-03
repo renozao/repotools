@@ -141,10 +141,14 @@ reset_shim <- function(name, envir = NULL){
   ename <- spec$ename
   key <- spec$key
   
+  old <- get_shim_parent(key)
+  if( is.null(old) ){
+    message("No shim defined for ", key)
+    return()
+  }
   was_locked <- bindingIsLocked(name, envir)
   if( was_locked ) do.call("unlockBinding", list(name, envir))
-  old <- get_shim_parent(key)
-  message(sprintf("Restoring definition for function %s [%s <- %s]", key, digest(body(envir[[name]])), digest(body(old))))
+  message(sprintf("Restoring definition for function %s [%s <- %s]", key, digest_function(envir[[name]]), digest_function(old)))
   envir[[name]] <- old
   if( was_locked ) lockBinding(name, envir)
   
