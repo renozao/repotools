@@ -5,6 +5,15 @@
 
 .shim_registry <- new.env()
 
+digest_function <- function(fun, n = 10L){
+  bd <- if( !is.primitive(fun) ) body(fun) else capture.output(fun)
+  attributes(bd) <- NULL
+  bd <- as.character(bd)
+  if( !is.primitive(fun) ) bd <- list(bd, formals(fun))
+  substr(digest::digest(bd), 1L, n)
+  
+}
+
 set_shim <- function(name, FUN, envir = NULL, quiet = FALSE){
   
   # process envir
@@ -22,11 +31,13 @@ set_shim <- function(name, FUN, envir = NULL, quiet = FALSE){
   # inject only if necessary
   old <- get_shim_parent(key)
   .shim_registry[[key]] <- eFUN
-  if( is.null(old) && !identical(eFUN, envir[[name]]) && digest(body(eFUN)) != digest(body(envir[[name]])) ){
+  sha_new <- digest_function(eFUN)
+  sha_env <- digest_function(envir[[name]])
+  if( is.null(old) && !identical(eFUN, envir[[name]]) && sha_new != sha_env ){
     
     # override function if necessary
     if( !quiet ){
-      msg <- sprintf("Patching %s with definition in %s [%s <- %s]", key, fpkg, sha1(body(envir[[name]])), sha1(body(eFUN)))
+      msg <- sprintf("Patching %s with definition in %s [%s <- %s]", key, fpkg, sha_env, sha_new)
       message(msg)
     }
     
@@ -94,7 +105,7 @@ get_shim_parent <- function(name, envir = NULL){
   
 }
 
-set_shims <- function(ns = topenv(parent.frame()), quiet = NULL){
+set_shims <- function(ns = topenv(parent.frame()), quiet = getOption('repotools.shim_quiet')){
   
   # inject shims into their respective namespace
   shims <- ls(ns, pattern = "^shim_")
@@ -109,7 +120,7 @@ set_shims <- function(ns = topenv(parent.frame()), quiet = NULL){
     quiet <- !isDevNamespace(pkg)
     if( quiet ){
       t <- lengths(split(shims, sub("([^:]+).*", "\\1", names(shims))))
-      msg <- sprintf("Applying %s patches to %s", pkg, paste0(sprintf("%s[%i]", names(t), t), collapse = ", "))
+      msg <- sprintf("Applying %s patches to %s", pkg, paste0(sprintf("%s [%i]", names(t), t), collapse = ", "))
       packageStartupMessage(msg)
     }
   }
