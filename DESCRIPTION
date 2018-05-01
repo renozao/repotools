@@ -11,7 +11,7 @@ Description: Provides utilities to facilitate the creation and usage of
 License: GPL (>=2)
 SCM: github+gran:renozao
 Depends:
-    R (>= 3.0),
+    R (>= 3.3.0),
     devtools (>= 1.12)
 Imports:
     utils,
