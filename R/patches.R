@@ -24,7 +24,8 @@ set_shim <- function(name, FUN, envir = NULL, quiet = FALSE){
   envir <- spec$envir
   
   # force function's environment
-  fpkg <- packageName(topenv(environment(FUN)))
+  tenv <- topenv(environment(FUN))
+  fpkg <- packageName(tenv) %||% environmentName(tenv) %||% format(tenv)
   eFUN <- FUN
   environment(eFUN) <- environment(envir[[name]])
     
