@@ -1,8 +1,8 @@
 Package: repotools
 Type: Package
 Title: Tools for R Package Repositories
-Version: 1.9.1
-Date: 2018-03-18
+Version: 1.9.2
+Date: 2018-07-23
 Authors@R: person('Renaud', 'Gaujoux', email = 'renaud.gaujoux@ensae.org', role
     = c('aut', 'cre'))
 Description: Provides utilities to facilitate the creation and usage of
@@ -12,7 +12,7 @@ License: GPL (>=2)
 SCM: github+gran:renozao
 Depends:
     R (>= 3.3.0),
-    devtools (>= 1.12)
+    devtools (>= 1.13.6)
 Imports:
     utils,
     stats,

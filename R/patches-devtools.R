@@ -144,7 +144,7 @@ remote_sha.github_remote <- function(remote, url = "https://github.com", ...) {
   # try with credentials if any
   cred <- if( !is.null(remote$auth_token) ){
     usr <- remote$auth_user
-    if( is.null(usr) ) usr <- ""
+    if( is.null(usr) ) usr <- "__anonymous__" # NOTE: an empty string seems to cause git2r::remote_ls to hang
     git2r::cred_user_pass(usr, remote$auth_token)
     
   }

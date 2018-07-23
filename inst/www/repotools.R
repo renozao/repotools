@@ -45,14 +45,14 @@ require_version <- function(package, version = NULL, lib.loc = NULL, cmp = ">=")
 }
 
 # load/install devtools
-if( !require_version('devtools', version = '1.12') ){
+if( !require_version('devtools', version = '1.13.6') ){
   install.packages('devtools')
   suppressMessages(library(devtools))
 
 }
 
 # load/install repotools
-if( !require_version('repotools', version = '1.9.1') ){
+if( !require_version('repotools', version = '1.9.2') ){
   # install repotools
   install_github('renozao/repotools', quick = QUICK)
   library(repotools)

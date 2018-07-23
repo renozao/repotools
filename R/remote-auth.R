@@ -82,7 +82,11 @@ remote_auth.default <- function(x, ..., host = NULL, auth_user = 'auth_user', au
 
 #' @export
 remote_auth.github_remote <- function(x, ...){
-  remote_auth.default(x, host = 'github.com', ...)
+  r <- remote_auth.default(x, host = 'github.com', ...)
+  usr <- r[["auth_user"]]
+  # NOTE: an empty string seems to cause git2r::remote_ls to hang
+  if( !length(usr) || !nzchar(usr) ) r[["auth_user"]] <- "__anonymous__"
+  r
   
 }
 
@@ -275,6 +279,23 @@ remote_get_raw <- function(remote, path, url = NULL, ..., destfile = NULL) {
   if( is.function(remote$build_raw_path) ) path <- remote$build_raw_path(remote, path)
   
   req <- remote_get_api(remote, path = path, url = url, ..., config = httr::write_disk(path = destfile))
+  if( is_NA(req) ) return(req)
+  
+  # check if the file is a git-lfs file
+  if( grepl('git-lfs', readLines(destfile, n = 1L)) ){
+    remote$host <- "https://github.com"
+    path <- paste0(remote$username, remote$repo, "raw", remote$ref, remote$subdir, path, collapse = '/')
+    req <- remote_get_api(remote, path = path, url = url, ..., config = httr::write_disk(path = destfile)) 
+#    spec <- read.table(destfile, sep = ' ')
+#    print(spec)
+#    url <- paste0('https://git-server.com/', remote$username, '/', remote$repo, '.git/info/lfs/objects/batch')
+#    req <- remote_get_api(remote, path = list(operation = 'download', objects = list(oid = spec[1, 2], size = spec[2, 2]))
+#                          , url = url, ...
+#                          , config = httr::add_headers(Accept = "application/vnd.git-lfs+json", "Content-Type" = "application/vnd.git-lfs+json")
+#                          , method = 'POST')
+    
+  }
+  
   if( is_NA(req) ) return(req)
   
   # load or return path
