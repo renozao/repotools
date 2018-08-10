@@ -135,14 +135,21 @@ read_netrc <- function(x = netrc_path(), std = TRUE, line.number = FALSE, quiet 
     res
 }
 
-#' Function `netrc_path` returns the default location of the `.netrc` file, 
-#' i.e. in the user home directory.
+#' @describeIn read_netrc returns the default location of the `.netrc` file. 
+#' This is by decreasing preference:
+#'   * defined by global option `netrc_path` 
+#'   * file in current directory
+#'   * file in the user home directory.
 #' 
-#' @rdname read_netrc
 #' @export
 netrc_path <- function(){
   prefix <- if( .Platform$OS.type == 'windows' ) '_' else '.'
-  file.path(Sys.getenv('HOME'), paste0(prefix, 'netrc'))
+  base_file <- paste0(prefix, 'netrc')
+  in_home <- file.path(Sys.getenv('HOME'), base_file)
+  in_current <- if( file.exists(base_file) ) base_file
+  # use option if present
+  getOption("netrc_path", in_current %||% in_home)
+  
 }
 
 url_credential_split <- function(x){

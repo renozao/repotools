@@ -31,9 +31,6 @@ and \code{'password'} if \code{std} is \code{TRUE} or \code{NA}, and additional 
 }
 \description{
 Parses an netrc file in different ways and return the credential specifications it contains.
-
-Function \code{netrc_path} returns the default location of the \code{.netrc} file,
-i.e. in the user home directory.
 }
 \details{
 Entries in the netrc file can be associated to R repositories, which are looked up
@@ -61,11 +58,18 @@ to the actual repository on the host machine \code{'www.myrepo.org'}.
 Note that it is not mandatory to start the repository entry key with a \code{'@'}, but it makes it clearer
 that the first part of the path is a key to be substituted rather than being part of the path.
 }
-\examples{
-\dontshow{
-options(R_CHECK_RUNNING_EXAMPLES_=TRUE) ## roxygen generated flag
+\section{Functions}{
+\itemize{
+\item \code{netrc_path}: returns the default location of the \code{.netrc} file.
+This is by decreasing preference:
+\itemize{
+\item defined by global option \code{netrc_path}
+\item file in current directory
+\item file in the user home directory.
 }
+}}
 
+\examples{
 
 \dontrun{
 try( read_netrc() )
@@ -90,3 +94,4 @@ read_netrc(f, std = NA)
 Other auth: \code{\link{repos_auth}},
   \code{\link{repos_url}}
 }
+\concept{auth}
