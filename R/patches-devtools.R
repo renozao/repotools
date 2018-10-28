@@ -6,8 +6,7 @@
 #' @include patches.R remote-auth.R
 NULL
 
-# make remotes use authentication from netrc file
-shim_devtools_remote <- function(type, ...) {
+.shim_remote <- function(type, ...) {
   res <- structure(list(...), class = c(paste0(type, "_remote"), "remote"))
   # resolve remote authentication
   res <- repotools::remote_auth(res)
@@ -15,6 +14,14 @@ shim_devtools_remote <- function(type, ...) {
   res
   
 }
+
+# make remotes use authentication from netrc file
+if( packageVersion("devtools") > package_version("2.0.0") ){
+  shim_remotes_remote <- .shim_remote
+  
+}else{
+  
+shim_devtools_remote  <- .shim_remote
 
 # To fix issue hadley/devtools#1370: change default value for devtools:::install_packages
 shim_devtools_install_packages <- local({
@@ -158,3 +165,5 @@ remote_sha.github_remote <- function(remote, url = "https://github.com", ...) {
 }
 environment(remote_sha.github_remote) <- asNamespace('devtools')
 shim_devtools_remote_sha.github_remote <- remote_sha.github_remote
+
+}
