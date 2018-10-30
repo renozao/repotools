@@ -30,11 +30,11 @@ set_shim <- function(name, FUN, envir = NULL, quiet = FALSE){
   environment(eFUN) <- environment(envir[[name]])
     
   # inject only if necessary
-  old <- get_shim_parent(key)
+  original_fun <- get_shim_parent(key)
   .shim_registry[[key]] <- eFUN
   sha_new <- digest_function(eFUN)
   sha_env <- digest_function(envir[[name]])
-  if( is.null(old) && !identical(eFUN, envir[[name]]) && sha_new != sha_env ){
+  if( !identical(eFUN, envir[[name]]) && sha_new != sha_env ){
     
     # override function if necessary
     if( !quiet ){
@@ -44,7 +44,7 @@ set_shim <- function(name, FUN, envir = NULL, quiet = FALSE){
     
     # backup original definition as an attribute of the injected function
     old <- envir[[name]]
-    attr(eFUN, 'original') <- envir[[name]]
+    attr(eFUN, 'original') <- original_fun %||% envir[[name]]
     
     # check if environment is locked
     was_locked <- bindingIsLocked(name, envir)
