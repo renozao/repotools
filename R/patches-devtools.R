@@ -29,6 +29,54 @@ shim_devtools_install_packages <- local({
   formals(f)[['dependencies']] <- NA
   f
 })
+    
+# Mask devtools method with bug-fixed version for remote package name query 
+# to ensure that queries to private repository use authentication token
+#' @noRd
+#' @export
+remote_package_name.github_remote <- function(remote, url = "https://raw.githubusercontent.com", ...) {
+  
+  desc <- repotools::remote_package_description(remote, url = url, ...)
+  desc$Package
+}
+environment(remote_package_name.github_remote) <- asNamespace('devtools')
+shim_devtools_remote_package_name.github_remote <- remote_package_name.github_remote
+
+# https://api.bitbucket.org/1.0/repositories/{accountname}/{repo_slug}/raw/{revision}/{path}
+#' @noRd
+#' @export
+remote_package_name.bitbucket_remote <- function(remote, url = "https://api.bitbucket.org", ...) {
+  
+  desc <- repotools::remote_package_description(remote, url = url, ...)
+  desc$Package
+}
+environment(remote_package_name.bitbucket_remote) <- asNamespace('devtools')
+shim_devtools_remote_package_name.bitbucket_remote <- remote_package_name.bitbucket_remote
+
+#' @noRd
+#' @export
+remote_sha.github_remote <- function(remote, url = "https://github.com", ...) {
+  
+  f <- repotools::get_shim_parent('devtools::remote_sha.github_remote')
+  # try with credentials if any
+  cred <- if( !is.null(remote$auth_token) ){
+    usr <- remote$auth_user
+    if( is.null(usr) ) usr <- "__anonymous__" # NOTE: an empty string seems to cause git2r::remote_ls to hang
+    git2r::cred_user_pass(usr, remote$auth_token)
+    
+  }
+  sha <- f(remote, url = url, credentials = cred, ...)
+  # if this did not work: try without credentials
+  if( all(is.na(sha)) && !is.null(cred) ){
+    sha <- f(remote, url = url, credentials = NULL, ...)
+  }
+  sha
+  
+}
+environment(remote_sha.github_remote) <- asNamespace('devtools')
+shim_devtools_remote_sha.github_remote <- remote_sha.github_remote
+
+}
 
 # #' Install Packages from Github
 # #' 
@@ -105,18 +153,6 @@ remote_package_description.github_remote <- function(remote, url = "https://raw.
   repotools::get_remote_package_description(remote, url, path, user = remote$auth_token, password = "x-oauth-basic", ...)
 }
 
-# Mask devtools method with bug-fixed version for remote package name query 
-# to ensure that queries to private repository use authentication token
-#' @noRd
-#' @export
-remote_package_name.github_remote <- function(remote, url = "https://raw.githubusercontent.com", ...) {
-  
-  desc <- repotools::remote_package_description(remote, url = url, ...)
-  desc$Package
-}
-environment(remote_package_name.github_remote) <- asNamespace('devtools')
-shim_devtools_remote_package_name.github_remote <- remote_package_name.github_remote
-
 #' @noRd
 #' @export
 remote_package_description.bitbucket_remote <- function(remote, url = "https://api.bitbucket.org", ...) {
@@ -130,40 +166,4 @@ remote_package_description.bitbucket_remote <- function(remote, url = "https://a
           remote$subdir,
           "DESCRIPTION"), collapse = "/")
   repotools::get_remote_package_description(remote, url = url, path = path, user = remote$auth_user, password = remote$password, ...)
-}
-
-# https://api.bitbucket.org/1.0/repositories/{accountname}/{repo_slug}/raw/{revision}/{path}
-#' @noRd
-#' @export
-remote_package_name.bitbucket_remote <- function(remote, url = "https://api.bitbucket.org", ...) {
-  
-  desc <- repotools::remote_package_description(remote, url = url, ...)
-  desc$Package
-}
-environment(remote_package_name.bitbucket_remote) <- asNamespace('devtools')
-shim_devtools_remote_package_name.bitbucket_remote <- remote_package_name.bitbucket_remote
-
-#' @noRd
-#' @export
-remote_sha.github_remote <- function(remote, url = "https://github.com", ...) {
-  
-  f <- repotools::get_shim_parent('devtools::remote_sha.github_remote')
-  # try with credentials if any
-  cred <- if( !is.null(remote$auth_token) ){
-    usr <- remote$auth_user
-    if( is.null(usr) ) usr <- "__anonymous__" # NOTE: an empty string seems to cause git2r::remote_ls to hang
-    git2r::cred_user_pass(usr, remote$auth_token)
-    
-  }
-  sha <- f(remote, url = url, credentials = cred, ...)
-  # if this did not work: try without credentials
-  if( all(is.na(sha)) && !is.null(cred) ){
-    sha <- f(remote, url = url, credentials = NULL, ...)
-  }
-  sha
-  
-}
-environment(remote_sha.github_remote) <- asNamespace('devtools')
-shim_devtools_remote_sha.github_remote <- remote_sha.github_remote
-
 }
