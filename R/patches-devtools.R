@@ -6,92 +6,18 @@
 #' @include patches.R remote-auth.R
 NULL
 
-.shim_remote <- function(type, ...) {
-  res <- structure(list(...), class = c(paste0(type, "_remote"), "remote"))
+# patch for internal function remotes:::remote so that remote objects are built
+# including a relevant authentication token loaded from the .netrc file.
+shim_remotes_remote <- function(type, ...) {
+  # get original function
+  f <- repotools::get_shim_parent('remotes::remote')
+  res <- f(type, ...)
   # resolve remote authentication
   res <- repotools::remote_auth(res)
   # return remote object
   res
   
 }
-
-# make remotes use authentication from netrc file
-if( packageVersion("devtools") > package_version("2.0.0") ){
-  shim_remotes_remote <- .shim_remote
-  
-}else{
-  
-shim_devtools_remote  <- .shim_remote
-
-# To fix issue hadley/devtools#1370: change default value for devtools:::install_packages
-shim_devtools_install_packages <- local({
-  f <- devtools:::install_packages
-  formals(f)[['dependencies']] <- NA
-  f
-})
-    
-# Mask devtools method with bug-fixed version for remote package name query 
-# to ensure that queries to private repository use authentication token
-#' @noRd
-#' @export
-remote_package_name.github_remote <- function(remote, url = "https://raw.githubusercontent.com", ...) {
-  
-  desc <- repotools::remote_package_description(remote, url = url, ...)
-  desc$Package
-}
-environment(remote_package_name.github_remote) <- asNamespace('devtools')
-shim_devtools_remote_package_name.github_remote <- remote_package_name.github_remote
-
-# https://api.bitbucket.org/1.0/repositories/{accountname}/{repo_slug}/raw/{revision}/{path}
-#' @noRd
-#' @export
-remote_package_name.bitbucket_remote <- function(remote, url = "https://api.bitbucket.org", ...) {
-  
-  desc <- repotools::remote_package_description(remote, url = url, ...)
-  desc$Package
-}
-environment(remote_package_name.bitbucket_remote) <- asNamespace('devtools')
-shim_devtools_remote_package_name.bitbucket_remote <- remote_package_name.bitbucket_remote
-
-#' @noRd
-#' @export
-remote_sha.github_remote <- function(remote, url = "https://github.com", ...) {
-  
-  f <- repotools::get_shim_parent('devtools::remote_sha.github_remote')
-  # try with credentials if any
-  cred <- if( !is.null(remote$auth_token) ){
-    usr <- remote$auth_user
-    if( is.null(usr) ) usr <- "__anonymous__" # NOTE: an empty string seems to cause git2r::remote_ls to hang
-    git2r::cred_user_pass(usr, remote$auth_token)
-    
-  }
-  sha <- f(remote, url = url, credentials = cred, ...)
-  # if this did not work: try without credentials
-  if( all(is.na(sha)) && !is.null(cred) ){
-    sha <- f(remote, url = url, credentials = NULL, ...)
-  }
-  sha
-  
-}
-environment(remote_sha.github_remote) <- asNamespace('devtools')
-shim_devtools_remote_sha.github_remote <- remote_sha.github_remote
-
-}
-
-# #' Install Packages from Github
-# #' 
-# #' This function is used to mask the original function [devtools::install_github],
-# #' to provide the same functionnality but using authentication tokens stored in 
-# #' the user's `.netrc` file.
-# #' 
-# #' @inheritParams devtools::install_github
-# #' 
-# #' @export
-#install_github <- local({
-#  f <- devtools::install_github
-#  body(f) <- substitute({ ca <- match.call(); ca[[1L]] <- devtools::install_github; pe <- parent.frame(); eval(ca, envir = pe) })
-#  f
-#})
 
 #' Fetch DESCRIPTION File from Remote
 #' 
