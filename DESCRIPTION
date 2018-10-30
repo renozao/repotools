@@ -1,7 +1,7 @@
 Package: repotools
 Type: Package
 Title: Tools for R Package Repositories
-Version: 1.9.3
+Version: 1.10.0
 Date: 2018-10-30
 Authors@R: person('Renaud', 'Gaujoux', email = 'renaud.gaujoux@ensae.org', role
     = c('aut', 'cre'))
